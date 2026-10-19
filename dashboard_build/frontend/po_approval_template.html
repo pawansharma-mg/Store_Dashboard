@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PO Approval Pending</title>
+<link rel="icon" type="image/png" href="/logo.png">
+<style>
+/* Same look as the other dashboard pages (Case Department Dashboard style). */
+:root{
+  color-scheme:light;
+  --plane:#f4f6f5;--surface:#fff;--ink:#0b0b0b;--ink2:#52514e;--muted:#898781;--grid:#e1e0d9;--border:rgba(11,11,11,.10);
+  --s1:#2a78d6;--good:#0ca30c;--warn:#fab219;--serious:#ec835a;--crit:#d03b3b;
+  --brand:#1CADE4;--brand-dark:#0E7FAE;--brand-red:#E42227;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--plane:#101110;--surface:#1a1b1a;--ink:#fff;--ink2:#c3c2b7;--grid:#2c2c2a;--border:rgba(255,255,255,.10);--s1:#3987e5}}
+:root[data-theme="dark"]{color-scheme:dark;--plane:#101110;--surface:#1a1b1a;--ink:#fff;--ink2:#c3c2b7;--grid:#2c2c2a;--border:rgba(255,255,255,.10);--s1:#3987e5}
+*{box-sizing:border-box}
+body{margin:0;background:var(--plane);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.top{position:sticky;top:0;z-index:20;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;background:var(--surface);border-bottom:3px solid var(--brand-red);padding:12px 20px}
+.brand{display:flex;align-items:center;gap:12px;min-width:0}
+.logo{width:42px;height:42px;object-fit:contain;flex:none}
+h1{margin:0;font-size:1.1rem;font-weight:700;color:var(--brand-dark)}
+.sub{margin:2px 0 0;font-size:.8rem;color:var(--muted)}
+.tools{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.live{display:flex;align-items:center;gap:8px;font-size:.8rem;color:var(--muted)}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;flex:none}
+.btn{height:34px;padding:0 14px;border:0;border-radius:7px;background:var(--brand);color:#fff;font-size:.83rem;font-weight:600;text-decoration:none;display:inline-flex;align-items:center}
+.btn:hover{background:var(--brand-dark)}
+.btn:disabled{opacity:.5;cursor:default}
+.nav{display:flex;flex-wrap:wrap;gap:6px;padding:8px 20px;background:var(--surface);border-bottom:1px solid var(--border)}
+.nav a{font-size:.78rem;font-weight:600;color:var(--ink2);text-decoration:none;padding:6px 12px;border-radius:999px;background:var(--plane)}
+.nav a.on{background:var(--brand);color:#fff}
+.wrap{max-width:1240px;margin:0 auto;padding:20px 16px 48px}
+.bar{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
+.fld{display:flex;flex-direction:column;gap:4px;min-width:0}
+.fld>span{font-size:.78rem;color:var(--ink2)}
+.fld select,.fld input{height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface);padding:0 10px;min-width:0}
+.grow{flex:1 1 240px}.grow input{width:100%}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{border:1px solid var(--border);border-radius:999px;background:var(--surface);padding:3px 11px;font-size:12.5px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-top:16px}
+.tile{background:var(--surface);border:1px solid var(--border);border-top:3px solid var(--crit);border-radius:12px;padding:14px 16px;box-shadow:0 1px 2px rgba(11,11,11,.04),0 1px 8px rgba(11,11,11,.04)}
+.tile:nth-child(2){border-top-color:var(--s1)}.tile:nth-child(3){border-top-color:var(--good)}.tile:nth-child(4){border-top-color:var(--warn)}.tile:nth-child(5){border-top-color:var(--serious)}
+.tv{font-size:1.5rem;font-weight:700;font-variant-numeric:tabular-nums}
+.tl{font-size:.76rem;color:var(--muted)}
+.grid{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;margin-top:12px}
+@media (min-width:900px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;min-width:0;box-shadow:0 1px 2px rgba(11,11,11,.04),0 1px 8px rgba(11,11,11,.04)}
+.card h2{margin:0;font-size:1.02rem;font-weight:700;display:flex;align-items:center;flex-wrap:wrap;gap:9px}
+.sec-badge{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:26px;padding:0 6px;border-radius:8px;background:var(--brand-dark);color:#fff;font-size:.72rem;font-weight:700}
+.badge-live{margin-left:auto;padding:3px 8px;border-radius:999px;font-size:.62rem;font-weight:700;letter-spacing:.04em;color:var(--good);background:rgba(12,163,12,.16)}
+.hint{margin:4px 0 12px;font-size:12.5px;color:var(--ink2)}
+.tbox{max-height:440px;overflow:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--grid);vertical-align:top}
+th{font-size:.7rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);border-bottom:2px solid var(--grid);white-space:nowrap}
+.tbox thead th{position:sticky;top:0;background:var(--surface);z-index:1}
+.tbox tfoot td{position:sticky;bottom:0;background:var(--surface);font-weight:700;border-top:2px solid var(--grid)}
+tbody tr:nth-child(even) td{background:rgba(128,128,128,.04)}
+tbody tr:hover td{background:rgba(28,173,228,.07)}
+tr.sel td{background:rgba(28,173,228,.14)!important}
+tr.subrow td{background:rgba(128,128,128,.08)!important;padding:6px 10px 12px 28px}
+tr.subrow table{font-size:12.5px;width:auto;min-width:640px}
+tr.subrow th,tr.subrow td{border-bottom:1px solid var(--grid);padding:4px 10px;background:transparent!important}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.nw{white-space:nowrap}
+.lnk{border:0;background:none;padding:0;color:var(--brand-dark);font-weight:600;text-decoration:underline;text-align:left}
+.pill{display:inline-block;padding:1px 8px;border-radius:999px;font-size:.72rem;font-weight:600;white-space:nowrap}
+.pill.a0{color:var(--good);background:rgba(12,163,12,.14)}
+.pill.a1{color:#4d8f00;background:rgba(120,190,0,.16)}
+.pill.a2{color:#b87b00;background:rgba(250,178,25,.22)}
+.pill.a3{color:#c2410c;background:rgba(236,131,90,.2)}
+.pill.a4,.pill.a5{color:var(--crit);background:rgba(208,59,59,.14)}
+.tablecard{margin-top:12px}
+.tscroll{overflow:auto;max-height:75vh}
+.tscroll table{min-width:1080px}
+.pager{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;margin-top:12px;color:var(--ink2)}
+.empty{padding:28px 0;color:var(--ink2);text-align:center}
+.note{margin-top:16px;color:var(--ink2);font-size:12.5px;max-width:110ch}
+.footer{text-align:center;font-size:.72rem;color:var(--muted);padding:0 20px 24px}
+@media (max-width:700px){.top{position:static}}
+@media (max-width:480px){.sub{display:none}.card{padding:16px}}
+.seg{display:inline-flex;border-radius:8px;overflow:hidden;border:1px solid var(--brand);flex:none}
+.seg button{border:0;border-radius:0;background:transparent;color:var(--brand-dark);font-size:.83rem;font-weight:600;height:32px;padding:0 13px;cursor:pointer}
+.seg button.on{background:var(--brand);color:#fff}
+.seg button:not(.on):hover{background:rgba(28,173,228,.15)}
+/* frozen headings: the title bar and the menu are one block that stays at the top, and the column headings of the item list stay while it scrolls */
+.stick{position:sticky;top:0;z-index:20}
+.stick .top{position:static}
+@media (max-width:700px){.stick{position:static}}
+.tscroll>table>thead th{position:sticky;top:0;z-index:3;background:var(--surface);box-shadow:0 2px 0 var(--grid)}
+</style>
+</head>
+<body>
+<div class="stick"><header class="top">
+  <div class="brand"><img class="logo" src="/logo.png" alt="Mittal Group"><div>
+    <h1>Mittal Group</h1>
+    <p class="sub">PO Approval Pending · purchase orders created since 1 Jan 2026 that are In Approval in SAP. Source: S/4HANA Cloud, YY1_PO_ITEM_SUPPLIER_CDS.</p>
+  </div></div>
+  <div class="tools">
+    <div class="live"><span class="dot" id="liveDot" style="background:var(--warn)"></span><span id="liveTxt">Connecting to SAP…</span></div>
+    <button id="refresh" class="btn" type="button">Refresh</button>
+    <div class="seg" id="themeSeg" role="group" aria-label="Colour mode"><button type="button" data-th="light" title="Normal (light) mode">Normal</button><button type="button" data-th="dark" title="Dark mode">Dark</button></div>
+  </div>
+</header>
+<nav class="nav"><a href="/">Pending PR</a><a href="/issue">Store Issue</a><a href="/po">Pending Purchase Orders</a><a href="/po-approval" class="on">PO Approval Pending</a><a href="/stock">Store Stock</a></nav></div>
+<div class="wrap">
+  <section class="bar" aria-label="Filters">
+    <label class="fld"><span>Show</span><select id="showSel"><option value="appr">In approval (SAP status In Approval)</option><option value="other">Rejected (state 08)</option><option value="all">Both</option></select></label>
+    <label class="fld"><span>Plant</span><select id="plantSel"></select></label>
+    <label class="fld"><span>PO type</span><select id="typeSel"></select></label>
+    <label class="fld"><span>Approver</span><select id="apprSel"></select></label>
+    <label class="fld"><span>Purch. group</span><select id="pgSel"></select></label>
+    <label class="fld"><span>Created by</span><select id="userSel"></select></label>
+    <label class="fld"><span>Pending for</span><select id="ageSel"></select></label>
+    <label class="fld"><span>PO creation date from</span><input id="dFrom" type="date"></label>
+    <label class="fld"><span>To</span><input id="dTo" type="date"></label>
+    <label class="fld grow"><span>Search</span><input id="q" type="search" placeholder="PO number, supplier name / number, approver, material, item text, created by"></label>
+  </section>
+  <div class="chips" id="chips"></div>
+  <section class="kpis" id="kpis"></section>
+
+  <section class="grid">
+    <article class="card">
+      <h2><span class="sec-badge">1</span>Pending for how long<span class="badge-live">LIVE</span></h2>
+      <p class="hint">Days since the PO was created. Click a row to filter everything.</p>
+      <div class="tbox" id="byAge"></div>
+    </article>
+    <article class="card">
+      <h2><span class="sec-badge">2</span>Approver wise<span class="badge-live">LIVE</span></h2>
+      <p class="hint" id="apprHint">Click an approver to filter everything.</p>
+      <div class="tbox" id="byAppr"></div>
+    </article>
+    <article class="card">
+      <h2><span class="sec-badge">3</span>Created by<span class="badge-live">LIVE</span></h2>
+      <p class="hint">Click a user to filter everything.</p>
+      <div class="tbox" id="byUser"></div>
+    </article>
+    <article class="card">
+      <h2><span class="sec-badge">4</span>PO type wise<span class="badge-live">LIVE</span></h2>
+      <p class="hint">Click a PO type to filter everything.</p>
+      <div class="tbox" id="byType"></div>
+    </article>
+    <article class="card">
+      <h2><span class="sec-badge">5</span>Plant wise<span class="badge-live">LIVE</span></h2>
+      <p class="hint">Click a plant to filter everything.</p>
+      <div class="tbox" id="byPlant"></div>
+    </article>
+    <article class="card">
+      <h2><span class="sec-badge">6</span>Supplier wise<span class="badge-live">LIVE</span></h2>
+      <p class="hint">Click a supplier to filter everything.</p>
+      <div class="tbox" id="bySup"></div>
+    </article>
+    <article class="card">
+      <h2><span class="sec-badge">7</span>Purchasing group wise<span class="badge-live">LIVE</span></h2>
+      <p class="hint">Purchasing organisation / group of the PO. The likely approver follows this pair. Click a row to filter.</p>
+      <div class="tbox" id="byPg"></div>
+    </article>
+  </section>
+
+  <section class="card tablecard">
+    <h2><span class="sec-badge">8</span>Purchase orders waiting for approval<span class="badge-live">LIVE</span></h2>
+    <p class="hint" id="tcount"></p>
+    <div class="tscroll"><table id="tbl"></table></div>
+    <div class="pager"><span id="pinfo"></span><div><button class="btn" id="prev" type="button">Previous</button> <button class="btn" id="next" type="button">Next</button></div></div>
+  </section>
+  <p class="note">A PO is "In approval" when its processing state in the SAP view is 03, or when it is on the approver list (see below). This matches the SAP app Manage Purchase Orders with Status = In Approval (checked for September 2026: 3 POs). POs in state 08 are Rejected in SAP (checked against an export of the SAP Purchase Order Items list: all 5 rejected items are state 08), so they are kept apart ("Show" filter). The oldest PO is shown first, and the age counts calendar days from the PO creation date. Click the item count of a PO to see its items. Values are the net order value in INR; a PO in another currency shows its own currency and is not added into the INR totals.
+  The approver is not in any SAP view the dashboard can read, so it comes from a list exported from the Manage Purchase Orders app (Status = In Approval, then Export to Excel) and saved as po_approvers.xlsx in the dashboard_build folder; it is read again on every refresh. A PO that was changed after its release is In Approval in SAP while the data view still shows it as released (state 05); such a PO is only found through the approver list and is marked with * next to the approver. The dashboard cannot see when it is approved, so such a PO stays listed until it is removed from the list or the list is exported again. Likely approver (shown as ~ name in italics): the approver is decided by SAP's workflow, which the dashboard cannot read. The likely approver comes from po_approver_rules.csv: the approver list sent on 18-Oct-2026 (how many POs each approver has pending) was matched with the purchasing group, PO type and value of the POs in approval, and the POs SAP showed with a known approver. It reproduces those counts, but it is an inference, not a confirmed approver; the hover on ~ name gives the basis and how strong it is. The PO creation date starts as the whole current month and moves to the next month by itself; change it (or clear it with the x on its chip) to see older POs. Data is refreshed from SAP at most every 30 minutes, or with the Refresh button.</p>
+</div>
+<footer class="footer">Mittal Group · PO Approval Pending · Source: SAP S/4HANA Cloud, YY1_PO_ITEM_SUPPLIER_CDS</footer>
+
+<script id="users" type="application/json">__USERS__</script>
+<script id="pgs" type="application/json">__PGS__</script>
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const USER_NAMES=(()=>{try{return JSON.parse(document.getElementById('users').textContent);}catch(e){return {};}})();
+const uName=id=>USER_NAMES[id]?USER_NAMES[id][0]:id;
+const PG_NAMES=(()=>{try{return JSON.parse(document.getElementById('pgs').textContent);}catch(e){return {};}})();
+const pgName=c=>PG_NAMES[c]||c;
+const pgTip=c=>'Purchasing group '+c+(PG_NAMES[c]?'':' (no description yet)');
+const pgDisp=key=>{const i=key.indexOf(' / ');return i<0?key:key.slice(0,i)+' / '+pgName(key.slice(i+3));};
+const uTip=id=>USER_NAMES[id]?id+' ('+USER_NAMES[id][1]+')':id;
+const PO_TYPES={NB:'Standard PO',NB2:'Enh.Ret.to Supplier',UB:'Stock Transp. Order',UD:'StockTranspOrderDel',ZAST:'Asset PO',ZBNG:'Prepaid Bank Guarant',ZDNB:'Domestic-Others',ZDRM:'Domestic PO - Raw',ZIMP:'Import PO - Others',ZIRM:'Import PO - Raw',ZPRE:'Prepaid Expenses',ZPRI:'Prepaid Insurance',ZSER:'Service PO',ZSTO:'STO PO',ZSUB:'Sub Contracting PO',ZTRD:'Trading PO'};
+const typeName=t=>PO_TYPES[t]?t+' · '+PO_TYPES[t]:t;
+const AGES=['0–2 days','3–7 days','8–15 days','16–30 days','31–90 days','Over 90 days'];
+const ageBucket=a=>a<=2?0:a<=7?1:a<=15?2:a<=30?3:a<=90?4:5;
+const UNKNOWN='(not on the approver list)';
+const PAGE=25;
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtN=n=>Math.round(n).toLocaleString('en-IN');
+function fmtINR(v){const a=Math.abs(v);if(a>=1e7)return '₹'+(v/1e7).toFixed(2)+' Cr';if(a>=1e5)return '₹'+(v/1e5).toFixed(2)+' L';return '₹'+Math.round(v).toLocaleString('en-IN');}
+const fmtAmt=(v,cur)=>cur==='INR'?fmtINR(v):v.toLocaleString('en-IN',{maximumFractionDigits:2})+' '+cur;
+const fmtDay=d=>new Date(d*864e5).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric',timeZone:'UTC'});
+const dayOf=v=>v?Math.floor(Date.parse(v)/864e5):null;
+const iso=d=>new Date(d*864e5).toISOString().slice(0,10);
+function setMonthDates(){const t=new Date(D.asofDay*864e5);const y=t.getUTCFullYear(),m=t.getUTCMonth();const a=Date.UTC(y,m,1)/864e5,b=Date.UTC(y,m+1,0)/864e5;S.from=a;S.to=b;$('dFrom').value=iso(a);$('dTo').value=iso(b);}
+
+let D=null,P=[],AP={},RULES=[],APINFO={file:'',savedAt:0};
+// show: 'appr' = In Approval (state 03 or on the approver list), 'other' = release not completed but not In Approval (state 08), 'all'
+const S={show:'appr',plant:'',type:null,user:null,appr:null,pg:null,age:null,sup:null,from:null,to:null,q:'',page:0};
+const OPEN=new Set();
+
+function pass(p,skip){
+  skip=skip||[];
+  if(S.show!=='all'&&p.group!==S.show)return false;
+  if(!skip.includes('plant')&&S.plant&&!p.plants.has(S.plant))return false;
+  if(!skip.includes('type')&&S.type!==null&&p.type!==S.type)return false;
+  if(!skip.includes('user')&&S.user!==null&&p.user!==S.user)return false;
+  if(!skip.includes('appr')&&S.appr!==null&&p.apprKey!==S.appr)return false;
+  if(!skip.includes('pg')&&S.pg!==null&&p.pgKey!==S.pg)return false;
+  if(!skip.includes('age')&&S.age!==null&&p.bucket!==S.age)return false;
+  if(!skip.includes('sup')&&S.sup!==null&&p.sup!==S.sup)return false;
+  if(S.from!==null&&!(p.day>=S.from))return false;
+  if(S.to!==null&&!(p.day<=S.to))return false;
+  if(S.q&&!p.hay.includes(S.q))return false;
+  return true;
+}
+const agg=()=>({n:0,items:0,amt:0,fx:0});
+function add(m,k,p){let x=m.get(k);if(!x)m.set(k,x=agg());x.n++;x.items+=p.items.length;x.amt+=p.amt;if(p.fx.size)x.fx++;}
+function aggTable(list,head,cell,sel){
+  if(!list.length)return '<div class="empty">Nothing matches the filters.</div>';
+  const tot=agg();for(const [,x] of list){tot.n+=x.n;tot.items+=x.items;tot.amt+=x.amt;tot.fx+=x.fx;}
+  const nums=x=>`<td class="num">${fmtN(x.n)}</td><td class="num">${fmtN(x.items)}</td><td class="num nw">${x.amt===0&&x.fx>0?'<span title="Other currency: not added into the INR totals">other cur.</span>':fmtINR(x.amt)}</td>`;
+  return `<table><thead><tr><th>${head}</th><th class="num">POs</th><th class="num">Items</th><th class="num">Net value</th></tr></thead><tbody>`+
+    list.map(([k,x])=>`<tr${k===sel?' class="sel"':''}><td>${cell(k)}</td>${nums(x)}</tr>`).join('')+
+    `</tbody><tfoot><tr><td>Total (${fmtN(list.length)})</td>${nums(tot)}</tr></tfoot></table>`;
+}
+const byCount=m=>[...m.entries()].sort((a,b)=>b[1].n-a[1].n||b[1].amt-a[1].amt);
+const supName=i=>D.suppliers[i][1]||D.suppliers[i][0];
+const supLabel=i=>supName(i)+' ('+D.suppliers[i][0]+')';
+const SHOW_TXT={appr:'In approval',other:'Rejected (state 08)',all:'Both groups'};
+
+function poValue(p){
+  const parts=[];if(p.amt||!p.fx.size)parts.push(fmtINR(p.amt));
+  for(const [c,v] of p.fx)parts.push(v.toLocaleString('en-IN',{maximumFractionDigits:2})+' '+c);
+  return parts.join(' + ');
+}
+
+function render(){
+  if(!D)return;  // the data is still loading
+  const rows=P.filter(p=>pass(p));
+  let amt=0,items=0,fx=0,known=0,likely=0,oldest=null;const sups=new Set();
+  for(const p of rows){amt+=p.amt;items+=p.items.length;sups.add(p.sup);if(p.fx.size)fx++;if(p.approver)known++;else if(p.likely)likely++;if(oldest===null||p.age>oldest.age)oldest=p;}
+  $('kpis').innerHTML=[[fmtN(rows.length),SHOW_TXT[S.show]==='In approval'?'POs In Approval':'POs ('+SHOW_TXT[S.show].toLowerCase()+')'],[fmtINR(amt),'Net value (INR)'+(fx?` · ${fmtN(fx)} other-currency POs not added`:'')],[fmtN(items),'PO items'],[fmtN(sups.size),'Suppliers'],[oldest?fmtN(oldest.age)+' days':'–',oldest?'Oldest: PO '+oldest.po+' ('+fmtDay(oldest.day)+')':'Oldest'],[fmtN(known)+' + '+fmtN(likely)+' of '+fmtN(rows.length),'POs: confirmed approver + likely approver']]
+    .map(t=>`<div class="tile"><div class="tv">${t[0]}</div><div class="tl">${esc(t[1])}</div></div>`).join('');
+  // chips
+  const c=[];
+  if(S.show!=='appr')c.push(['show','Show: '+SHOW_TXT[S.show]]);
+  if(S.plant)c.push(['plant','Plant '+S.plant]);
+  if(S.type!==null)c.push(['type','PO type: '+typeName(S.type)]);
+  if(S.appr!==null)c.push(['appr','Approver: '+S.appr]);
+  if(S.pg!==null)c.push(['pg','Purch. group: '+pgDisp(S.pg)]);
+  if(S.user!==null)c.push(['user','Created by: '+uName(S.user)]);
+  if(S.age!==null)c.push(['age','Pending '+AGES[S.age]]);
+  if(S.sup!==null)c.push(['sup','Supplier: '+supLabel(S.sup)]);
+  if(S.from!==null||S.to!==null)c.push(['date','PO creation date '+(S.from!==null?fmtDay(S.from):'start')+' – '+(S.to!==null?fmtDay(S.to):'today')]);
+  if(S.q)c.push(['q','Search: '+S.q]);
+  $('chips').innerHTML=c.map(x=>`<button type="button" class="chip" data-clr="${x[0]}">${esc(x[1])} ×</button>`).join('')+(c.length?'<button type="button" class="chip" data-clr="all">Reset filters</button>':'');
+  // each table ignores its own filter, so the list stays when you pick a row
+  const ag=new Map(),ap=new Map(),us=new Map(),ty=new Map(),pl=new Map(),sp=new Map(),pgm=new Map();
+  for(const p of P){
+    if(pass(p,['age']))add(ag,p.bucket,p);
+    if(pass(p,['appr']))add(ap,p.apprKey,p);
+    if(pass(p,['pg']))add(pgm,p.pgKey,p);
+    if(pass(p,['user']))add(us,p.user,p);
+    if(pass(p,['type']))add(ty,p.type,p);
+    if(pass(p,['plant']))for(const k of p.plants)add(pl,k,p);
+    if(pass(p,['sup']))add(sp,p.sup,p);
+  }
+  $('byAge').innerHTML=aggTable([...ag.entries()].sort((a,b)=>a[0]-b[0]),'Pending for',k=>`<button type="button" class="lnk" data-age="${k}">${AGES[k]}</button>`,S.age);
+  $('byAppr').innerHTML=aggTable(byCount(ap),'Approver',k=>`<button type="button" class="lnk" data-appr="${esc(k)}">${esc(k)}</button>`,S.appr);
+  $('apprHint').textContent=APINFO.file?`Approver names come from ${APINFO.file}, saved ${new Date(APINFO.savedAt).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}. A PO that is not on that list shows "${UNKNOWN}". Each approver is listed once, with confirmed and likely POs together (the list marks the likely ones with ~). Click an approver to filter.`:'No approver list found (po_approvers.xlsx in the dashboard_build folder), so no approver is known. See the note at the bottom.';
+  $('byPg').innerHTML=aggTable(byCount(pgm),'Purch. org / group',k=>`<button type="button" class="lnk" data-pg="${esc(k)}">${esc(pgDisp(k))}</button>`,S.pg);
+  $('byUser').innerHTML=aggTable(byCount(us),'Created by',k=>`<button type="button" class="lnk" data-user="${esc(k)}" title="${esc(uTip(k))}">${esc(uName(k))}</button>`,S.user);
+  $('byType').innerHTML=aggTable(byCount(ty),'PO type',k=>`<button type="button" class="lnk" data-type="${esc(k)}">${esc(typeName(k))}</button>`,S.type);
+  $('byPlant').innerHTML=aggTable(byCount(pl),'Plant',k=>`<button type="button" class="lnk" data-plant="${esc(k)}">${esc(k)}</button>`,S.plant||null);
+  $('bySup').innerHTML=aggTable(byCount(sp),'Supplier',k=>`<button type="button" class="lnk" data-sup="${k}" title="${esc(D.suppliers[k][2]?'GSTIN '+D.suppliers[k][2]:'')}">${esc(supLabel(k))}</button>`,S.sup);
+  // POs, oldest first
+  rows.sort((a,b)=>b.age-a.age||a.po.localeCompare(b.po));
+  const pages=Math.max(1,Math.ceil(rows.length/PAGE));if(S.page>=pages)S.page=pages-1;
+  const slice=rows.slice(S.page*PAGE,S.page*PAGE+PAGE);
+  const body=[];
+  for(const p of slice){
+    const open=OPEN.has(p.po);
+    const stTitle=p.proc==='03'?'Processing state 03: In Approval':p.group==='appr'?'The data view shows this PO as released (state '+p.proc+'), but SAP lists it In Approval (a changed version is in approval)':'Processing state '+p.proc+': Rejected in SAP';
+    body.push(`<tr><td class="nw">${esc(p.po)}</td><td class="nw">${fmtDay(p.day)}</td><td class="num"><span class="pill a${p.bucket}">${fmtN(p.age)} d</span></td><td class="nw" title="${esc(typeName(p.type))}">${esc(p.type)}</td><td class="nw">${esc(p.plant)}</td><td class="nw" title="${esc('Purchasing org '+p.org+' · '+pgTip(p.pg))}">${esc(pgName(p.pg))}</td><td title="${esc(D.suppliers[p.sup][2]?'Supplier '+D.suppliers[p.sup][0]+' · GSTIN '+D.suppliers[p.sup][2]:'Supplier '+D.suppliers[p.sup][0])}">${esc(supName(p.sup))}</td><td class="num"><button type="button" class="lnk" data-po="${esc(p.po)}">${open?'▾':'▸'} ${p.items.length}</button></td><td class="num nw">${poValue(p)}</td><td class="nw">${p.approver?`<b>${esc(p.approver)}</b>${p.proc==='03'?'':` <span title="Only the approver list says this PO is In Approval (the data view shows it as released). If it has been approved since, remove it from the list or export the list again.">*</span>`}`:p.likely?`<i title="${esc('Likely, not confirmed. '+p.likely.basis+' Same purchasing org / group: '+p.pgKey)}">~ ${esc(p.likely.approver)}</i>`:'<span title="'+esc(UNKNOWN)+'">–</span>'}</td><td class="nw" title="${esc(uTip(p.user))}">${esc(uName(p.user))}</td><td class="nw" title="${esc(stTitle)}">${esc(p.proc)}</td></tr>`);
+    if(open)body.push(`<tr class="subrow"><td colspan="12"><table><thead><tr><th>Item</th><th>Material</th><th>S.Loc</th><th class="num">Quantity</th><th class="num">Price</th><th class="num">Net value</th></tr></thead><tbody>`+
+      p.items.map(r=>`<tr><td>${r.item}</td><td>${r.mat?esc(r.mat)+' · ':''}${esc(r.text)}</td><td>${r.sloc?esc(r.sloc):'–'}</td><td class="num nw">${r.qty.toLocaleString('en-IN',{maximumFractionDigits:3})} ${esc(r.unit)}</td><td class="num nw">${fmtAmt(r.price,r.cur)}</td><td class="num nw">${fmtAmt(r.amt,r.cur)}</td></tr>`).join('')+`</tbody></table></td></tr>`);
+  }
+  $('tbl').innerHTML='<thead><tr><th>PO</th><th>Created on</th><th class="num">Pending</th><th>PO type</th><th>Plant</th><th>Purch. group</th><th>Supplier</th><th class="num">Items</th><th class="num">Net value</th><th>Approver</th><th>Created by</th><th>Proc. state</th></tr></thead><tbody>'+
+    (body.length?body.join(''):'<tr><td colspan="12" class="empty">Nothing matches the filters.</td></tr>')+'</tbody>';
+  $('tcount').textContent=fmtN(rows.length)+' purchase orders · '+fmtN(items)+' items';
+  $('pinfo').textContent=rows.length?`${fmtN(S.page*PAGE+1)}–${fmtN(Math.min(rows.length,S.page*PAGE+PAGE))} of ${fmtN(rows.length)}`:'';
+  $('prev').disabled=S.page<=0;$('next').disabled=S.page>=pages-1;
+}
+
+document.addEventListener('click',e=>{
+  const t=e.target.closest('button');if(!t)return;
+  if(t.dataset.po!==undefined){const k=t.dataset.po;if(OPEN.has(k))OPEN.delete(k);else OPEN.add(k);render();return;}
+  if(t.dataset.age!==undefined){const v=+t.dataset.age;S.age=S.age===v?null:v;$('ageSel').value=S.age===null?'':S.age;}
+  else if(t.dataset.appr!==undefined){S.appr=S.appr===t.dataset.appr?null:t.dataset.appr;$('apprSel').value=S.appr===null?'':S.appr;}
+  else if(t.dataset.pg!==undefined){S.pg=S.pg===t.dataset.pg?null:t.dataset.pg;$('pgSel').value=S.pg===null?'':S.pg;}
+  else if(t.dataset.user!==undefined){S.user=S.user===t.dataset.user?null:t.dataset.user;$('userSel').value=S.user===null?'':S.user;}
+  else if(t.dataset.type!==undefined){S.type=S.type===t.dataset.type?null:t.dataset.type;$('typeSel').value=S.type===null?'':S.type;}
+  else if(t.dataset.plant!==undefined){S.plant=S.plant===t.dataset.plant?'':t.dataset.plant;$('plantSel').value=S.plant;}
+  else if(t.dataset.sup!==undefined){const v=+t.dataset.sup;S.sup=S.sup===v?null:v;}
+  else if(t.dataset.clr){const c=t.dataset.clr;
+    if(c==='show'||c==='all'){S.show='appr';$('showSel').value='appr';}
+    if(c==='plant'||c==='all'){S.plant='';$('plantSel').value='';}
+    if(c==='type'||c==='all'){S.type=null;$('typeSel').value='';}
+    if(c==='appr'||c==='all'){S.appr=null;$('apprSel').value='';}
+    if(c==='pg'||c==='all'){S.pg=null;$('pgSel').value='';}
+    if(c==='user'||c==='all'){S.user=null;$('userSel').value='';}
+    if(c==='age'||c==='all'){S.age=null;$('ageSel').value='';}
+    if(c==='sup'||c==='all')S.sup=null;
+    if(c==='date'){S.from=S.to=null;$('dFrom').value=$('dTo').value='';}
+    if(c==='all')setMonthDates();
+    if(c==='q'||c==='all'){S.q='';$('q').value='';}}
+  else if(t.id==='prev'){S.page=Math.max(0,S.page-1);render();return;}
+  else if(t.id==='next'){S.page++;render();return;}
+  else return;
+  S.page=0;render();
+});
+$('showSel').addEventListener('change',e=>{S.show=e.target.value;S.page=0;fillSelects();render();});
+$('plantSel').addEventListener('change',e=>{S.plant=e.target.value;S.page=0;render();});
+$('typeSel').addEventListener('change',e=>{S.type=e.target.value===''?null:e.target.value;S.page=0;render();});
+$('apprSel').addEventListener('change',e=>{S.appr=e.target.value===''?null:e.target.value;S.page=0;render();});
+$('pgSel').addEventListener('change',e=>{S.pg=e.target.value===''?null:e.target.value;S.page=0;render();});
+$('userSel').addEventListener('change',e=>{S.user=e.target.value===''?null:e.target.value;S.page=0;render();});
+$('ageSel').addEventListener('change',e=>{S.age=e.target.value===''?null:+e.target.value;S.page=0;render();});
+$('dFrom').addEventListener('change',e=>{S.from=dayOf(e.target.value);S.page=0;render();});
+$('dTo').addEventListener('change',e=>{S.to=dayOf(e.target.value);S.page=0;render();});
+let qT;$('q').addEventListener('input',e=>{clearTimeout(qT);qT=setTimeout(()=>{S.q=e.target.value.trim().toLowerCase();S.page=0;render();},200);});
+
+const root=document.documentElement;
+function setTheme(t,save){root.dataset.theme=t;for(const b of document.querySelectorAll('#themeSeg button'))b.classList.toggle('on',b.dataset.th===t);if(save){try{localStorage.setItem('spr-theme',t);}catch(e){}}}
+let savedTheme='dark';try{savedTheme=localStorage.getItem('spr-theme')||'dark';}catch(e){}
+setTheme(savedTheme==='light'?'light':'dark',false);
+document.getElementById('themeSeg').addEventListener('click',e=>{const b=e.target.closest('button[data-th]');if(b)setTheme(b.dataset.th,true);});
+
+// first rule of the PO's purchasing org + group whose value band fits (the band uses the INR value; a PO in another currency matches only rules without a band)
+function ruleFor(p){
+  for(const r of RULES){
+    if(r.org!==p.org||r.pg!==p.pg)continue;
+    const banded=r.min!==null||r.max!==null;
+    if(banded&&p.fx.size)continue;
+    if(r.min!==null&&!(p.amt>=r.min))continue;
+    if(r.max!==null&&!(p.amt<r.max))continue;
+    return r;
+  }
+  return null;
+}
+// one entry per purchase order. A PO is listed when SAP's release is not completed (state 03 / 08) or when it is on the approver list.
+function buildPOs(){
+  const m=new Map();
+  for(const a of D.rows){
+    if(!(a[18]&1)&&AP[a[2]]===undefined)continue;
+    const r={po:a[2],item:a[3],day:a[0],type:D.types[a[4]],sup:a[5],pg:D.pgs[a[19]],org:D.orgs[a[20]],plant:D.plants[a[6]],sloc:D.slocs[a[7]],mat:D.mats[a[8]],text:D.texts[a[9]],user:D.users[a[12]],unit:D.units[a[13]],cur:D.curs[a[14]],qty:a[15],price:a[16],amt:a[17],proc:D.procs[a[21]]};
+    let p=m.get(r.po);
+    if(!p){p={po:r.po,day:r.day,type:r.type,user:r.user,sup:r.sup,org:r.org,pg:r.pg,proc:r.proc,plants:new Set(),items:[],amt:0,fx:new Map()};m.set(r.po,p);}
+    p.items.push(r);p.plants.add(r.plant);
+    if(r.cur==='INR')p.amt+=r.amt;else p.fx.set(r.cur,(p.fx.get(r.cur)||0)+r.amt);
+  }
+  P=[...m.values()];
+  for(const p of P){
+    p.age=Math.max(0,D.asofDay-p.day);p.bucket=ageBucket(p.age);
+    p.plant=[...p.plants].sort().join(' / ');
+    p.items.sort((a,b)=>a.item-b.item);
+    p.approver=AP[p.po]||'';p.pgKey=p.org+' / '+p.pg;p.likely=p.approver?null:ruleFor(p);
+    p.apprKey=p.approver||(p.likely?p.likely.approver:UNKNOWN);
+    p.group=(p.proc==='03'||AP[p.po]!==undefined)?'appr':'other';
+    p.hay=(p.po+' '+D.suppliers[p.sup][0]+' '+D.suppliers[p.sup][1]+' '+p.approver+' '+p.user+' '+uName(p.user)+' '+p.type+' '+(PO_TYPES[p.type]||'')+' '+p.items.map(r=>r.mat+' '+r.text).join(' ')).toLowerCase();
+  }
+}
+// the filter lists follow the "Show" choice, so every entry has at least one PO
+function fillSelects(){
+  const base=P.filter(p=>S.show==='all'||p.group===S.show);
+  const opts=(all,list,label)=>`<option value="">${all}</option>`+list.map(e=>`<option value="${esc(e[0])}">${esc(label(e[0]))}</option>`).join('');
+  const cnt=f=>{const c=new Map();for(const p of base)for(const k of f(p))c.set(k,(c.get(k)||0)+1);return [...c.entries()].sort((a,b)=>b[1]-a[1]);};
+  const keep=(sel,val,list)=>{if(val!==null&&val!==''&&!list.some(e=>e[0]===val))return null;return val;};
+  const pl=cnt(p=>p.plants);$('plantSel').innerHTML=opts('All plants',pl,k=>k);if(S.plant&&!pl.some(e=>e[0]===S.plant))S.plant='';$('plantSel').value=S.plant;
+  const tl=cnt(p=>[p.type]);$('typeSel').innerHTML=opts('All PO types',tl,typeName);S.type=keep('type',S.type,tl);$('typeSel').value=S.type===null?'':S.type;
+  const gl=cnt(p=>[p.pgKey]);$('pgSel').innerHTML=opts('All purch. groups',gl,pgDisp);S.pg=keep('pg',S.pg,gl);$('pgSel').value=S.pg===null?'':S.pg;
+  const al=cnt(p=>[p.apprKey]);$('apprSel').innerHTML=opts('All approvers',al,k=>k);S.appr=keep('appr',S.appr,al);$('apprSel').value=S.appr===null?'':S.appr;
+  const ul=cnt(p=>[p.user]);$('userSel').innerHTML=opts('All users',ul,uName);S.user=keep('user',S.user,ul);$('userSel').value=S.user===null?'':S.user;
+  const ac=new Map();for(const p of base)ac.set(p.bucket,(ac.get(p.bucket)||0)+1);
+  $('ageSel').innerHTML='<option value="">Any time</option>'+AGES.map((l,i)=>ac.has(i)?`<option value="${i}">${l}</option>`:'').join('');
+  if(S.age!==null&&!ac.has(S.age))S.age=null;$('ageSel').value=S.age===null?'':S.age;
+  if(S.sup!==null&&!base.some(p=>p.sup===S.sup))S.sup=null;
+}
+function setData(d,ap){
+  D=d;AP=(ap&&ap.approvers)||{};RULES=(ap&&ap.rules)||[];APINFO={file:(ap&&ap.file)||'',savedAt:(ap&&ap.savedAt)||0};
+  buildPOs();fillSelects();
+}
+function setLive(kind,text){$('liveDot').style.background=kind==='ok'?'var(--good)':kind==='err'?'var(--crit)':'var(--warn)';$('liveTxt').textContent=text;$('refresh').disabled=kind==='busy';}
+const hhmm=ms=>new Date(ms).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+let loading=false;
+async function load(force){
+  if(loading)return;loading=true;
+  setLive('busy',D?'Refreshing from SAP…':'Loading purchase order data from SAP (first load can take a minute)…');
+  try{
+    const [res,ares]=await Promise.all([fetch('/api/po'+(force?'?refresh=1':''),{cache:'no-store'}),fetch('/api/po-approvers',{cache:'no-store'}).catch(()=>null)]);
+    const j=await res.json().catch(()=>({}));
+    if(!res.ok)throw new Error(j.error||('HTTP '+res.status));
+    const ap=ares&&ares.ok?await ares.json().catch(()=>null):null;
+    setData(j,ap);if(!S.dInit){S.dInit=true;setMonthDates();}render();
+    const n=P.filter(p=>p.group==='appr').length;
+    setLive('ok','Live from SAP · updated '+hhmm(j.fetchedAt)+' · '+fmtN(n)+' POs In Approval');
+  }catch(e){
+    const msg=e.message==='Failed to fetch'?'The dashboard server is not running. Start it again with Start_Live_Dashboard.bat.':e.message;
+    setLive('err',msg);
+  }finally{loading=false;}
+}
+$('refresh').addEventListener('click',()=>load(true));
+load(false);
+setInterval(()=>{if(!document.hidden)load(false);},1800000);
+})();
+</script>
+</body>
+</html>

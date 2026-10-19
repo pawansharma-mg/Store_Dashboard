@@ -1,0 +1,14 @@
+# Only the dashboard code and its docs are tracked. Everything else in this folder (SAP exports, reports, the saved JSON, Excel files,
+# project settings) stays on this PC.
+/*
+!/.gitignore
+!/GCP_DEPLOY.md
+!/Start_Live_Dashboard.bat
+!/dashboard_build/
+
+__pycache__/
+*.pyc
+*.log
+
+# hand-saved exports from SAP stay local
+dashboard_build/backend/data/*.xlsx

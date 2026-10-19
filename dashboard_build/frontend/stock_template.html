@@ -1,0 +1,424 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Store Stock</title>
+<link rel="icon" type="image/png" href="/logo.png">
+<style>
+/* Same look as the Pending PR and Store Issue pages (Case Department Dashboard style). */
+:root{
+  color-scheme:light;
+  --plane:#f4f6f5;--surface:#fff;--ink:#0b0b0b;--ink2:#52514e;--muted:#898781;--grid:#e1e0d9;--border:rgba(11,11,11,.10);
+  --s1:#2a78d6;--good:#0ca30c;--warn:#fab219;--serious:#ec835a;--crit:#d03b3b;
+  --brand:#1CADE4;--brand-dark:#0E7FAE;--brand-red:#E42227;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--plane:#101110;--surface:#1a1b1a;--ink:#fff;--ink2:#c3c2b7;--grid:#2c2c2a;--border:rgba(255,255,255,.10);--s1:#3987e5}}
+:root[data-theme="dark"]{color-scheme:dark;--plane:#101110;--surface:#1a1b1a;--ink:#fff;--ink2:#c3c2b7;--grid:#2c2c2a;--border:rgba(255,255,255,.10);--s1:#3987e5}
+*{box-sizing:border-box}
+body{margin:0;background:var(--plane);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.top{position:sticky;top:0;z-index:20;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;background:var(--surface);border-bottom:3px solid var(--brand-red);padding:12px 20px}
+.brand{display:flex;align-items:center;gap:12px;min-width:0}
+.logo{width:42px;height:42px;object-fit:contain;flex:none}
+h1{margin:0;font-size:1.1rem;font-weight:700;color:var(--brand-dark)}
+.sub{margin:2px 0 0;font-size:.8rem;color:var(--muted)}
+.tools{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.live{display:flex;align-items:center;gap:8px;font-size:.8rem;color:var(--muted)}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;flex:none}
+.btn{height:34px;padding:0 14px;border:0;border-radius:7px;background:var(--brand);color:#fff;font-size:.83rem;font-weight:600;text-decoration:none;display:inline-flex;align-items:center}
+.btn:hover{background:var(--brand-dark)}
+.btn:disabled{opacity:.5;cursor:default}
+.nav{display:flex;gap:6px;padding:8px 20px;background:var(--surface);border-bottom:1px solid var(--border)}
+.nav a{font-size:.78rem;font-weight:600;color:var(--ink2);text-decoration:none;padding:6px 12px;border-radius:999px;background:var(--plane)}
+.nav a.on{background:var(--brand);color:#fff}
+.wrap{max-width:1240px;margin:0 auto;padding:20px 16px 48px}
+.bar{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
+.fld{display:flex;flex-direction:column;gap:4px;min-width:0}
+.fld>span{font-size:.78rem;color:var(--ink2)}
+.fld select,.fld input{height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface);padding:0 10px;min-width:0}
+.grow{flex:1 1 240px}.grow input{width:100%}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{border:1px solid var(--border);border-radius:999px;background:var(--surface);padding:3px 11px;font-size:12.5px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-top:16px}
+.tile{background:var(--surface);border:1px solid var(--border);border-top:3px solid var(--s1);border-radius:12px;padding:14px 16px;box-shadow:0 1px 2px rgba(11,11,11,.04),0 1px 8px rgba(11,11,11,.04)}
+.tile:nth-child(2){border-top-color:var(--serious)}.tile:nth-child(3){border-top-color:var(--good)}.tile:nth-child(4){border-top-color:var(--warn)}
+.tv{font-size:1.5rem;font-weight:700;font-variant-numeric:tabular-nums}
+.tl{font-size:.76rem;color:var(--muted)}
+.grid{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;margin-top:12px}
+@media (min-width:900px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;min-width:0;box-shadow:0 1px 2px rgba(11,11,11,.04),0 1px 8px rgba(11,11,11,.04)}
+.card h2{margin:0;font-size:1.02rem;font-weight:700;display:flex;align-items:center;flex-wrap:wrap;gap:9px}
+.sec-badge{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:26px;padding:0 6px;border-radius:8px;background:var(--brand-dark);color:#fff;font-size:.72rem;font-weight:700}
+.badge-live{margin-left:auto;padding:3px 8px;border-radius:999px;font-size:.62rem;font-weight:700;letter-spacing:.04em;color:var(--good);background:rgba(12,163,12,.16)}
+.hint{margin:4px 0 12px;font-size:12.5px;color:var(--ink2)}
+.tbox{max-height:440px;overflow:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--grid);vertical-align:top}
+th{font-size:.7rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);border-bottom:2px solid var(--grid);white-space:nowrap}
+.tbox thead th{position:sticky;top:0;background:var(--surface);z-index:1}
+.tbox tfoot td{position:sticky;bottom:0;background:var(--surface);font-weight:700;border-top:2px solid var(--grid)}
+tbody tr:nth-child(even) td{background:rgba(128,128,128,.04)}
+tbody tr:hover td{background:rgba(28,173,228,.07)}
+tr.sel td{background:rgba(28,173,228,.14)!important}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.nw{white-space:nowrap}
+.lnk{border:0;background:none;padding:0;color:var(--brand-dark);font-weight:600;text-decoration:underline;text-align:left}
+.pill{display:inline-block;padding:1px 8px;border-radius:999px;font-size:.72rem;font-weight:600;white-space:nowrap}
+.pill.ok{color:var(--good);background:rgba(12,163,12,.14)}
+.pill.open{color:#c2410c;background:rgba(236,131,90,.2)}
+.pill.part{color:#b87b00;background:rgba(250,178,25,.22)}
+.pill.none{color:var(--muted);background:rgba(128,128,128,.16)}
+.pill.pend{color:var(--crit);background:rgba(208,59,59,.14)}
+.tablecard{margin-top:12px}
+.tscroll{overflow:auto;max-height:75vh}
+.tscroll table{min-width:1450px}
+.ipm{font-weight:700}
+.topcard{margin-top:16px;border-top:3px solid var(--brand-red)}
+.deadbar{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.btn.alt{background:transparent;color:var(--brand-dark);border:1px solid var(--brand);height:36px}
+.btn.alt:hover{background:rgba(28,173,228,.12)}
+.btn.alt[aria-expanded="true"]{background:var(--brand);color:#fff}
+.deadbox{margin-top:12px}
+.tile .ts{font-size:.72rem;font-weight:600;color:var(--brand-dark);margin-top:6px}
+.tilebtn{text-align:left;font:inherit;color:inherit;cursor:pointer;width:100%}
+.tilebtn:hover{box-shadow:0 0 0 2px rgba(28,173,228,.35)}
+.tilebtn[aria-expanded="true"]{box-shadow:0 0 0 2px var(--brand)}
+.tile.opt1{border-top-color:var(--brand-red)}.tile.opt2{border-top-color:var(--crit)}
+.matc{min-width:270px;max-width:340px}
+.tscroll tbody tr td.qtd{font-weight:700;background:rgba(250,178,25,.20)}
+.tscroll>table>thead th.qtd{font-weight:800;color:var(--ink);box-shadow:inset 0 -3px 0 var(--warn),0 2px 0 var(--grid)}
+.matno{font-weight:600;font-variant-numeric:tabular-nums;color:var(--ink2);font-size:12px}
+.supc{min-width:170px}
+.pager{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;margin-top:12px;color:var(--ink2)}
+.empty{padding:28px 0;color:var(--ink2);text-align:center}
+.note{margin-top:16px;color:var(--ink2);font-size:12.5px;max-width:110ch}
+.footer{text-align:center;font-size:.72rem;color:var(--muted);padding:0 20px 24px}
+@media (max-width:700px){.top{position:static}}
+@media (max-width:480px){.sub{display:none}.card{padding:16px}}
+.seg{display:inline-flex;border-radius:8px;overflow:hidden;border:1px solid var(--brand);flex:none}
+.seg button{border:0;border-radius:0;background:transparent;color:var(--brand-dark);font-size:.83rem;font-weight:600;height:32px;padding:0 13px;cursor:pointer}
+.seg button.on{background:var(--brand);color:#fff}
+.seg button:not(.on):hover{background:rgba(28,173,228,.15)}
+/* frozen headings: the title bar and the menu are one block that stays at the top, and the column headings of the item list stay while it scrolls */
+[hidden]{display:none!important}
+.stick{position:sticky;top:0;z-index:20}
+.stick .top{position:static}
+@media (max-width:700px){.stick{position:static}}
+.tscroll>table>thead th{position:sticky;top:0;z-index:3;background:var(--surface);box-shadow:0 2px 0 var(--grid)}
+</style>
+</head>
+<body>
+<div class="stick"><header class="top">
+  <div class="brand"><img class="logo" src="/logo.png" alt="Mittal Group"><div>
+    <h1>Mittal Group</h1>
+    <p class="sub">Store Stock · current stock in the listed store locations of each plant, value in INR (other locations are left out). Source: S/4HANA Cloud, YY1_STORE_STOCK_CDS.</p>
+  </div></div>
+  <div class="tools">
+    <div class="live"><span class="dot" id="liveDot" style="background:var(--warn)"></span><span id="liveTxt">Connecting to SAP…</span></div>
+    <button id="refresh" class="btn" type="button">Refresh</button>
+    <div class="seg" id="themeSeg" role="group" aria-label="Colour mode"><button type="button" data-th="light" title="Normal (light) mode">Normal</button><button type="button" data-th="dark" title="Dark mode">Dark</button></div>
+  </div>
+</header>
+<nav class="nav"><a href="/">Pending PR</a><a href="/issue">Store Issue</a><a href="/po">Pending Purchase Orders</a><a href="/po-approval">PO Approval Pending</a><a href="/stock" class="on">Store Stock</a></nav></div>
+<div class="wrap">
+  <section class="bar" aria-label="Filters">
+    <label class="fld"><span>Plant</span><select id="plantSel"></select></label>
+    <label class="fld" id="catFld"><span>Category</span><select id="catSel"></select></label>
+    <label class="fld"><span>Storage location</span><select id="slocSel"></select></label>
+    <label class="fld"><span>Stock type</span><select id="stypeSel"></select></label>
+    <label class="fld" id="spFld"><span>Stock held</span><select id="spSel"><option value="">All</option><option value="own">In our stores</option><option value="O">At vendor (subcontracting)</option><option value="E">Sales order stock</option></select></label>
+    <label class="fld"><span>Material group</span><select id="grpSel"></select></label>
+    <label class="fld grow"><span>Search</span><input id="q" type="search" placeholder="Material number or name, storage location"></label>
+  </section>
+  <div class="chips" id="chips"></div>
+
+  <section class="kpis" id="kpis"><div id="kpiMain" style="display:contents"></div><div id="kpiOpt" style="display:contents"></div></section>
+
+  <section class="card topcard" id="topCard">
+    <h2>Top 5 materials by stock value<span class="badge-live">LIVE</span></h2>
+    <p class="hint" id="topHint">The 5 materials (per plant) holding the most stock value in the Store locations for the current filters. Internal Plant material is not included.</p>
+    <div class="tbox" id="top5"></div>
+  </section>
+  <section class="card topcard" id="deadCard" hidden>
+    <h2>Not used for 5 months<span class="badge-live">LIVE</span></h2>
+    <p class="hint" id="deadHint"></p>
+    <div class="tbox" id="deadBox"></div>
+    <div class="pager"><span id="deadInfo"></span><div><button class="btn" id="deadAll" type="button">See all</button></div></div>
+  </section>
+
+  <section class="grid">
+    <article class="card" id="catCard">
+      <h2><span class="sec-badge">1</span>Category wise stock<span class="badge-live">LIVE</span></h2>
+      <p class="hint">Store locations and Internal Plant material (the I/P stores of the production lines). Click a row to filter everything.</p>
+      <div class="tbox" id="byCat"></div>
+    </article>
+    <article class="card">
+      <h2><span class="sec-badge">1</span>Plant wise stock<span class="badge-live">LIVE</span></h2>
+      <p class="hint">Stock value in INR. Click a plant to filter everything.</p>
+      <div class="tbox" id="byPlant"></div>
+    </article>
+    <article class="card">
+      <h2><span class="sec-badge">2</span>Storage location wise stock<span class="badge-live">LIVE</span></h2>
+      <p class="hint" id="slocHint">Click a storage location to filter everything.</p>
+      <div class="tbox" id="bySloc"></div>
+    </article>
+    <article class="card">
+      <h2><span class="sec-badge">3</span>Material group wise stock<span class="badge-live">LIVE</span></h2>
+      <p class="hint">Click a material group to filter everything.</p>
+      <div class="tbox" id="byGrp"></div>
+    </article>
+    <article class="card">
+      <h2><span class="sec-badge">4</span>Stock type wise<span class="badge-live">LIVE</span></h2>
+      <p class="hint">Unrestricted use is stock that can be used at once; quality inspection stock is still being checked. Click a row to filter.</p>
+      <div class="tbox" id="byType"></div>
+    </article>
+    <article class="card" id="spCard">
+      <h2><span class="sec-badge">5</span>Stock held<span class="badge-live">LIVE</span></h2>
+      <p class="hint">In our stores, or lying at a vendor (subcontracting) or kept for a sales order. Click a row to filter.</p>
+      <div class="tbox" id="bySp"></div>
+    </article>
+    <article class="card">
+      <h2><span class="sec-badge">6</span>Top materials by stock value<span class="badge-live">LIVE</span></h2>
+      <p class="hint">The 50 materials with the most stock value for the current filters, all plants and storage locations together.</p>
+      <div class="tbox" id="byMat"></div>
+    </article>
+  </section>
+
+  <section class="card tablecard">
+    <h2><span class="sec-badge">7</span>Stock list<span class="badge-live">LIVE</span></h2>
+    <p class="hint" id="tcount"></p>
+    <div class="tscroll"><table id="tbl"></table></div>
+    <div class="pager"><span id="pinfo"></span><div><button class="btn" id="seeAll" type="button">See all</button></div></div>
+  </section>
+</div>
+<footer class="footer">Mittal Group · Store Stock (listed store locations only) · Source: SAP S/4HANA Cloud, YY1_STORE_STOCK_CDS</footer>
+
+<script id="mgs" type="application/json">__MGS__</script>
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const MG_NAMES=(()=>{try{return JSON.parse(document.getElementById('mgs').textContent);}catch(e){return {};}})();
+const mgName=c=>c?(MG_NAMES[c]||c):'(no material group)';
+const STK={'01':'Unrestricted use','02':'Quality inspection'};
+const stkName=c=>c===''?'No stock type':(STK[c]||'Stock type '+c);
+const SPN={'':'In our stores','O':'At vendor (subcontracting)','E':'Sales order stock'};
+const spName=c=>SPN[c]!==undefined?SPN[c]:'Special stock '+c;
+const PAGE=25,TOP_LIMIT=300;
+const IPM='Internal Plant material';
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtN=n=>Math.round(n).toLocaleString('en-IN');
+function fmtINR(v){const a=Math.abs(v);if(a>=1e7)return '₹'+(v/1e7).toFixed(2)+' Cr';if(a>=1e5)return '₹'+(v/1e5).toFixed(2)+' L';return '₹'+Math.round(v).toLocaleString('en-IN');}
+const fmtQ=(q,u)=>q.toLocaleString('en-IN',{maximumFractionDigits:3})+' '+u;
+
+let D=null,R=[],renderToken=0,SPLIT=false,CUR=null;
+const S={top:true,dead:false,deadAll:false,all:false,plant:'',cat:null,sloc:null,stype:null,sp:'',grp:null,q:''};
+
+function pass(r,skip){
+  skip=skip||[];
+  if(!skip.includes('plant')&&S.plant&&r.plant!==S.plant)return false;
+  if(!skip.includes('cat')&&S.cat!==null&&r.kind!==S.cat)return false;
+  if(!skip.includes('sloc')&&S.sloc!==null&&r.skey!==S.sloc)return false;
+  if(!skip.includes('stype')&&S.stype!==null&&r.st!==S.stype)return false;
+  if(!skip.includes('sp')&&S.sp&&(S.sp==='own'?r.sp!=='':r.sp!==S.sp))return false;
+  if(!skip.includes('grp')&&S.grp!==null&&r.grp!==S.grp)return false;
+  if(S.q&&!r.hay.includes(S.q))return false;
+  return true;
+}
+const agg=()=>({n:0,val:0,ipm:0});
+function add(m,k,r){let x=m.get(k);if(!x)m.set(k,x=agg());x.n++;x.val+=r.val;if(r.kind===IPM)x.ipm+=r.val;}
+// plain = one value column; otherwise the value is split into Store and Internal Plant material (when the data has both)
+function aggTable(list,head,cell,sel,limit,plain){
+  if(!list.length)return '<div class="empty">Nothing matches the filters.</div>';
+  const tot=agg();for(const [,x] of list){tot.n+=x.n;tot.val+=x.val;tot.ipm+=x.ipm;}
+  const split=SPLIT&&!plain;
+  const nums=x=>`<td class="num">${fmtN(x.n)}</td>`+(split?`<td class="num nw">${fmtINR(x.val-x.ipm)}</td><td class="num nw ipm">${fmtINR(x.ipm)}</td>`:'')+`<td class="num nw">${fmtINR(x.val)}</td>`;
+  const shown=limit?list.slice(0,limit):list;
+  return `<table><thead><tr><th>${head}</th><th class="num">Lines</th>${split?`<th class="num">Store</th><th class="num">${IPM}</th>`:''}<th class="num">${split?'Total value':'Stock value'}</th></tr></thead><tbody>`+
+    shown.map(([k,x])=>`<tr${k===sel?' class="sel"':''}><td>${cell(k)}</td>${nums(x)}</tr>`).join('')+
+    `</tbody><tfoot><tr><td>Total (${fmtN(list.length)})</td>${nums(tot)}</tr></tfoot></table>`;
+}
+const DAYMS=864e5;
+const fmtDay=d=>new Date(d*DAYMS).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric',timeZone:'UTC'});
+// the day 5 months before the data date (a 31st goes to the end of a shorter month)
+function cutoffDay(asof){const t=new Date(asof*DAYMS);let y=t.getUTCFullYear(),m=t.getUTCMonth()-5;const d=t.getUTCDate();if(m<0){m+=12;y--;}const dim=new Date(Date.UTC(y,m+1,0)).getUTCDate();return Math.floor(Date.UTC(y,m,Math.min(d,dim))/DAYMS);}
+// stock lines of one material in one plant make one item
+function itemsOf(rows){const m=new Map();for(const r of rows){const k=r.plant+'|'+r.p;let x=m.get(k);if(!x)m.set(k,x={plant:r.plant,p:r.p,id:r.id,name:r.name,grp:r.grp,unit:r.unit,qty:0,val:0,last:r.last,kinds:new Set()});x.qty+=r.qty;x.val+=r.val;x.kinds.add(r.kind);}return [...m.values()];}
+function renderTop(){
+  if(!CUR||!D)return;
+  // this section covers the Store locations only: Internal Plant material is left out
+  const base=SPLIT?CUR.rows.filter(r=>r.kind!==IPM):CUR.rows;
+  const it=itemsOf(base),total=base.reduce((s,r)=>s+r.val,0),cut=cutoffDay(D.asofDay),used=!!D.issuesRead;
+  const emptyMsg=`<div class="empty">${SPLIT&&S.cat===IPM?'This section covers Store locations only; Internal Plant material is not included.':'Nothing matches the filters.'}</div>`;
+  const lastCell=x=>!used?'–':x.last?`<span class="pill ${x.last<cut?'pend':'ok'}" title="Last goods issue (stock out) of this material in plant ${esc(x.plant)}">${fmtDay(x.last)}</span>`:`<span class="pill pend" title="No goods issue of this material since ${fmtDay(D.issuesFrom)}">Not since ${fmtDay(D.issuesFrom)}</span>`;
+  const head=(first)=>`<thead><tr><th>${first}</th><th>Material</th><th>Description</th><th>Plant</th><th>Material group</th><th class="num">Stock quantity</th><th class="num">Stock value</th>`;
+  const line=(x,i)=>`<td>${i}</td><td class="nw">${esc(x.id)}</td><td>${esc(x.name)}</td><td>${esc(x.plant)}</td><td>${esc(mgName(x.grp))}</td><td class="num nw"><b>${fmtQ(x.qty,esc(x.unit))}</b></td><td class="num nw"><b>${fmtINR(x.val)}</b></td>`;
+  const top=it.slice().sort((a,b)=>b.val-a.val).slice(0,5),topVal=top.reduce((s,x)=>s+x.val,0);
+  const dead=used?it.filter(x=>!x.last||x.last<cut).sort((a,b)=>b.val-a.val):[],dv=dead.reduce((s,x)=>s+x.val,0);
+  // the two options are tiles next to the other tiles: click to show or hide the table
+  const opt=(key,cls,big,label,sub,open)=>`<button type="button" class="tile tilebtn ${cls}" data-tile="${key}" aria-expanded="${open}"><div class="tv">${big}</div><div class="tl">${label}</div><div class="ts">${sub}</div></button>`;
+  $('kpiOpt').innerHTML=opt('top','opt1',fmtINR(topVal),'Top 5 materials by stock value',(total?(topVal/total*100).toFixed(1)+'% of Store stock · ':'')+(S.top?'click to hide':'click to show'),S.top)
+    +(used?opt('dead','opt2',fmtN(dead.length),'Not used for 5 months (materials)',fmtINR(dv)+' stock value · '+(S.dead?'click to hide':'click to show'),S.dead):'');
+  $('topCard').hidden=!S.top;
+  $('deadCard').hidden=!(used&&S.dead);
+  if(S.top)$('top5').innerHTML=top.length?'<table>'+head('#')+`<th class="num">Share</th><th>Last used</th></tr></thead><tbody>`+top.map((x,i)=>`<tr>${line(x,i+1)}<td class="num nw">${total?(x.val/total*100).toFixed(1)+'%':'–'}</td><td class="nw">${lastCell(x)}</td></tr>`).join('')+'</tbody></table>':emptyMsg;
+  if(!(used&&S.dead))return;
+  $('deadHint').textContent='Store locations only (Internal Plant material is not included). Materials with no goods issue (use) since '+fmtDay(cut)+' (5 months), most stock value first. Use is read from the goods issues of the Store Issue data from '+fmtDay(D.issuesFrom)+'; material received in the last 5 months and not used yet is also listed.';
+  const shown=S.deadAll?dead:dead.slice(0,25);
+  $('deadBox').innerHTML=dead.length?'<table>'+head('#')+'<th>Last used</th></tr></thead><tbody>'+shown.map((x,i)=>`<tr>${line(x,i+1)}<td class="nw">${lastCell(x)}</td></tr>`).join('')+'</tbody></table>':emptyMsg;
+  $('deadInfo').textContent=dead.length?(S.deadAll||dead.length<=25?`All ${fmtN(dead.length)} materials shown`:`Showing the first 25 of ${fmtN(dead.length)}`):'';
+  $('deadAll').hidden=dead.length<=25;$('deadAll').textContent=S.deadAll?'Show first 25':'See all '+fmtN(dead.length);
+}
+const byValue=m=>[...m.entries()].sort((a,b)=>b[1].val-a[1].val||b[1].n-a[1].n);
+const slocLabel=(code,name,plant)=>(name||code||'No storage location')+(code&&name?' ('+code+')':'')+' · '+plant;
+
+function render(){
+  if(!D)return;  // the data is still loading
+  const rows=R.filter(r=>pass(r));
+  CUR={rows,total:rows.reduce((s,r)=>s+r.val,0)};renderTop();
+  // KPIs
+  let val=0,quality=0,vendor=0,ipmVal=0;const mats=new Set(),slocs=new Set();
+  for(const r of rows){val+=r.val;mats.add(r.p);slocs.add(r.skey);if(r.st==='02')quality+=r.val;if(r.sp==='O')vendor+=r.val;if(r.kind===IPM)ipmVal+=r.val;}
+  const tiles=[[fmtINR(val),'Stock value (INR)']];
+  if(SPLIT)tiles.push([fmtINR(val-ipmVal),'Store stock value'],[fmtINR(ipmVal),IPM+' value']);
+  tiles.push([fmtN(mats.size),'Materials with stock'],[fmtN(rows.length),'Stock lines (material × location × type)'],[fmtN(slocs.size),'Storage locations with stock'],[fmtINR(quality),'In quality inspection'],D.onlyListed?[fmtN(D.listedCount),'Store locations in your list']:[fmtINR(vendor),'At vendor (subcontracting)']);
+  $('kpiMain').innerHTML=tiles
+    .map(t=>`<div class="tile"><div class="tv">${t[0]}</div><div class="tl">${t[1]}</div></div>`).join('');
+  // chips
+  const c=[];
+  if(S.plant)c.push(['plant','Plant '+S.plant]);
+  if(S.cat!==null)c.push(['cat','Category: '+S.cat]);
+  if(S.sloc!==null){const x=R.find(r=>r.skey===S.sloc);c.push(['sloc','Storage location: '+(x?slocLabel(x.sloc,x.slocName,x.plant):S.sloc)]);}
+  if(S.stype!==null)c.push(['stype','Stock type: '+stkName(S.stype)]);
+  if(S.sp)c.push(['sp','Stock held: '+(S.sp==='own'?'In our stores':spName(S.sp))]);
+  if(S.grp!==null)c.push(['grp','Material group: '+mgName(S.grp)]);
+  if(S.q)c.push(['q','Search: '+S.q]);
+  $('chips').innerHTML=c.map(x=>`<button type="button" class="chip" data-clr="${x[0]}">${esc(x[1])} ×</button>`).join('')+(c.length?'<button type="button" class="chip" data-clr="all">Reset filters</button>':'');
+  // each table ignores its own filter, so the list stays when you pick a row
+  const pl=new Map(),ca=new Map(),sl=new Map(),gr=new Map(),ty=new Map(),sp=new Map(),mt=new Map();
+  for(const r of R){
+    if(pass(r,['plant']))add(pl,r.plant,r);
+    if(pass(r,['cat']))add(ca,r.kind,r);
+    if(pass(r,['sloc']))add(sl,r.skey,r);
+    if(pass(r,['grp']))add(gr,r.grp,r);
+    if(pass(r,['stype']))add(ty,r.st,r);
+    if(pass(r,['sp']))add(sp,r.sp,r);
+  }
+  for(const r of rows)add(mt,r.p,r);
+  $('byCat').innerHTML=aggTable(byValue(ca),'Category',k=>`<button type="button" class="lnk" data-cat="${esc(k)}">${esc(k)}</button>`,S.cat,0,true);
+  $('byPlant').innerHTML=aggTable(byValue(pl),'Plant',k=>`<button type="button" class="lnk" data-plant="${esc(k)}">${esc(k)}</button>`,S.plant||null);
+  const sll=byValue(sl);
+  $('slocHint').textContent='Click a storage location to filter everything.'+(sll.length>TOP_LIMIT?` Top ${TOP_LIMIT} of ${fmtN(sll.length)} by value shown; the total covers all.`:'');
+  $('bySloc').innerHTML=aggTable(sll,'Storage location',k=>{const x=SLOC.get(k);return `<button type="button" class="lnk" data-sloc="${esc(k)}">${esc(slocLabel(x.code,x.name,x.plant))}</button>`;},S.sloc,TOP_LIMIT);
+  $('byGrp').innerHTML=aggTable(byValue(gr),'Material group',k=>`<button type="button" class="lnk" data-grp="${esc(k)}" title="${esc(k?'Material group '+k:'')}">${esc(mgName(k))}</button>`,S.grp);
+  $('byType').innerHTML=aggTable(byValue(ty),'Stock type',k=>`<button type="button" class="lnk" data-stype="${esc(k)}" title="${esc(k?'Stock type '+k:'')}">${esc(stkName(k))}</button>`,S.stype);
+  $('bySp').innerHTML=aggTable(byValue(sp),'Stock held',k=>`<button type="button" class="lnk" data-sp="${esc(k)}">${esc(spName(k))}</button>`,S.sp==='own'?'':S.sp||null,0,true);
+  const mtl=byValue(mt);
+  $('byMat').innerHTML=aggTable(mtl.slice(0,50),'Material',k=>{const p=D.prods[k];return `${esc(p[0])} · ${esc(p[1])}`;},null,0);
+  // the list: most stock value first
+  rows.sort((a,b)=>b.val-a.val||b.qty-a.qty||a.id.localeCompare(b.id));
+  const slice=S.all?rows:rows.slice(0,PAGE);
+  const first=S.all?slice.slice(0,400):slice;
+  const rowHtml=r=>`<tr><td class="nw">${esc(r.id)}</td><td>${esc(r.name)}</td><td>${esc(r.plant)}</td><td title="${esc(r.sloc?'Storage location '+r.sloc:'No storage location')}">${esc(r.slocName||r.sloc||'–')}</td><td class="nw${r.kind===IPM?' ipm':''}">${esc(r.kind)}</td><td title="${esc(r.grp?'Material group '+r.grp:'')}">${esc(mgName(r.grp))}</td><td class="nw" title="${esc(r.st?'Stock type '+r.st:'')}">${esc(stkName(r.st))}</td><td class="nw">${esc(spName(r.sp))}</td><td class="num nw"><b>${fmtQ(r.qty,esc(r.unit))}</b></td><td class="num nw">${r.val?fmtINR(r.val):'<span title="No value in SAP (unvalued stock)">–</span>'}</td><td class="num nw">${r.val&&r.qty?'₹'+(r.val/r.qty).toLocaleString('en-IN',{maximumFractionDigits:2}):'–'}</td></tr>`;
+  $('tbl').innerHTML='<thead><tr><th>Material</th><th>Description</th><th>Plant</th><th>Storage location</th><th>Category</th><th>Material group</th><th>Stock type</th><th>Stock held</th><th class="num">Stock quantity</th><th class="num">Stock value</th><th class="num">Price per unit</th></tr></thead><tbody>'+
+    (first.length?first.map(rowHtml).join(''):'<tr><td colspan="11" class="empty">Nothing matches the filters.</td></tr>')+'</tbody>';
+  // See all can mean thousands of rows: the first rows appear at once and the rest are added in small batches
+  const token=++renderToken;let done=first.length;
+  const more=()=>{if(token!==renderToken||done>=slice.length)return;document.querySelector('#tbl tbody').insertAdjacentHTML('beforeend',slice.slice(done,done+600).map(rowHtml).join(''));done+=600;setTimeout(more,0);};
+  setTimeout(more,0);
+  $('tcount').textContent=fmtN(rows.length)+' stock lines · '+fmtN(mats.size)+' materials';
+  $('pinfo').textContent=!rows.length?'':rows.length<=PAGE||S.all?`All ${fmtN(rows.length)} lines shown`:`Showing the first ${fmtN(PAGE)} of ${fmtN(rows.length)}`;
+  $('seeAll').hidden=rows.length<=PAGE;$('seeAll').textContent=S.all?'Show first '+PAGE:'See all '+fmtN(rows.length);
+}
+
+document.addEventListener('click',e=>{
+  const t=e.target.closest('button');if(!t)return;
+  if(t.dataset.plant!==undefined){S.plant=S.plant===t.dataset.plant?'':t.dataset.plant;$('plantSel').value=S.plant;}
+  else if(t.dataset.cat!==undefined){S.cat=S.cat===t.dataset.cat?null:t.dataset.cat;$('catSel').value=S.cat===null?'':S.cat;}
+  else if(t.dataset.sloc!==undefined){S.sloc=S.sloc===t.dataset.sloc?null:t.dataset.sloc;$('slocSel').value=S.sloc===null?'':S.sloc;}
+  else if(t.dataset.grp!==undefined){S.grp=S.grp===t.dataset.grp?null:t.dataset.grp;$('grpSel').value=S.grp===null?'':S.grp;}
+  else if(t.dataset.stype!==undefined){S.stype=S.stype===t.dataset.stype?null:t.dataset.stype;$('stypeSel').value=S.stype===null?'':S.stype;}
+  else if(t.dataset.sp!==undefined){S.sp=S.sp===t.dataset.sp?'':t.dataset.sp;$('spSel').value=S.sp;}
+  else if(t.dataset.clr){const c=t.dataset.clr;
+    if(c==='plant'||c==='all'){S.plant='';$('plantSel').value='';}
+    if(c==='cat'||c==='all'){S.cat=null;$('catSel').value='';}
+    if(c==='sloc'||c==='all'){S.sloc=null;$('slocSel').value='';}
+    if(c==='stype'||c==='all'){S.stype=null;$('stypeSel').value='';}
+    if(c==='sp'||c==='all'){S.sp='';$('spSel').value='';}
+    if(c==='grp'||c==='all'){S.grp=null;$('grpSel').value='';}
+    if(c==='q'||c==='all'){S.q='';$('q').value='';}}
+  else if(t.dataset.tile!==undefined){if(t.dataset.tile==='top')S.top=!S.top;else S.dead=!S.dead;renderTop();return;}
+  else if(t.id==='deadAll'){S.deadAll=!S.deadAll;renderTop();return;}
+  else if(t.id==='seeAll'){S.all=!S.all;render();if(!S.all)document.querySelector('.tscroll').scrollTop=0;return;}
+  else return;
+  render();
+});
+$('plantSel').addEventListener('change',e=>{S.plant=e.target.value;render();});
+$('catSel').addEventListener('change',e=>{S.cat=e.target.value===''?null:e.target.value;render();});
+$('slocSel').addEventListener('change',e=>{S.sloc=e.target.value===''?null:e.target.value;render();});
+$('stypeSel').addEventListener('change',e=>{S.stype=e.target.value===''?null:e.target.value;render();});
+$('spSel').addEventListener('change',e=>{S.sp=e.target.value;render();});
+$('grpSel').addEventListener('change',e=>{S.grp=e.target.value===''?null:e.target.value;render();});
+let qT;$('q').addEventListener('input',e=>{clearTimeout(qT);qT=setTimeout(()=>{S.q=e.target.value.trim().toLowerCase();render();},200);});
+
+const root=document.documentElement;
+function setTheme(t,save){root.dataset.theme=t;for(const b of document.querySelectorAll('#themeSeg button'))b.classList.toggle('on',b.dataset.th===t);if(save){try{localStorage.setItem('spr-theme',t);}catch(e){}}}
+let savedTheme='dark';try{savedTheme=localStorage.getItem('spr-theme')||'dark';}catch(e){}
+setTheme(savedTheme==='light'?'light':'dark',false);
+document.getElementById('themeSeg').addEventListener('click',e=>{const b=e.target.closest('button[data-th]');if(b)setTheme(b.dataset.th,true);});
+
+let SLOC=new Map();
+function setData(d){
+  D=d;SLOC=new Map();
+  R=d.rows.map(a=>{
+    const pr=d.prods[a[0]],sl=d.slocs[a[2]],plant=d.plants[a[1]];
+    const r={p:a[0],id:pr[0],name:pr[1],plant,sloc:sl[0],slocName:sl[1],skey:plant+'|'+sl[0],grp:d.groups[a[3]],ptype:d.ptypes[a[4]],st:d.stypes[a[5]],sp:d.sps[a[6]],unit:d.units[a[7]],qty:a[8],val:a[9],kind:d.kinds?d.kinds[a[10]]:'',last:a[11]||0};
+    if(!SLOC.has(r.skey))SLOC.set(r.skey,{code:sl[0],name:sl[1],plant});
+    r.hay=(r.id+' '+r.name+' '+r.sloc+' '+r.slocName+' '+mgName(r.grp)+' '+r.grp+' '+r.kind).toLowerCase();
+    return r;
+  });
+  // Store / Internal Plant material split: only when the data has both
+  const kinds=[...new Set(R.map(r=>r.kind))].sort((a,b)=>(a===IPM)-(b===IPM)||a.localeCompare(b));
+  SPLIT=kinds.length>1;
+  $('catSel').innerHTML='<option value="">All categories</option>'+kinds.map(k=>`<option value="${esc(k)}">${esc(k)}</option>`).join('');
+  if(S.cat!==null&&!kinds.includes(S.cat))S.cat=null;$('catSel').value=S.cat===null?'':S.cat;
+  $('catFld').hidden=!SPLIT;$('catCard').hidden=!SPLIT;
+  const opts=(all,list,label)=>`<option value="">${all}</option>`+list.map(e=>`<option value="${esc(e[0])}">${esc(label(e[0]))}</option>`).join('');
+  const cnt=f=>{const c=new Map();for(const r of R){const k=f(r);c.set(k,(c.get(k)||0)+r.val);}return [...c.entries()].sort((a,b)=>b[1]-a[1]);};
+  const pl=cnt(r=>r.plant);$('plantSel').innerHTML=opts('All plants',pl,k=>k);if(S.plant&&!pl.some(e=>e[0]===S.plant))S.plant='';$('plantSel').value=S.plant;
+  const sl=cnt(r=>r.skey);$('slocSel').innerHTML=opts('All storage locations',sl,k=>{const x=SLOC.get(k);return slocLabel(x.code,x.name,x.plant);});
+  if(S.sloc!==null&&!SLOC.has(S.sloc))S.sloc=null;$('slocSel').value=S.sloc===null?'':S.sloc;
+  const ty=cnt(r=>r.st);$('stypeSel').innerHTML=opts('All stock types',ty,stkName);if(S.stype!==null&&!ty.some(e=>e[0]===S.stype))S.stype=null;$('stypeSel').value=S.stype===null?'':S.stype;
+  const gr=cnt(r=>r.grp);$('grpSel').innerHTML=opts('All material groups',gr,mgName);if(S.grp!==null&&!gr.some(e=>e[0]===S.grp))S.grp=null;$('grpSel').value=S.grp===null?'':S.grp;
+  $('spSel').value=S.sp;
+  // stock held in other places than our own stores (at a vendor, sales order) only exists outside the listed store locations: hide that filter and table when there is a single value
+  const spMany=new Set(R.map(r=>r.sp)).size>1;
+  $('spFld').hidden=!spMany;$('spCard').hidden=!spMany;if(!spMany)S.sp='';
+  [...document.querySelectorAll('.card:not([hidden]) .sec-badge')].forEach((b,i)=>{b.textContent=i+1;});
+}
+function setLive(kind,text){$('liveDot').style.background=kind==='ok'?'var(--good)':kind==='err'?'var(--crit)':'var(--warn)';$('liveTxt').textContent=text;$('refresh').disabled=kind==='busy';}
+const hhmm=ms=>new Date(ms).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+let loading=false;
+async function load(force){
+  if(loading)return;loading=true;
+  setLive('busy',D?'Refreshing from SAP…':'Loading store stock from SAP (first load can take a minute)…');
+  try{
+    const res=await fetch('/api/stock'+(force?'?refresh=1':''),{cache:'no-store'});
+    const j=await res.json().catch(()=>({}));
+    if(!res.ok)throw new Error(j.error||('HTTP '+res.status));
+    setData(j);render();
+    setLive('ok','Live from SAP · updated '+hhmm(j.fetchedAt)+' · '+fmtN(R.length)+' stock lines');
+  }catch(e){
+    const msg=e.message==='Failed to fetch'?'The dashboard server is not running. Start it again with Start_Live_Dashboard.bat.':e.message;
+    setLive('err',msg);
+  }finally{loading=false;}
+}
+$('refresh').addEventListener('click',()=>load(true));
+load(false);
+setInterval(()=>{if(!document.hidden)load(false);},1800000);
+})();
+</script>
+</body>
+</html>

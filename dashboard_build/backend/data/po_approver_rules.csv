@@ -1,0 +1,15 @@
+Purchasing org,Purchasing group,Min value (INR),Max value (INR),Approver,Basis
+1020,105,,,Pawan Sharma,Strong: your approver list shows 11 POs pending with Pawan Sharma and CASE Division (105) has exactly 11 pending POs; his PO types (ZDNB ZSER ZAST NB) fit.
+1020,101,,,Raj Babu Dangi,Strong: 2 pending with Raj Babu Dangi = the 2 RM Charging (101) POs; his PO types (ZSER ZDNB) fit; he is the RM head.
+2020,101,,,Raj Babu Dangi,Strong: 2 pending with Raj Babu Dangi = the 2 RM Charging (101) POs; his PO types (ZSER ZDNB) fit; he is the RM head.
+1020,114,,,Kamal Jain,Strong: 2 pending with Kamal Jain = the 2 DESPATCH (114) POs; he handles only ZDNB and both are ZDNB.
+2020,110,,,Virendra Lodhi,Medium: 3 pending with Virendra Lodhi = the 3 PROJECT (110) POs of purchasing org 2020; his PO types (ZSER ZDNB) fit.
+2020,102,,,Haresh Mayekar,"Medium: PO 4500012466 (CCP Division, org 2020) was with Haresh Mayekar in SAP; with ME. MAINT COIN his 6 pending POs match."
+1020,122,,,Haresh Mayekar,Weak: completes the 6 pending POs of Haresh Mayekar together with CCP Division (org 2020); this is a COIN maintenance group.
+1020,117,150000,,Anil Puttala,"Medium: PO 4900000232 (EQUIP. DEVELOPMENT, org 1020, 4.3 L) was with Anil Puttala in SAP; 8 pending with him = the 8 POs of this group from 1.5 L upward."
+1020,117,,150000,Quaid Johar,Weak: the 5 EQUIP. DEVELOPMENT (org 1020) POs below 1.5 L are what is left after the 8 of Anil Puttala.
+2020,117,,,Quaid Johar,"Medium: PO 4700002804 (EQUIP. DEVELOPMENT, org 2020) was with Quaid Johar in SAP."
+1020,110,,,Quaid Johar,Weak: left over after the counts of the other approvers are filled.
+2020,123,,,Quaid Johar,Weak: left over after the counts of the other approvers are filled.
+1020,116,,,Quaid Johar,Weak: left over after the counts of the other approvers are filled.
+2020,010,,,Quaid Johar,Weak: left over after the counts of the other approvers are filled.

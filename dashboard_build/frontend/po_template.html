@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Purchase Orders</title>
+<link rel="icon" type="image/png" href="/logo.png">
+<style>
+/* Same look as the Pending PR and Store Issue pages (Case Department Dashboard style). */
+:root{
+  color-scheme:light;
+  --plane:#f4f6f5;--surface:#fff;--ink:#0b0b0b;--ink2:#52514e;--muted:#898781;--grid:#e1e0d9;--border:rgba(11,11,11,.10);
+  --s1:#2a78d6;--good:#0ca30c;--warn:#fab219;--serious:#ec835a;--crit:#d03b3b;
+  --brand:#1CADE4;--brand-dark:#0E7FAE;--brand-red:#E42227;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--plane:#101110;--surface:#1a1b1a;--ink:#fff;--ink2:#c3c2b7;--grid:#2c2c2a;--border:rgba(255,255,255,.10);--s1:#3987e5}}
+:root[data-theme="dark"]{color-scheme:dark;--plane:#101110;--surface:#1a1b1a;--ink:#fff;--ink2:#c3c2b7;--grid:#2c2c2a;--border:rgba(255,255,255,.10);--s1:#3987e5}
+*{box-sizing:border-box}
+body{margin:0;background:var(--plane);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.top{position:sticky;top:0;z-index:20;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;background:var(--surface);border-bottom:3px solid var(--brand-red);padding:12px 20px}
+.brand{display:flex;align-items:center;gap:12px;min-width:0}
+.logo{width:42px;height:42px;object-fit:contain;flex:none}
+h1{margin:0;font-size:1.1rem;font-weight:700;color:var(--brand-dark)}
+.sub{margin:2px 0 0;font-size:.8rem;color:var(--muted)}
+.tools{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.live{display:flex;align-items:center;gap:8px;font-size:.8rem;color:var(--muted)}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;flex:none}
+.btn{height:34px;padding:0 14px;border:0;border-radius:7px;background:var(--brand);color:#fff;font-size:.83rem;font-weight:600;text-decoration:none;display:inline-flex;align-items:center}
+.btn:hover{background:var(--brand-dark)}
+.btn:disabled{opacity:.5;cursor:default}
+.nav{display:flex;gap:6px;padding:8px 20px;background:var(--surface);border-bottom:1px solid var(--border)}
+.nav a{font-size:.78rem;font-weight:600;color:var(--ink2);text-decoration:none;padding:6px 12px;border-radius:999px;background:var(--plane)}
+.nav a.on{background:var(--brand);color:#fff}
+.wrap{max-width:1240px;margin:0 auto;padding:20px 16px 48px}
+.bar{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
+.fld{display:flex;flex-direction:column;gap:4px;min-width:0}
+.fld>span{font-size:.78rem;color:var(--ink2)}
+.fld select,.fld input{height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface);padding:0 10px;min-width:0}
+.grow{flex:1 1 240px}.grow input{width:100%}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{border:1px solid var(--border);border-radius:999px;background:var(--surface);padding:3px 11px;font-size:12.5px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-top:16px}
+.tile{background:var(--surface);border:1px solid var(--border);border-top:3px solid var(--s1);border-radius:12px;padding:14px 16px;box-shadow:0 1px 2px rgba(11,11,11,.04),0 1px 8px rgba(11,11,11,.04)}
+.tile:nth-child(2){border-top-color:var(--serious)}.tile:nth-child(3){border-top-color:var(--good)}.tile:nth-child(4){border-top-color:var(--warn)}
+.tv{font-size:1.5rem;font-weight:700;font-variant-numeric:tabular-nums}
+.tl{font-size:.76rem;color:var(--muted)}
+.grid{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;margin-top:12px}
+@media (min-width:900px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;min-width:0;box-shadow:0 1px 2px rgba(11,11,11,.04),0 1px 8px rgba(11,11,11,.04)}
+.card h2{margin:0;font-size:1.02rem;font-weight:700;display:flex;align-items:center;flex-wrap:wrap;gap:9px}
+.sec-badge{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:26px;padding:0 6px;border-radius:8px;background:var(--brand-dark);color:#fff;font-size:.72rem;font-weight:700}
+.badge-live{margin-left:auto;padding:3px 8px;border-radius:999px;font-size:.62rem;font-weight:700;letter-spacing:.04em;color:var(--good);background:rgba(12,163,12,.16)}
+.hint{margin:4px 0 12px;font-size:12.5px;color:var(--ink2)}
+.tbox{max-height:440px;overflow:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--grid);vertical-align:top}
+th{font-size:.7rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);border-bottom:2px solid var(--grid);white-space:nowrap}
+.tbox thead th{position:sticky;top:0;background:var(--surface);z-index:1}
+.tbox tfoot td{position:sticky;bottom:0;background:var(--surface);font-weight:700;border-top:2px solid var(--grid)}
+tbody tr:nth-child(even) td{background:rgba(128,128,128,.04)}
+tbody tr:hover td{background:rgba(28,173,228,.07)}
+tr.sel td{background:rgba(28,173,228,.14)!important}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.nw{white-space:nowrap}
+.lnk{border:0;background:none;padding:0;color:var(--brand-dark);font-weight:600;text-decoration:underline;text-align:left}
+.pill{display:inline-block;padding:1px 8px;border-radius:999px;font-size:.72rem;font-weight:600;white-space:nowrap}
+.pill.ok{color:var(--good);background:rgba(12,163,12,.14)}
+.pill.open{color:#c2410c;background:rgba(236,131,90,.2)}
+.pill.part{color:#b87b00;background:rgba(250,178,25,.22)}
+.pill.none{color:var(--muted);background:rgba(128,128,128,.16)}
+.pill.pend{color:var(--crit);background:rgba(208,59,59,.14)}
+.tablecard{margin-top:12px}
+.tscroll{overflow:auto;max-height:75vh}
+.tscroll table{min-width:1640px}
+.matc{min-width:270px;max-width:340px}
+.tscroll tbody tr td.qtd{font-weight:700;background:rgba(250,178,25,.20)}
+.tscroll>table>thead th.qtd{font-weight:800;color:var(--ink);box-shadow:inset 0 -3px 0 var(--warn),0 2px 0 var(--grid)}
+.matno{font-weight:600;font-variant-numeric:tabular-nums;color:var(--ink2);font-size:12px}
+.supc{min-width:170px}
+.pager{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;margin-top:12px;color:var(--ink2)}
+.empty{padding:28px 0;color:var(--ink2);text-align:center}
+.note{margin-top:16px;color:var(--ink2);font-size:12.5px;max-width:110ch}
+.footer{text-align:center;font-size:.72rem;color:var(--muted);padding:0 20px 24px}
+@media (max-width:700px){.top{position:static}}
+@media (max-width:480px){.sub{display:none}.card{padding:16px}}
+.seg{display:inline-flex;border-radius:8px;overflow:hidden;border:1px solid var(--brand);flex:none}
+.seg button{border:0;border-radius:0;background:transparent;color:var(--brand-dark);font-size:.83rem;font-weight:600;height:32px;padding:0 13px;cursor:pointer}
+.seg button.on{background:var(--brand);color:#fff}
+.seg button:not(.on):hover{background:rgba(28,173,228,.15)}
+/* frozen headings: the title bar and the menu are one block that stays at the top, and the column headings of the item list stay while it scrolls */
+.stick{position:sticky;top:0;z-index:20}
+.stick .top{position:static}
+@media (max-width:700px){.stick{position:static}}
+.tscroll>table>thead th{position:sticky;top:0;z-index:3;background:var(--surface);box-shadow:0 2px 0 var(--grid)}
+</style>
+</head>
+<body>
+<div class="stick"><header class="top">
+  <div class="brand"><img class="logo" src="/logo.png" alt="Mittal Group"><div>
+    <h1>Mittal Group</h1>
+    <p class="sub">Purchase Orders · PO items with supplier since 1 Jan 2026 (by default the ones still to be delivered, fully or in part). Source: S/4HANA Cloud, YY1_PO_ITEM_SUPPLIER_CDS.</p>
+  </div></div>
+  <div class="tools">
+    <div class="live"><span class="dot" id="liveDot" style="background:var(--warn)"></span><span id="liveTxt">Connecting to SAP…</span></div>
+    <button id="refresh" class="btn" type="button">Refresh</button>
+    <div class="seg" id="themeSeg" role="group" aria-label="Colour mode"><button type="button" data-th="light" title="Normal (light) mode">Normal</button><button type="button" data-th="dark" title="Dark mode">Dark</button></div>
+  </div>
+</header>
+<nav class="nav"><a href="/">Pending PR</a><a href="/issue">Store Issue</a><a href="/po" class="on">Pending Purchase Orders</a><a href="/po-approval">PO Approval Pending</a><a href="/stock">Store Stock</a></nav></div>
+<div class="wrap">
+  <section class="bar" aria-label="Filters">
+    <label class="fld"><span>Plant</span><select id="plantSel"></select></label>
+    <label class="fld"><span>PO type</span><select id="typeSel"></select></label>
+    <label class="fld"><span>Purch. group</span><select id="pgSel"></select></label>
+    <label class="fld"><span>Supplier</span><input id="supIn" list="supList" placeholder="All suppliers" autocomplete="off" style="width:230px"><datalist id="supList"></datalist></label>
+    <label class="fld"><span>Delivery</span><select id="delSel"><option value="every">All</option><option value="pending" selected>Pending delivery</option></select></label>
+    <label class="fld"><span>Release</span><select id="relSel"><option value="">All</option><option value="ok">Released</option><option value="appr">In Approval</option><option value="rej">Rejected</option></select></label>
+    <label class="fld"><span>Date</span><select id="dtSel"><option value="cr" selected>Created on</option><option value="po">PO date (SAP Order Date)</option></select></label>
+    <label class="fld"><span>Date from</span><input id="dFrom" type="date"></label>
+    <label class="fld"><span>To</span><input id="dTo" type="date"></label>
+    <label class="fld grow"><span>Search</span><input id="q" type="search" placeholder="PO number, supplier name / number / GSTIN, material, item text, created by"></label>
+  </section>
+  <div class="chips" id="chips"></div>
+  <section class="kpis" id="kpis"></section>
+
+  <section class="grid">
+    <article class="card">
+      <h2><span class="sec-badge">1</span>Supplier wise PO value<span class="badge-live">LIVE</span></h2>
+      <p class="hint" id="supHint">Net order value (INR) of the PO items. Click a supplier to filter everything.</p>
+      <div class="tbox" id="bySup"></div>
+    </article>
+    <article class="card">
+      <h2><span class="sec-badge">2</span>PO type wise<span class="badge-live">LIVE</span></h2>
+      <p class="hint">Click a PO type to filter everything.</p>
+      <div class="tbox" id="byType"></div>
+    </article>
+    <article class="card">
+      <h2><span class="sec-badge">3</span>Plant wise<span class="badge-live">LIVE</span></h2>
+      <p class="hint">Click a plant to filter everything.</p>
+      <div class="tbox" id="byPlant"></div>
+    </article>
+    <article class="card">
+      <h2><span class="sec-badge">4</span>Material group wise<span class="badge-live">LIVE</span></h2>
+      <p class="hint">Click a material group to filter everything.</p>
+      <div class="tbox" id="byGrp"></div>
+    </article>
+    <article class="card">
+      <h2><span class="sec-badge">5</span>Purchasing group wise<span class="badge-live">LIVE</span></h2>
+      <p class="hint">Click a purchasing group to filter everything.</p>
+      <div class="tbox" id="byPg"></div>
+    </article>
+    <article class="card">
+      <h2><span class="sec-badge">6</span>Month-wise POs<span class="badge-live">LIVE</span></h2>
+      <p class="hint">By the date chosen above (PO date or Created on). Click a month to see it day by day.</p>
+      <div class="tbox" id="byMonth"></div>
+    </article>
+    <article class="card">
+      <h2><span class="sec-badge">7</span><span id="dayTitle">Day-wise POs</span><span class="badge-live">LIVE</span></h2>
+      <p class="hint">Click a date to filter everything to that day.</p>
+      <div class="tbox" id="byDay"></div>
+    </article>
+  </section>
+
+  <section class="card tablecard">
+    <h2><span class="sec-badge">8</span>PO items<span class="badge-live">LIVE</span></h2>
+    <p class="hint" id="tcount"></p>
+    <div class="tscroll"><table id="tbl"></table></div>
+    <div class="pager"><span id="pinfo"></span><div><button class="btn" id="seeAll" type="button">See all</button></div></div>
+  </section>
+</div>
+<footer class="footer">Mittal Group · Purchase Orders · Source: SAP S/4HANA Cloud, YY1_PO_ITEM_SUPPLIER_CDS</footer>
+
+<script id="users" type="application/json">__USERS__</script>
+<script id="pgs" type="application/json">__PGS__</script>
+<script id="mgs" type="application/json">__MGS__</script>
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+// SAP user ID -> [full name, User Name]. The server fills the users script tag from pr_data.USER_NAMES.
+const USER_NAMES=(()=>{try{return JSON.parse(document.getElementById('users').textContent);}catch(e){return {};}})();
+const uName=id=>USER_NAMES[id]?USER_NAMES[id][0]:id;
+const uTip=id=>USER_NAMES[id]?id+' ('+USER_NAMES[id][1]+')':id;
+const PG_NAMES=(()=>{try{return JSON.parse(document.getElementById('pgs').textContent);}catch(e){return {};}})();
+const pgName=c=>PG_NAMES[c]||c;
+const pgTip=c=>'Purchasing group '+c+(PG_NAMES[c]?'':' (no description yet)');
+const MG_NAMES=(()=>{try{return JSON.parse(document.getElementById('mgs').textContent);}catch(e){return {};}})();
+const mgName=c=>MG_NAMES[c]||c;
+const mgTip=c=>'Material group '+c+(MG_NAMES[c]?'':' (no description yet)');
+// PO document types (the list sent on 16-Oct-2026).
+const PO_TYPES={NB:'Standard PO',NB2:'Enh.Ret.to Supplier',UB:'Stock Transp. Order',UD:'StockTranspOrderDel',ZAST:'Asset PO',ZBNG:'Prepaid Bank Guarant',ZDNB:'Domestic-Others',ZDRM:'Domestic PO - Raw',ZIMP:'Import PO - Others',ZIRM:'Import PO - Raw',ZPRE:'Prepaid Expenses',ZPRI:'Prepaid Insurance',ZSER:'Service PO',ZSTO:'STO PO',ZSUB:'Sub Contracting PO',ZTRD:'Trading PO'};
+const DEL_TXT={pending:'Pending delivery',every:'All'};
+const REL_TXT={ok:'Released',appr:'In Approval',rej:'Rejected'};
+const typeName=t=>PO_TYPES[t]?t+' · '+PO_TYPES[t]:t;
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const PAGE=25,SUP_LIMIT=300;
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtN=n=>Math.round(n).toLocaleString('en-IN');
+function fmtINR(v){const a=Math.abs(v);if(a>=1e7)return '₹'+(v/1e7).toFixed(2)+' Cr';if(a>=1e5)return '₹'+(v/1e5).toFixed(2)+' L';return '₹'+Math.round(v).toLocaleString('en-IN');}
+const fmtAmt=(v,cur)=>cur==='INR'?fmtINR(v):v.toLocaleString('en-IN',{maximumFractionDigits:2})+' '+cur;
+const fmtDay=d=>new Date(d*864e5).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric',timeZone:'UTC'});
+const mIdx=d=>{const t=new Date(d*864e5);return t.getUTCFullYear()*12+t.getUTCMonth();};
+const mName=k=>MON[k%12]+' '+Math.floor(k/12);
+const dayOf=v=>v?Math.floor(Date.parse(v)/864e5):null;
+
+let D=null,R=[],renderToken=0;
+const S={all:false,plant:'',type:null,sup:null,del:'pending',rel:'',dt:'cr',grp:null,pg:null,from:null,to:null,q:'',mon:null,page:0};
+
+function pass(r,skip){
+  skip=skip||[];
+  if(!skip.includes('plant')&&S.plant&&r.plant!==S.plant)return false;
+  if(!skip.includes('type')&&S.type!==null&&r.type!==S.type)return false;
+  if(!skip.includes('sup')&&S.sup!==null&&r.sup!==S.sup)return false;
+  if(!skip.includes('grp')&&S.grp!==null&&r.grp!==S.grp)return false;
+  if(!skip.includes('pg')&&S.pg!==null&&r.pg!==S.pg)return false;
+  if(S.del==='pending'&&!(r.still>0))return false;
+  if(S.del===''&&r.st==='nogr')return false;
+  if(S.del&&S.del!=='pending'&&S.del!=='every'&&r.st!==S.del)return false;
+  if(S.rel==='appr'&&r.proc!=='03')return false;
+  if(S.rel==='rej'&&r.proc!=='08')return false;
+  if(S.rel==='ok'&&(r.proc==='03'||r.proc==='08'))return false;
+  if(!skip.includes('date')&&S.from!==null&&!(r.day>=S.from))return false;
+  if(!skip.includes('date')&&S.to!==null&&!(r.day<=S.to))return false;
+  if(S.q&&!r.hay.includes(S.q))return false;
+  return true;
+}
+
+// POs: distinct purchase orders; amt: INR items only (other currencies are counted in fx and not added)
+const agg=()=>({n:0,amt:0,pend:0,pos:new Set(),fx:0});
+function add(m,k,r){let x=m.get(k);if(!x)m.set(k,x=agg());x.n++;x.pos.add(r.po);if(r.cur==='INR'){x.amt+=r.amt;x.pend+=r.pendAmt;}else x.fx++;}
+// a row with only other-currency items has no INR value: say so instead of showing 0
+const fv=(v,x)=>v===0&&x.fx>0?'<span title="Other currency: not added into the INR totals">other cur.</span>':fmtINR(v);
+function aggTable(list,head,cell,sel,limit){
+  if(!list.length)return '<div class="empty">Nothing matches the filters.</div>';
+  const tot=agg();for(const [,x] of list){tot.n+=x.n;tot.amt+=x.amt;tot.pend+=x.pend;tot.fx+=x.fx;for(const p of x.pos)tot.pos.add(p);}
+  const nums=x=>`<td class="num">${fmtN(x.pos.size)}</td><td class="num">${fmtN(x.n)}</td><td class="num nw">${fv(x.amt,x)}</td><td class="num nw">${fv(x.pend,x)}</td>`;
+  const shown=limit?list.slice(0,limit):list;
+  return `<table><thead><tr><th>${head}</th><th class="num">POs</th><th class="num">Items</th><th class="num">Net value</th><th class="num">To deliver</th></tr></thead><tbody>`+
+    shown.map(([k,x])=>`<tr${k===sel?' class="sel"':''}><td>${cell(k)}</td>${nums(x)}</tr>`).join('')+
+    `</tbody><tfoot><tr><td>Total (${fmtN(list.length)})</td>${nums(tot)}</tr></tfoot></table>`;
+}
+const byValue=m=>[...m.entries()].sort((a,b)=>b[1].amt-a[1].amt||b[1].n-a[1].n);
+const supLabel=i=>{const s=D.suppliers[i];return (s[1]||'(no name)')+' ('+s[0]+')';};
+
+function render(){
+  if(!D)return;  // the data is still loading
+  const rows=R.filter(r=>pass(r));
+  // KPIs
+  let amt=0,open=0,fx=0;const pos=new Set(),sups=new Set();
+  for(const r of rows){pos.add(r.po);sups.add(r.sup);if(r.cur==='INR'){amt+=r.amt;open+=r.pendAmt;}else fx++;}
+  $('kpis').innerHTML=[[fmtINR(amt),'Net PO value (INR)'+(fx?` · ${fmtN(fx)} other-currency items not added`:'')],[fmtINR(open),'Value still to be delivered (INR)'],[fmtN(pos.size),'Purchase orders'],[fmtN(rows.length),'PO items'],[fmtN(sups.size),'Suppliers']]
+    .map(t=>`<div class="tile"><div class="tv">${t[0]}</div><div class="tl">${t[1]}</div></div>`).join('');
+  // chips
+  const c=[];
+  if(S.plant)c.push(['plant','Plant '+S.plant]);
+  if(S.type!==null)c.push(['type','PO type: '+typeName(S.type)]);
+  if(S.sup!==null)c.push(['sup','Supplier: '+supLabel(S.sup)]);
+  if(S.grp!==null)c.push(['grp','Material group: '+mgName(S.grp)]);
+  if(S.pg!==null)c.push(['pg','Purch. group: '+pgName(S.pg)]);
+  if(S.del&&S.del!=='every')c.push(['del',DEL_TXT[S.del]]);
+  if(S.rel)c.push(['rel',REL_TXT[S.rel]]);
+  if(S.from!==null||S.to!==null)c.push(['date',(S.dt==='po'?'PO date ':'Created on ')+(S.from!==null?fmtDay(S.from):'start')+' – '+(S.to!==null?fmtDay(S.to):'today')]);
+  if(S.q)c.push(['q','Search: '+S.q]);
+  $('chips').innerHTML=c.map(x=>`<button type="button" class="chip" data-clr="${x[0]}">${esc(x[1])} ×</button>`).join('')+(c.length?'<button type="button" class="chip" data-clr="all">Reset filters</button>':'');
+  // each table ignores its own filter, so the list stays when you pick a row
+  const sp=new Map(),ty=new Map(),pl=new Map(),gr=new Map(),pgm=new Map();
+  for(const r of R){
+    if(pass(r,['sup']))add(sp,r.sup,r);
+    if(pass(r,['type']))add(ty,r.type,r);
+    if(pass(r,['plant']))add(pl,r.plant,r);
+    if(pass(r,['grp']))add(gr,r.grp,r);
+    if(pass(r,['pg']))add(pgm,r.pg,r);
+  }
+  const sl=byValue(sp);
+  $('supHint').textContent='Net order value (INR) of the PO items. Click a supplier to filter everything.'+(sl.length>SUP_LIMIT?` Top ${SUP_LIMIT} of ${fmtN(sl.length)} suppliers by value shown; the total covers all. Use the Supplier filter or Search for the others.`:'');
+  $('bySup').innerHTML=aggTable(sl,'Supplier',k=>`<button type="button" class="lnk" data-sup="${k}" title="${esc(D.suppliers[k][2]?'GSTIN '+D.suppliers[k][2]:'')}">${esc(supLabel(k))}</button>`,S.sup,SUP_LIMIT);
+  $('byType').innerHTML=aggTable(byValue(ty),'PO type',k=>`<button type="button" class="lnk" data-type="${esc(k)}">${esc(typeName(k))}</button>`,S.type);
+  $('byPlant').innerHTML=aggTable(byValue(pl),'Plant',k=>`<button type="button" class="lnk" data-plant="${esc(k)}">${esc(k)}</button>`,S.plant||null);
+  $('byPg').innerHTML=aggTable(byValue(pgm),'Purchasing group',k=>`<button type="button" class="lnk" data-pg="${esc(k)}" title="${esc(pgTip(k))}">${esc(pgName(k))}</button>`,S.pg);
+  $('byGrp').innerHTML=aggTable(byValue(gr),'Material group',k=>`<button type="button" class="lnk" data-grp="${esc(k)}" title="${esc(mgTip(k))}">${esc(mgName(k))}</button>`,S.grp);
+  // month / day (ignore From/To so every month stays listed)
+  const mon=new Map(),day=new Map();
+  if(S.mon===null)S.mon=mIdx(D.asofDay);
+  for(const r of R){if(r.day===null||!pass(r,['date']))continue;const k=mIdx(r.day);add(mon,k,r);if(k===S.mon)add(day,r.day,r);}
+  $('byMonth').innerHTML=aggTable([...mon.entries()].sort((a,b)=>b[0]-a[0]),'Month',k=>`<button type="button" class="lnk" data-mon="${k}">${mName(k)}</button>`,S.mon);
+  $('dayTitle').textContent='Day-wise POs · '+mName(S.mon);
+  $('byDay').innerHTML=aggTable([...day.entries()].sort((a,b)=>a[0]-b[0]),'Date',k=>`<button type="button" class="lnk" data-day="${k}">${fmtDay(k)}</button>`);
+  // items, newest first
+  rows.sort((a,b)=>(b.day||0)-(a.day||0)||b.po.localeCompare(a.po)||a.item-b.item);
+  // the list shows the first rows; See all shows every row of the current filters (the list scrolls inside its card)
+  const slice=S.all?rows:rows.slice(0,PAGE);
+  const qf=(v,u)=>v===null?'<span title="No status data">–</span>':v.toLocaleString('en-IN',{maximumFractionDigits:3})+' '+esc(u);
+  const ST={open:['open','Not delivered','Nothing received yet'],partly:['part','Partly','Part of the quantity is received'],done:['ok','Delivered','Fully received'],nogr:['none','No GR','Nothing is left to deliver and no goods receipt is booked. SAP does not list these items in Purchase Order Items (they are deleted or closed items)'],nodata:['none','–','The status view has no row for this item']};
+  const rowHtml=r=>{const st=ST[r.st];return `<tr><td class="nw">${r.pday===null?'–':fmtDay(r.pday)}</td><td class="nw">${r.cday===null?'–':fmtDay(r.cday)}</td><td class="nw">${esc(r.po)}</td><td>${r.item}</td><td class="nw" title="${esc(typeName(r.type))}">${esc(r.type)}</td><td class="supc" title="${esc(r.gst?'Supplier '+D.suppliers[r.sup][0]+' · GSTIN '+r.gst:'Supplier '+D.suppliers[r.sup][0])}">${esc(D.suppliers[r.sup][1]||D.suppliers[r.sup][0])}</td><td class="matc" title="${esc((r.grp?'Material group '+mgName(r.grp)+(MG_NAMES[r.grp]?' ('+r.grp+')':''):'')+(r.mtype?' · type '+r.mtype:''))}">${r.mat?`<span class="matno">${esc(r.mat)}</span><br>`:''}${esc(r.text)}</td><td>${esc(r.plant)}</td><td class="nw" title="${esc(pgTip(r.pg))}">${esc(pgName(r.pg))}</td><td>${r.sloc?esc(r.sloc):'–'}</td><td class="num nw">${qf(r.qty,r.unit)}</td><td class="num nw qtd">${qf(r.still,r.unit)}</td><td class="num nw">${qf(r.gr,r.unit)}</td><td class="num nw">${fmtAmt(r.price,r.cur)}</td><td class="num nw">${fmtAmt(r.amt,r.cur)}</td><td title="${esc(st[2])}"><span class="pill ${st[0]}">${st[1]}</span></td><td title="Proc. state ${esc(r.proc)}"><span class="pill ${r.proc==='03'||r.proc==='08'?'pend':'ok'}">${r.proc==='03'?'In Approval':r.proc==='08'?'Rejected':'Released'}</span></td><td class="nw" title="${esc(uTip(r.user))}">${esc(uName(r.user))}</td></tr>`;};
+  // See all can mean thousands of rows: the first rows appear at once and the rest are added in small batches, so the page stays responsive
+  const first=S.all?slice.slice(0,400):slice;
+  $('tbl').innerHTML='<thead><tr><th>PO date</th><th>Created on</th><th>PO</th><th>Item</th><th>PO type</th><th>Supplier</th><th>Material</th><th>Plant</th><th>Purch. group</th><th>S.Loc</th><th class="num">Order quantity</th><th class="num qtd">Quantity to be delivered</th><th class="num">Delivered quantity</th><th class="num">Price</th><th class="num">Net value</th><th>Delivery</th><th>Release</th><th>Created by</th></tr></thead><tbody>'+(first.length?first.map(rowHtml).join(''):'<tr><td colspan="18" class="empty">Nothing matches the filters.</td></tr>')+'</tbody>';
+  const token=++renderToken;let done=first.length;
+  const more=()=>{if(token!==renderToken||done>=slice.length)return;document.querySelector('#tbl tbody').insertAdjacentHTML('beforeend',slice.slice(done,done+600).map(rowHtml).join(''));done+=600;setTimeout(more,0);};
+  setTimeout(more,0);
+  $('tcount').textContent=fmtN(rows.length)+' items in '+fmtN(pos.size)+' purchase orders';
+  $('pinfo').textContent=!rows.length?'':rows.length<=PAGE||S.all?`All ${fmtN(rows.length)} items shown`:`Showing the first ${fmtN(PAGE)} of ${fmtN(rows.length)}`;
+  $('seeAll').hidden=rows.length<=PAGE;$('seeAll').textContent=S.all?'Show first '+PAGE:'See all '+fmtN(rows.length);
+}
+
+const iso=d=>new Date(d*864e5).toISOString().slice(0,10);
+function setMonthDates(){const t=new Date(D.asofDay*864e5);const y=t.getUTCFullYear(),m=t.getUTCMonth();const a=Date.UTC(y,m,1)/864e5,b=Date.UTC(y,m+1,0)/864e5;S.from=a;S.to=b;$('dFrom').value=iso(a);$('dTo').value=iso(b);}
+const setSupInput=()=>{$('supIn').value=S.sup===null?'':supLabel(S.sup);};
+document.addEventListener('click',e=>{
+  const t=e.target.closest('button');if(!t)return;
+  if(t.dataset.sup!==undefined){const v=+t.dataset.sup;S.sup=S.sup===v?null:v;setSupInput();}
+  else if(t.dataset.type!==undefined){S.type=S.type===t.dataset.type?null:t.dataset.type;$('typeSel').value=S.type===null?'':S.type;}
+  else if(t.dataset.plant!==undefined){S.plant=S.plant===t.dataset.plant?'':t.dataset.plant;$('plantSel').value=S.plant;}
+  else if(t.dataset.grp!==undefined){S.grp=S.grp===t.dataset.grp?null:t.dataset.grp;}
+  else if(t.dataset.pg!==undefined){S.pg=S.pg===t.dataset.pg?null:t.dataset.pg;$('pgSel').value=S.pg===null?'':S.pg;}
+  else if(t.dataset.mon!==undefined){S.mon=+t.dataset.mon;}
+  else if(t.dataset.day!==undefined){const d=+t.dataset.day;S.from=S.to=d;$('dFrom').value=$('dTo').value=iso(d);}
+  else if(t.dataset.clr){const c=t.dataset.clr;
+    if(c==='plant'||c==='all'){S.plant='';$('plantSel').value='';}
+    if(c==='type'||c==='all'){S.type=null;$('typeSel').value='';}
+    if(c==='sup'||c==='all'){S.sup=null;setSupInput();}
+    if(c==='grp'||c==='all')S.grp=null;
+    if(c==='pg'||c==='all'){S.pg=null;$('pgSel').value='';}
+    if(c==='del'){S.del='every';$('delSel').value='every';}
+    if(c==='all'){S.del='pending';$('delSel').value='pending';}
+    if(c==='rel'||c==='all'){S.rel='';$('relSel').value='';}
+    if(c==='date'){S.from=S.to=null;$('dFrom').value=$('dTo').value='';}
+    if(c==='all')setMonthDates();
+    if(c==='q'||c==='all'){S.q='';$('q').value='';}}
+  else if(t.id==='seeAll'){S.all=!S.all;render();if(!S.all)document.querySelector('.tscroll').scrollTop=0;return;}
+  else return;
+  S.page=0;render();
+});
+$('plantSel').addEventListener('change',e=>{S.plant=e.target.value;S.page=0;render();});
+$('typeSel').addEventListener('change',e=>{S.type=e.target.value===''?null:e.target.value;S.page=0;render();});
+$('pgSel').addEventListener('change',e=>{S.pg=e.target.value===''?null:e.target.value;S.page=0;render();});
+$('delSel').addEventListener('change',e=>{S.del=e.target.value;S.page=0;render();});
+$('relSel').addEventListener('change',e=>{S.rel=e.target.value;S.page=0;render();});
+$('dtSel').addEventListener('change',e=>{S.dt=e.target.value;try{localStorage.setItem('po-dt2',S.dt);}catch(x){}applyDate();S.mon=null;S.page=0;render();});
+try{const v=localStorage.getItem('po-dt2');if(v==='po'||v==='cr'){S.dt=v;$('dtSel').value=v;}}catch(e){}
+// Supplier: pick from the list (name and number); clearing the box removes the filter
+$('supIn').addEventListener('change',e=>{
+  const v=e.target.value.trim();
+  if(!v){S.sup=null;}
+  else{const i=SUP_LABELS.get(v.toLowerCase());if(i===undefined){setSupInput();return;}S.sup=i;}
+  S.page=0;render();
+});
+$('dFrom').addEventListener('change',e=>{S.from=dayOf(e.target.value);S.page=0;render();});
+$('dTo').addEventListener('change',e=>{S.to=dayOf(e.target.value);S.page=0;render();});
+let qT;$('q').addEventListener('input',e=>{clearTimeout(qT);qT=setTimeout(()=>{S.q=e.target.value.trim().toLowerCase();S.page=0;render();},200);});
+
+const root=document.documentElement;
+function setTheme(t,save){root.dataset.theme=t;for(const b of document.querySelectorAll('#themeSeg button'))b.classList.toggle('on',b.dataset.th===t);if(save){try{localStorage.setItem('spr-theme',t);}catch(e){}}}
+let savedTheme='dark';try{savedTheme=localStorage.getItem('spr-theme')||'dark';}catch(e){}
+setTheme(savedTheme==='light'?'light':'dark',false);
+document.getElementById('themeSeg').addEventListener('click',e=>{const b=e.target.closest('button[data-th]');if(b)setTheme(b.dataset.th,true);});
+
+let SUP_LABELS=new Map();
+const applyDate=()=>{for(const r of R)r.day=S.dt==='po'?r.pday:r.cday;};
+function setData(d){
+  D=d;
+  R=d.rows.map(a=>{
+    const s=d.suppliers[a[5]];
+    const r={day:a[1],cday:a[0],pday:a[1],po:a[2],item:a[3],type:d.types[a[4]],sup:a[5],plant:d.plants[a[6]],sloc:d.slocs[a[7]],mat:d.mats[a[8]],text:d.texts[a[9]],grp:d.groups[a[10]],mtype:d.mtypes[a[11]],user:d.users[a[12]],unit:d.units[a[13]],cur:d.curs[a[14]],qty:a[15],price:a[16],amt:a[17],pend:!!(a[18]&1),pg:d.pgs[a[19]],org:d.orgs[a[20]],proc:d.procs[a[21]],gr:a[22],still:a[23],gst:s[2]};
+    // delivery from the status view: still to deliver > 0 = open (nothing received) or partly; nothing left and something received = delivered
+    r.st=r.gr===null?'nodata':r.still>0?(r.gr>0?'partly':'open'):(r.gr!==0?'done':'nogr');
+    // asset POs (ZAST) have a non-valuated goods receipt in SAP, so SAP shows no value still to be delivered for them
+    r.pendAmt=r.type!=='ZAST'&&r.still>0&&r.qty>0?r.amt*Math.min(r.still,r.qty)/r.qty:0;
+    r.hay=(r.po+' '+s[0]+' '+s[1]+' '+s[2]+' '+r.mat+' '+r.text+' '+r.grp+' '+mgName(r.grp)+' '+pgName(r.pg)+' '+r.user+' '+uName(r.user)+' '+r.plant+' '+r.sloc+' '+r.type+' '+(PO_TYPES[r.type]||'')).toLowerCase();
+    return r;
+  });
+  applyDate();
+  const gc=new Map();for(const r of R)gc.set(r.pg,(gc.get(r.pg)||0)+1);
+  $('pgSel').innerHTML='<option value="">All purch. groups</option>'+[...gc.entries()].sort((a,b)=>b[1]-a[1]).map(e=>`<option value="${esc(e[0])}">${esc(pgName(e[0]))}</option>`).join('');
+  if(S.pg!==null&&!gc.has(S.pg))S.pg=null;
+  $('pgSel').value=S.pg===null?'':S.pg;
+  // plant and PO type lists, busiest first
+  const pc=new Map();for(const r of R)pc.set(r.plant,(pc.get(r.plant)||0)+1);
+  $('plantSel').innerHTML='<option value="">All plants</option>'+[...pc.entries()].sort((a,b)=>b[1]-a[1]).map(e=>`<option value="${esc(e[0])}">${esc(e[0])}</option>`).join('');
+  $('plantSel').value=S.plant;
+  const tc=new Map();for(const r of R)tc.set(r.type,(tc.get(r.type)||0)+1);
+  $('typeSel').innerHTML='<option value="">All PO types</option>'+[...tc.entries()].sort((a,b)=>b[1]-a[1]).map(e=>`<option value="${esc(e[0])}">${esc(typeName(e[0]))}</option>`).join('');
+  if(S.type!==null&&!tc.has(S.type))S.type=null;
+  $('typeSel').value=S.type===null?'':S.type;
+  // supplier list for the Supplier box: 'Name (number)', suppliers with the most items first
+  const sc=new Map();for(const r of R)sc.set(r.sup,(sc.get(r.sup)||0)+1);
+  SUP_LABELS=new Map();
+  const order=[...sc.entries()].sort((a,b)=>b[1]-a[1]).map(e=>e[0]);
+  for(const i of order)SUP_LABELS.set(supLabel(i).toLowerCase(),i);
+  $('supList').innerHTML=order.map(i=>`<option value="${esc(supLabel(i))}"></option>`).join('');
+  if(S.sup!==null&&!sc.has(S.sup))S.sup=null;
+  setSupInput();
+}
+function setLive(kind,text){$('liveDot').style.background=kind==='ok'?'var(--good)':kind==='err'?'var(--crit)':'var(--warn)';$('liveTxt').textContent=text;$('refresh').disabled=kind==='busy';}
+const hhmm=ms=>new Date(ms).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+let loading=false;
+async function load(force){
+  if(loading)return;loading=true;
+  setLive('busy',D?'Refreshing from SAP…':'Loading purchase order data from SAP (first load can take a minute)…');
+  try{
+    const res=await fetch('/api/po'+(force?'?refresh=1':''),{cache:'no-store'});
+    const j=await res.json().catch(()=>({}));
+    if(!res.ok)throw new Error(j.error||('HTTP '+res.status));
+    setData(j);if(!S.dInit){S.dInit=true;setMonthDates();}render();
+    setLive('ok','Live from SAP · updated '+hhmm(j.fetchedAt)+' · '+fmtN(R.length)+' items');
+  }catch(e){
+    const msg=e.message==='Failed to fetch'?'The dashboard server is not running. Start it again with Start_Live_Dashboard.bat.':e.message;
+    setLive('err',msg);
+  }finally{loading=false;}
+}
+$('refresh').addEventListener('click',()=>load(true));
+load(false);
+setInterval(()=>{if(!document.hidden)load(false);},1800000);
+})();
+</script>
+</body>
+</html>

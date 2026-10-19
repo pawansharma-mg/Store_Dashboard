@@ -1,0 +1,222 @@
+﻿Plant,Storage location,Name (from the list sent by the user),Type
+1010,ML01,CASE CARB STORE,Store
+1010,ML02,CASE ST TL STORE,Store
+1010,ML03,DROSS CONS STORE,Store
+1010,ML04,CASE CONSU STORE,Store
+1010,ML05,ROLLING MILL STO,Store
+1010,ML06,CASE MACHN STORE,Store
+1010,ML07,CCP CONSU STORE,Store
+1010,ML08,CCP MACHN STORE,Store
+1010,ML09,AIR COMPR STORE,Store
+1010,ML10,MRV TOOLING STOR,Store
+1010,ML11,COIL CONSU STORE,Store
+1010,ML12,CRANE SPARE STOR,Store
+1010,ML13,N2 PLANT STORE,Store
+1010,ML14,COIL FUR SP STOR,Store
+1010,ML15,COIN CARB STORE,Store
+1010,ML16,COIN CONSU STORE,Store
+1010,ML17,COIN MAST M/C ST,Store
+1010,ML18,COIN DIE CAGE ST,Store
+1010,ML19,COIN MAST TL STO,Store
+1010,ML20,CUP CARB STORE,Store
+1010,ML21,CUP PUNCH STORE,Store
+1010,ML22,BUILD MAT STORE,Store
+1010,ML23,MAINT PNUME STOR,Store
+1010,ML24,POLISH SPARE STO,Store
+1010,ML25,CUP CONS STORE,Store
+1010,ML26,CUP PRESS SPAR S,Store
+1010,ML27,CUP DIE CAGE STO,Store
+1010,ML28,PULV SPARE STORE,Store
+1010,ML29,PUMP & MOTOR STO,Store
+1010,ML30,DRUID SPARE STOR,Store
+1010,ML31,DRUID CONS STORE,Store
+1010,ML32,IT SPARE STORE,Store
+1010,ML33,ELECT GEN STORE,Store
+1010,ML34,GEN ITEM STORE,Store
+1010,ML35,ADMIN & HR STORE,Store
+1010,ML36,QC INSTRUM STORE,Store
+1010,ML37,RIMM.SPARE STOR,Store
+1010,ML38,JW RAW MAT STOR,Store
+1010,ML39,MECH MAINT STORE,Store
+1010,ML40,QC LAB CONS STOR,Store
+1010,ML41,Cup T/R Spare,Store
+1010,ML42,Case T/R Spare,Store
+1010,ML43,Capital & Asset,Store
+1010,ML44,Case I/P PRD,Internal Plant material
+1010,ML45,Case I/P Maint,Internal Plant material
+1010,ML46,Case I/P Elec,Internal Plant material
+1010,ML47,Case I/P Quality,Internal Plant material
+1010,ML48,Case I/P T/R,Internal Plant material
+1010,ML49,Case I/P T/R RW,Internal Plant material
+1010,ML50,Ccp I/P PRD,Internal Plant material
+1010,ML51,Ccp I/P Maint,Internal Plant material
+1010,ML52,Ccp I/P Elec,Internal Plant material
+1010,ML53,Ccp I/P Quality,Internal Plant material
+1010,ML54,Ccp I/P T/R,Internal Plant material
+1010,ML55,Ccp I/P T/R RW,Internal Plant material
+1010,ML56,Coil I/P PRD,Internal Plant material
+1010,ML57,Coil I/P Maint,Internal Plant material
+1010,ML58,Coil I/P Elec,Internal Plant material
+1010,ML59,Coil I/P Quality,Internal Plant material
+1010,ML60,Coil I/P T/R,Internal Plant material
+1010,ML61,Coil I/P T/R RW,Internal Plant material
+1010,ML62,Brass I/P PRD,Internal Plant material
+1010,ML63,Brass I/P Maint,Internal Plant material
+1010,ML64,Brass I/P Elec,Internal Plant material
+1010,ML65,Brass I/P Qual,Internal Plant material
+1010,ML66,Brass I/P T/R,Internal Plant material
+1010,ML67,Brass I/P T/R RW,Internal Plant material
+1010,ML68,Coin B I/P PRD,Internal Plant material
+1010,ML69,Coin B I/P Maint,Internal Plant material
+1010,ML70,Coin B I/P Elec,Internal Plant material
+1010,ML71,Coin B I/P Qual,Internal Plant material
+1010,ML72,Coin B I/P T/R,Internal Plant material
+1010,ML73,CoinB I/P T/R RW,Internal Plant material
+1010,ML74,Druid I/P PRD,Internal Plant material
+1010,ML75,Druid I/P Maint,Internal Plant material
+1010,ML76,Druid I/P Elec,Internal Plant material
+1010,ML77,Druid I/P Qual,Internal Plant material
+1010,ML78,Druid I/P T/R,Internal Plant material
+1010,ML79,Druid I/P T/R RW,Internal Plant material
+1010,ML80,SCHULER SPAR S,Store
+1010,ML81,TOOL ROOM STORE,Store
+1010,ML82,SPECTRO SPAR STO,Store
+1010,ML83,VFD & CONT STORE,Store
+1010,ML84,MRV M/C SPARE ST,Store
+1010,ML85,JW CASE SPAR STO,Store
+1010,ML86,JW CUP SPARE STO,Store
+1010,ML87,JW DRUID SPAR ST,Store
+1010,ML88,JW GEN ITEM STOR,Store
+1010,ML89,JW MECH SPAR STO,Store
+1010,ML90,JW QC INSTU STOR,Store
+1010,ML91,MAINT HYD SPAR S,Store
+1010,ML92,STORE RAW MAT,Store
+1010,ML93,Port Ware House,Store
+1010,ML94,Develop I/P ST,Store
+1010,ML95,HR I/P Store,Store
+1010,ML96,Mainte I/P ST,Store
+1010,ML97,Metrology I/P ST,Store
+1010,ML98,NPD I/P Store,Store
+1010,ML99,Tran press Sp St,Store
+1040,MD01,JW MEDAL SPAR ST,Store
+1040,MD02,MEDAL CONS.STORE,Store
+1040,MD03,MEDAL M/C SPAR S,Store
+1040,MD04,MEDAL ELEC STORE,Store
+1040,MD05,MEDAL DIES STORE,Store
+1040,MD06,Medal I/P PRD,Internal Plant material
+1040,MD07,Medal I/P Maint,Internal Plant material
+1040,MD08,Medal I/P Elec,Internal Plant material
+1040,MD09,Medal I/P Qual,Internal Plant material
+1040,MD10,Medal I/P T/R,Internal Plant material
+1040,MD11,Medal I/P T/R RW,Internal Plant material
+1040,MD12,MEDAL PACKING ST,Store
+1040,MD13,Medal Electrical,Store
+2010,MC98,Port Ware House,Store
+2010,MC97,Dispatch QC ST,Store
+2010,MC95,Metrology I/P ST,Store
+2010,MC94,Develop I/P ST,Store
+2010,MC93,CMM Lab Store,Store
+2010,MC92,STORE RAW MAT,Store
+2010,MC91,MAINT HYD SPAR S,Store
+2010,MC90,JW QC INSTU STOR,Store
+2010,MC89,JW MECH SPAR STO,Store
+2010,MC88,JW GEN ITEM STOR,Store
+2010,MC87,JW DRUID SPAR ST,Store
+2010,MC86,JW CUP SPARE STO,Store
+2010,MC85,JW CASE SPAR STO,Store
+2010,MC84,MRV M/C SPARE ST,Store
+2010,MC83,VFD & CONT STORE,Store
+2010,MC82,SPECTRO SPAR STO,Store
+2010,MC81,TOOL ROOM STORE,Store
+2010,MC80,SCHULER SPAR S,Store
+2010,MC79,Druid I/P T/R RW,Internal Plant material
+2010,MC78,Druid I/P T/R,Internal Plant material
+2010,MC77,Druid I/P Qual,Internal Plant material
+2010,MC76,Druid I/P Elec,Internal Plant material
+2010,MC75,Druid I/P Maint,Internal Plant material
+2010,MC74,Druid I/P PRD,Internal Plant material
+2010,MC73,CoinB I/P T/R RW,Internal Plant material
+2010,MC72,Coin B I/P T/R,Internal Plant material
+2010,MC71,Coin B I/P Qual,Internal Plant material
+2010,MC70,Coin B I/P Elec,Internal Plant material
+2010,MC69,Coin B I/P Maint,Internal Plant material
+2010,MC68,Coin B I/P PRD,Internal Plant material
+2010,MC67,Brass I/P T/R RW,Internal Plant material
+2010,MC66,Brass I/P T/R,Internal Plant material
+2010,MC65,Brass I/P Qual,Internal Plant material
+2010,MC64,Brass I/P Elec,Internal Plant material
+2010,MC63,Brass I/P Maint,Internal Plant material
+2010,MC62,Brass I/P PRD,Internal Plant material
+2010,MC61,Coil I/P T/R RW,Internal Plant material
+2010,MC60,Coil I/P T/R,Internal Plant material
+2010,MC59,Coil I/P Quality,Internal Plant material
+2010,MC58,Coil I/P Elec,Internal Plant material
+2010,MC57,Coil I/P Maint,Internal Plant material
+2010,MC56,Coil I/P PRD,Internal Plant material
+2010,MC55,Ccp I/P T/R RW,Internal Plant material
+2010,MC54,Ccp I/P T/R,Internal Plant material
+2010,MC53,Ccp I/P Quality,Internal Plant material
+2010,MC52,Ccp I/P Elec,Internal Plant material
+2010,MC51,Ccp I/P Maint,Internal Plant material
+2010,MC50,Ccp I/P PRD,Internal Plant material
+2010,MC49,Case I/P T/R RW,Internal Plant material
+2010,MC48,Case I/P T/R,Internal Plant material
+2010,MC47,Case I/P Quality,Internal Plant material
+2010,MC46,Case I/P Elec,Internal Plant material
+2010,MC45,Case I/P Maint,Internal Plant material
+2010,MC44,Case I/P PRD,Internal Plant material
+2010,MC43,Capital & Asset,Store
+2010,MC42,Case T/R Spare,Store
+2010,MC41,Cup T/R Spare,Store
+2010,MC40,QC LAB CONS STOR,Store
+2010,MC39,MECH MAINT STORE,Store
+2010,MC38,JW RAW MAT STOR,Store
+2010,MC37,RIMM.SPARE STOR,Store
+2010,MC36,QC INSTRUM STORE,Store
+2010,MC35,ADMIN & HR STORE,Store
+2010,MC34,GEN ITEM STORE,Store
+2010,MC33,ELECT GEN STORE,Store
+2010,MC32,IT SPARE STORE,Store
+2010,MC31,DRUID CONS STORE,Store
+2010,MC30,DRUID SPARE STOR,Store
+2010,MC29,PUMP & MOTOR STO,Store
+2010,MC28,PULV SPARE STORE,Store
+2010,MC27,CUP DIE CAGE STO,Store
+2010,MC26,CUP PRESS SPAR S,Store
+2010,MC25,CUP CONS STORE,Store
+2010,MC24,POLISH SPARE STO,Store
+2010,MC23,MAINT PNUME STOR,Store
+2010,MC22,BUILD MAT STORE,Store
+2010,MC21,CUP PUNCH STORE,Store
+2010,MC20,CUP CARB STORE,Store
+2010,MC19,COIN MAST TL STO,Store
+2010,MC18,COIN DIE CAGE ST,Store
+2010,MC17,COIN MAST M/C ST,Store
+2010,MC16,COIN CONSU STORE,Store
+2010,MC15,COIN CARB STORE,Store
+2010,MC14,COIL FUR SP STOR,Store
+2010,MC13,N2 PLANT STORE,Store
+2010,MC12,CRANE SPARE STOR,Store
+2010,MC11,COIL CONSU STORE,Store
+2010,MC10,MRV TOOLING STOR,Store
+2010,MC09,AIR COMPR STORE,Store
+2010,MC08,CCP MACHN STORE,Store
+2010,MC07,CCP CONSU STORE,Store
+2010,MC06,CASE MACHN STORE,Store
+2010,MC05,ROLLING MILL STO,Store
+2010,MC04,CASE CONSU STORE,Store
+2010,MC03,DROSS CONS STORE,Store
+2010,MC02,CASE ST TL STORE,Store
+2010,MC01,CASE CARB STORE,Store
+2020,MC08,Craft I/P Elec,Store
+2020,MF01,JW CRAFT SPAR ST,Store
+2020,MF02,CRAFT CONS STORE,Store
+2020,MF03,CRAFT MECH STOR,Store
+2020,MF04,CRAFT ELECT STO,Store
+2020,MF05,CRFAT DIES STORE,Store
+2020,MF06,Craft I/P PRD,Internal Plant material
+2020,MF07,Craft I/P Maint,Internal Plant material
+2020,MF09,Craft I/P Qual,Internal Plant material
+2020,MF10,Craft I/P T/R,Internal Plant material
+2020,MF11,Craft I/P T/R RW,Internal Plant material
+2020,MF12,CRAFT PACKING ST,Store
