@@ -349,13 +349,13 @@ STOCK_LOCATIONS_FILE = os.path.join(DATA, 'stock_locations.csv')
 
 
 def load_stock_locations():
-    """{(plant, storage location): type} from stock_locations.csv, or None (= every location) when the file is missing or has no rows."""
+    """{(plant, storage location): (type, name)} from stock_locations.csv, or None (= every location) when the file is missing or has no rows."""
     out = {}
     try:
         with open(STOCK_LOCATIONS_FILE, newline='', encoding='utf-8-sig') as f:
             for r in csv.reader(f):
                 if len(r) >= 2 and r[0].strip() and r[1].strip() and r[0].strip().lower() != 'plant':
-                    out[(r[0].strip(), r[1].strip())] = (r[3].strip() if len(r) > 3 else '') or 'Store'
+                    out[(r[0].strip(), r[1].strip())] = ((r[3].strip() if len(r) > 3 else '') or 'Store', r[2].strip() if len(r) > 2 else '')
     except FileNotFoundError:
         pass
     except Exception as e:

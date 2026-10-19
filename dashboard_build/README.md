@@ -136,7 +136,11 @@ Project level:
   Type `Internal Plant material` marks the I/P stores (1010 ML44-ML79, 1040 MD06-MD11, 2010 MC44-MC79, 2020 MF06/07/09/10/11); every other listed location is `Store` (blank also counts as Store).
   Without the file all locations are shown. Add a row and press Refresh (or wait for the next refresh) to include a location. The key is plant + location (MC08 differs between 2010 and 2020).
 * Tables show the value split into Store, Internal Plant material and Total. Stock types: 01 Unrestricted use, 02 Quality inspection; other codes are shown as "Stock type NN".
-* **Top 5 materials** and **Not used for 5 months** cover Store locations only. Both are tiles in the tile row: click a tile to show or hide its table (Top 5 is open by default).
+* **Every tile opens its details** when clicked (click again to hide; the page scrolls to them), and the details follow the filters:
+  Stock value (by plant and stock type), Store value and Internal Plant material value (materials, most value first), Materials with stock, Stock lines,
+  Storage locations with stock, In quality inspection (stock type 02), Store locations in your list (all 221 of `stock_locations.csv`, with or without stock; plant and category filters apply).
+  One of these is open at a time, under the tiles; long lists show the first 25 with "See all".
+* **Top 5 materials** and **Not used for 5 months** cover Store locations only. They are tiles too, with their own tables under the tiles, and open and close independently (Top 5 is open by default).
   An item is one material in one plant. "Used" means a goods issue (stock out) of movement type 201, 221, 241, 261, 281, 291 or 543 (`CONSUME_MVTS`) since 1 Jan 2026,
   in any storage location of the plant. Transfers (311, 321, 343 ...), scrapping, deliveries and returns do not count.
   Not used = no such issue in the last 5 months (the date is shown in the hint). Limits: material received in the last 5 months and not used yet is also listed;

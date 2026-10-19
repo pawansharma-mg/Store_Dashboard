@@ -732,7 +732,7 @@ def _day_of_iso(s):
 def stock_compact(rows, asof_day, allowed=None, last=None):
     """Only rows that hold stock (quantity or value not 0). Row: [product, plant, sloc, materialGroup, productType, stockType, specialStock,
     unit, quantity, value, kind, lastConsumedDay (0 = none since 1 Jan 2026)]; products are [id, name], storage locations [code, name]. Value is in INR.
-    allowed: {(plant, storage location): type} to keep (stock_locations.csv, type Store / Internal Plant material); None keeps every location."""
+    allowed: {(plant, storage location): (type, name)} to keep (stock_locations.csv, type Store / Internal Plant material); None keeps every location."""
     dicts = {k: {} for k in ('plants', 'groups', 'ptypes', 'stypes', 'sps', 'units', 'kinds')}
     prods, slocs = {}, {}
 
@@ -751,9 +751,10 @@ def stock_compact(rows, asof_day, allowed=None, last=None):
             continue
         kind = ''
         if allowed is not None:
-            kind = allowed.get(((r.get('Plant') or ''), (r.get('StorageLocation') or '')))
-            if kind is None:
+            info = allowed.get(((r.get('Plant') or ''), (r.get('StorageLocation') or '')))
+            if info is None:
                 continue
+            kind = info[0]
         pid = (r.get('Product') or '').lstrip('0') or '(blank)'
         if pid not in prods:
             prods[pid] = [len(prods), (r.get('ProductName') or '').strip()]
@@ -775,6 +776,7 @@ def stock_compact(rows, asof_day, allowed=None, last=None):
             last_map.get(((r.get('Plant') or ''), pid), 0),
         ])
     data = {'asofDay': asof_day, 'rows': out, 'onlyListed': allowed is not None, 'listedCount': len(allowed) if allowed is not None else 0,
+            'listed': sorted([p, c, v[1], v[0]] for (p, c), v in allowed.items()) if allowed is not None else [],
             'issuesRead': last is not None, 'issuesFrom': _day_of_iso(re.search(r"datetime'(\d{4}-\d\d-\d\d)", ISSUE_DATE_FILTER).group(1)),
             'prods': [[pid, v[1]] for pid, v in sorted(prods.items(), key=lambda kv: kv[1][0])],
             'slocs': [[k[0], k[1]] for k, _ in sorted(slocs.items(), key=lambda kv: kv[1])]}

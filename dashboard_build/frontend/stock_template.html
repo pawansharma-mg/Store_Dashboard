@@ -76,7 +76,8 @@ tr.sel td{background:rgba(28,173,228,.14)!important}
 .tscroll{overflow:auto;max-height:75vh}
 .tscroll table{min-width:1450px}
 .ipm{font-weight:700}
-.topcard{margin-top:16px;border-top:3px solid var(--brand-red)}
+.topcard{margin-top:16px;border-top:3px solid var(--brand-red);scroll-margin-top:150px}
+.subh{margin:16px 0 6px;font-size:.85rem;font-weight:700;color:var(--ink2)}
 .deadbar{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
 .btn.alt{background:transparent;color:var(--brand-dark);border:1px solid var(--brand);height:36px}
 .btn.alt:hover{background:rgba(28,173,228,.12)}
@@ -136,6 +137,13 @@ tr.sel td{background:rgba(28,173,228,.14)!important}
   <div class="chips" id="chips"></div>
 
   <section class="kpis" id="kpis"><div id="kpiMain" style="display:contents"></div><div id="kpiOpt" style="display:contents"></div></section>
+
+  <section class="card topcard" id="tileCard" hidden>
+    <h2><span id="tileTitle"></span><span class="badge-live">LIVE</span></h2>
+    <p class="hint" id="tileHint"></p>
+    <div class="tbox" id="tileBox"></div>
+    <div class="pager"><span id="tileInfo"></span><div><button class="btn" id="tileAll" type="button">See all</button></div></div>
+  </section>
 
   <section class="card topcard" id="topCard">
     <h2>Top 5 materials by stock value<span class="badge-live">LIVE</span></h2>
@@ -214,7 +222,7 @@ function fmtINR(v){const a=Math.abs(v);if(a>=1e7)return '₹'+(v/1e7).toFixed(2)
 const fmtQ=(q,u)=>q.toLocaleString('en-IN',{maximumFractionDigits:3})+' '+u;
 
 let D=null,R=[],renderToken=0,SPLIT=false,CUR=null;
-const S={top:true,dead:false,deadAll:false,all:false,plant:'',cat:null,sloc:null,stype:null,sp:'',grp:null,q:''};
+const S={tile:null,tileAll:false,top:true,dead:false,deadAll:false,all:false,plant:'',cat:null,sloc:null,stype:null,sp:'',grp:null,q:''};
 
 function pass(r,skip){
   skip=skip||[];
@@ -246,15 +254,21 @@ const fmtDay=d=>new Date(d*DAYMS).toLocaleDateString('en-GB',{day:'2-digit',mont
 function cutoffDay(asof){const t=new Date(asof*DAYMS);let y=t.getUTCFullYear(),m=t.getUTCMonth()-5;const d=t.getUTCDate();if(m<0){m+=12;y--;}const dim=new Date(Date.UTC(y,m+1,0)).getUTCDate();return Math.floor(Date.UTC(y,m,Math.min(d,dim))/DAYMS);}
 // stock lines of one material in one plant make one item
 function itemsOf(rows){const m=new Map();for(const r of rows){const k=r.plant+'|'+r.p;let x=m.get(k);if(!x)m.set(k,x={plant:r.plant,p:r.p,id:r.id,name:r.name,grp:r.grp,unit:r.unit,qty:0,val:0,last:r.last,kinds:new Set()});x.qty+=r.qty;x.val+=r.val;x.kinds.add(r.kind);}return [...m.values()];}
+// column helpers of the material tables (cat: show the Category column)
+function mkHelpers(cat){
+  const cut=cutoffDay(D.asofDay),used=!!D.issuesRead;
+  const lastCell=x=>!used?'–':x.last?`<span class="pill ${x.last<cut?'pend':'ok'}" title="Last goods issue (stock out) of this material in plant ${esc(x.plant)}">${fmtDay(x.last)}</span>`:`<span class="pill pend" title="No goods issue of this material since ${fmtDay(D.issuesFrom)}">Not since ${fmtDay(D.issuesFrom)}</span>`;
+  const head=(first)=>`<thead><tr><th>${first}</th><th>Material</th><th>Description</th><th>Plant</th>${cat?'<th>Category</th>':''}<th>Material group</th><th class="num">Stock quantity</th><th class="num">Stock value</th>`;
+  const line=(x,i)=>`<td>${i}</td><td class="nw">${esc(x.id)}</td><td>${esc(x.name)}</td><td>${esc(x.plant)}</td>${cat?`<td class="nw${x.kinds.has(IPM)?' ipm':''}">${esc([...x.kinds].sort().join(' + '))}</td>`:''}<td>${esc(mgName(x.grp))}</td><td class="num nw"><b>${fmtQ(x.qty,esc(x.unit))}</b></td><td class="num nw"><b>${fmtINR(x.val)}</b></td>`;
+  return {cut,used,lastCell,head,line};
+}
 function renderTop(){
   if(!CUR||!D)return;
   // this section covers the Store locations only: Internal Plant material is left out
   const base=SPLIT?CUR.rows.filter(r=>r.kind!==IPM):CUR.rows;
-  const it=itemsOf(base),total=base.reduce((s,r)=>s+r.val,0),cut=cutoffDay(D.asofDay),used=!!D.issuesRead;
+  const it=itemsOf(base),total=base.reduce((s,r)=>s+r.val,0);
+  const {cut,used,lastCell,head,line}=mkHelpers(false);
   const emptyMsg=`<div class="empty">${SPLIT&&S.cat===IPM?'This section covers Store locations only; Internal Plant material is not included.':'Nothing matches the filters.'}</div>`;
-  const lastCell=x=>!used?'–':x.last?`<span class="pill ${x.last<cut?'pend':'ok'}" title="Last goods issue (stock out) of this material in plant ${esc(x.plant)}">${fmtDay(x.last)}</span>`:`<span class="pill pend" title="No goods issue of this material since ${fmtDay(D.issuesFrom)}">Not since ${fmtDay(D.issuesFrom)}</span>`;
-  const head=(first)=>`<thead><tr><th>${first}</th><th>Material</th><th>Description</th><th>Plant</th><th>Material group</th><th class="num">Stock quantity</th><th class="num">Stock value</th>`;
-  const line=(x,i)=>`<td>${i}</td><td class="nw">${esc(x.id)}</td><td>${esc(x.name)}</td><td>${esc(x.plant)}</td><td>${esc(mgName(x.grp))}</td><td class="num nw"><b>${fmtQ(x.qty,esc(x.unit))}</b></td><td class="num nw"><b>${fmtINR(x.val)}</b></td>`;
   const top=it.slice().sort((a,b)=>b.val-a.val).slice(0,5),topVal=top.reduce((s,x)=>s+x.val,0);
   const dead=used?it.filter(x=>!x.last||x.last<cut).sort((a,b)=>b.val-a.val):[],dv=dead.reduce((s,x)=>s+x.val,0);
   // the two options are tiles next to the other tiles: click to show or hide the table
@@ -274,6 +288,52 @@ function renderTop(){
 const byValue=m=>[...m.entries()].sort((a,b)=>b[1].val-a[1].val||b[1].n-a[1].n);
 const slocLabel=(code,name,plant)=>(name||code||'No storage location')+(code&&name?' ('+code+')':'')+' · '+plant;
 
+// details of a tile: click a tile to open them under the tiles
+const TILE_INFO={
+  val:['Stock value by plant and stock type','Where the stock value of the current filters sits.'],
+  store:['Store stock value: materials','Materials (per plant) in the Store locations, most stock value first.'],
+  ipm:['Internal Plant material value: materials','Materials (per plant) in the Internal Plant material locations, most stock value first.'],
+  mats:['Materials with stock','Every material (per plant) with stock for the current filters, most stock value first.'],
+  lines:['Stock lines','One line per material, storage location and stock type, most stock value first.'],
+  slocs:['Storage locations with stock','Locations that hold stock for the current filters, most stock value first.'],
+  qi:['In quality inspection','Stock lines in quality inspection (stock type 02), most stock value first.'],
+  listed:['Store locations in your list','Every location of the list, with or without stock. The plant and category filters apply.'],
+  vendor:['At vendor (subcontracting)','Stock lines lying at a vendor (special stock O), most stock value first.']
+};
+function renderTile(){
+  const k=S.tile;
+  if(!k||!CUR||!D||!TILE_INFO[k]){$('tileCard').hidden=true;return;}
+  $('tileCard').hidden=false;
+  $('tileTitle').textContent=TILE_INFO[k][0];$('tileHint').textContent=TILE_INFO[k][1];
+  const rows=CUR.rows,H=mkHelpers(SPLIT),none='<div class="empty">Nothing matches the filters.</div>';
+  let html='',n=0,paged=true;
+  const cut25=a=>S.tileAll?a:a.slice(0,25);
+  const items=its=>{const s=its.slice().sort((a,b)=>b.val-a.val);n=s.length;return s.length?'<table>'+H.head('#')+'<th>Last used</th></tr></thead><tbody>'+cut25(s).map((x,i)=>`<tr>${H.line(x,i+1)}<td class="nw">${H.lastCell(x)}</td></tr>`).join('')+'</tbody></table>':none;};
+  const lines=rs=>{const s=rs.slice().sort((a,b)=>b.val-a.val||b.qty-a.qty);n=s.length;return s.length?`<table><thead><tr><th>#</th><th>Material</th><th>Description</th><th>Plant</th><th>Storage location</th>${SPLIT?'<th>Category</th>':''}<th>Stock type</th><th class="num">Stock quantity</th><th class="num">Stock value</th></tr></thead><tbody>`+cut25(s).map((r,i)=>`<tr><td>${i+1}</td><td class="nw">${esc(r.id)}</td><td>${esc(r.name)}</td><td>${esc(r.plant)}</td><td>${esc(r.slocName||r.sloc||'–')}</td>${SPLIT?`<td class="nw${r.kind===IPM?' ipm':''}">${esc(r.kind)}</td>`:''}<td class="nw">${esc(stkName(r.st))}</td><td class="num nw"><b>${fmtQ(r.qty,esc(r.unit))}</b></td><td class="num nw"><b>${r.val?fmtINR(r.val):'–'}</b></td></tr>`).join('')+'</tbody></table>':none;};
+  const locAgg=()=>{const m=new Map();for(const r of rows){let x=m.get(r.skey);if(!x)m.set(r.skey,x={plant:r.plant,code:r.sloc,name:r.slocName,kind:r.kind,n:0,val:0,mats:new Set()});x.n++;x.val+=r.val;x.mats.add(r.p);}return m;};
+  const share=v=>CUR.total?(v/CUR.total*100).toFixed(1)+'%':'–';
+  const locTable=ls=>ls.length?`<table><thead><tr><th>#</th><th>Plant</th><th>Storage location</th>${SPLIT?'<th>Category</th>':''}<th class="num">Materials</th><th class="num">Lines</th><th class="num">Stock value</th><th class="num">Share</th></tr></thead><tbody>`+ls.map((x,i)=>`<tr><td>${i+1}</td><td>${esc(x.plant)}</td><td>${esc(x.name||x.code)}${x.name&&x.code?' <span class="matno">('+esc(x.code)+')</span>':''}</td>${SPLIT?`<td class="nw${x.kind===IPM?' ipm':''}">${esc(x.kind)}</td>`:''}<td class="num">${x.n?fmtN(x.mats.size):'–'}</td><td class="num">${x.n?fmtN(x.n):'<span class="pill none">No stock</span>'}</td><td class="num nw"><b>${x.n?fmtINR(x.val):'–'}</b></td><td class="num">${x.n?share(x.val):'–'}</td></tr>`).join('')+'</tbody></table>':none;
+  if(k==='val'){
+    paged=false;const pl=new Map(),ty=new Map();for(const r of rows){add(pl,r.plant,r);add(ty,r.st,r);}
+    html='<h3 class="subh">By plant</h3>'+aggTable(byValue(pl),'Plant',k=>esc(k))+'<h3 class="subh">By stock type</h3>'+aggTable(byValue(ty),'Stock type',k=>esc(stkName(k)));
+  }else if(k==='store')html=items(itemsOf(rows.filter(r=>r.kind!==IPM)));
+  else if(k==='ipm')html=items(itemsOf(rows.filter(r=>r.kind===IPM)));
+  else if(k==='mats')html=items(itemsOf(rows));
+  else if(k==='lines')html=lines(rows);
+  else if(k==='qi')html=lines(rows.filter(r=>r.st==='02'));
+  else if(k==='vendor')html=lines(rows.filter(r=>r.sp==='O'));
+  else if(k==='slocs'){paged=false;const ls=[...locAgg().values()].sort((a,b)=>b.val-a.val);n=ls.length;html=locTable(ls);}
+  else if(k==='listed'){
+    paged=false;const agg=locAgg();
+    const ls=(D.listed||[]).filter(l=>(!S.plant||l[0]===S.plant)&&(S.cat===null||l[3]===S.cat)).map(l=>agg.get(l[0]+'|'+l[1])||{plant:l[0],code:l[1],name:l[2],kind:l[3],n:0,val:0,mats:new Set()}).sort((a,b)=>b.val-a.val||a.plant.localeCompare(b.plant)||a.code.localeCompare(b.code));
+    n=ls.length;html=locTable(ls);
+  }
+  $('tileBox').innerHTML=html;
+  $('tileInfo').textContent=!n?'':paged?(S.tileAll||n<=25?`All ${fmtN(n)} shown`:`Showing the first 25 of ${fmtN(n)}`):`${fmtN(n)} locations`;
+  $('tileAll').hidden=!paged||n<=25;$('tileAll').textContent=S.tileAll?'Show first 25':'See all '+fmtN(n);
+}
+const reveal=id=>{const el=$(id);if(el&&!el.hidden)el.scrollIntoView({behavior:'smooth',block:'start'});};
+
 function render(){
   if(!D)return;  // the data is still loading
   const rows=R.filter(r=>pass(r));
@@ -281,11 +341,13 @@ function render(){
   // KPIs
   let val=0,quality=0,vendor=0,ipmVal=0;const mats=new Set(),slocs=new Set();
   for(const r of rows){val+=r.val;mats.add(r.p);slocs.add(r.skey);if(r.st==='02')quality+=r.val;if(r.sp==='O')vendor+=r.val;if(r.kind===IPM)ipmVal+=r.val;}
-  const tiles=[[fmtINR(val),'Stock value (INR)']];
-  if(SPLIT)tiles.push([fmtINR(val-ipmVal),'Store stock value'],[fmtINR(ipmVal),IPM+' value']);
-  tiles.push([fmtN(mats.size),'Materials with stock'],[fmtN(rows.length),'Stock lines (material × location × type)'],[fmtN(slocs.size),'Storage locations with stock'],[fmtINR(quality),'In quality inspection'],D.onlyListed?[fmtN(D.listedCount),'Store locations in your list']:[fmtINR(vendor),'At vendor (subcontracting)']);
+  const tiles=[[fmtINR(val),'Stock value (INR)','val']];
+  if(SPLIT)tiles.push([fmtINR(val-ipmVal),'Store stock value','store'],[fmtINR(ipmVal),IPM+' value','ipm']);
+  tiles.push([fmtN(mats.size),'Materials with stock','mats'],[fmtN(rows.length),'Stock lines (material × location × type)','lines'],[fmtN(slocs.size),'Storage locations with stock','slocs'],[fmtINR(quality),'In quality inspection','qi'],D.onlyListed?[fmtN(D.listedCount),'Store locations in your list','listed']:[fmtINR(vendor),'At vendor (subcontracting)','vendor']);
+  // every tile opens its details under the tiles
   $('kpiMain').innerHTML=tiles
-    .map(t=>`<div class="tile"><div class="tv">${t[0]}</div><div class="tl">${t[1]}</div></div>`).join('');
+    .map(t=>`<button type="button" class="tile tilebtn" data-tile="${t[2]}" aria-expanded="${S.tile===t[2]}"><div class="tv">${t[0]}</div><div class="tl">${t[1]}</div><div class="ts">${S.tile===t[2]?'click to hide':'click for details'}</div></button>`).join('');
+  renderTile();
   // chips
   const c=[];
   if(S.plant)c.push(['plant','Plant '+S.plant]);
@@ -349,7 +411,12 @@ document.addEventListener('click',e=>{
     if(c==='sp'||c==='all'){S.sp='';$('spSel').value='';}
     if(c==='grp'||c==='all'){S.grp=null;$('grpSel').value='';}
     if(c==='q'||c==='all'){S.q='';$('q').value='';}}
-  else if(t.dataset.tile!==undefined){if(t.dataset.tile==='top')S.top=!S.top;else S.dead=!S.dead;renderTop();return;}
+  else if(t.dataset.tile!==undefined){const k=t.dataset.tile;
+    if(k==='top'){S.top=!S.top;renderTop();if(S.top)reveal('topCard');}
+    else if(k==='dead'){S.dead=!S.dead;renderTop();if(S.dead)reveal('deadCard');}
+    else{S.tile=S.tile===k?null:k;S.tileAll=false;render();if(S.tile)reveal('tileCard');}
+    return;}
+  else if(t.id==='tileAll'){S.tileAll=!S.tileAll;renderTile();return;}
   else if(t.id==='deadAll'){S.deadAll=!S.deadAll;renderTop();return;}
   else if(t.id==='seeAll'){S.all=!S.all;render();if(!S.all)document.querySelector('.tscroll').scrollTop=0;return;}
   else return;
