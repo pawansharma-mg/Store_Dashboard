@@ -124,6 +124,8 @@ Project level:
   department code of an old-style cost center (`CODE_DEPT`), plant-common function (`PLT_FUNC`), the reservation creator's listed department (`DEPT_USERS`),
   the creator's usual department (at least 20 lines and 75% in one department), else "Unassigned". The basis is kept per line.
 * User IDs are shown by name from `USER_NAMES`; IDs without a name show as the ID.
+* **Every tile opens its details** when clicked (click again to hide; the page scrolls to them), and the details follow the filters: Net issue value (issues 201 and reversals 202, and by plant), Issue lines (newest first), Cost centers (department, lines, net value, share), Materials (net quantity, net value, price per unit, last issued). Long lists show the first 25 with "See all".
+* **Top 5 materials issued** is a tile and a card (open by default; click the tile to hide or show). Items are materials; net value = issues minus reversals. A switch "Rank by" ranks them by issue value (default) or by price per unit (net value divided by net quantity, the most expensive items first).
 
 ### Pending Purchase Orders (`/po`)
 * The supplier view repeats each item once per supplier row, so lines are **de-duplicated by PO + item**. Delivered and to-deliver quantity come from the status view.

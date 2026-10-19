@@ -84,6 +84,15 @@ tr.sel td{background:rgba(28,173,228,.14)!important}
 .stick .top{position:static}
 @media (max-width:700px){.stick{position:static}}
 .tscroll>table>thead th{position:sticky;top:0;z-index:3;background:var(--surface);box-shadow:0 2px 0 var(--grid)}
+[hidden]{display:none!important}
+.tile .ts{font-size:.72rem;font-weight:600;color:var(--brand-dark);margin-top:6px}
+.tilebtn{text-align:left;font:inherit;color:inherit;cursor:pointer;width:100%}
+.tilebtn:hover{box-shadow:0 0 0 2px rgba(28,173,228,.35)}
+.tilebtn[aria-expanded="true"]{box-shadow:0 0 0 2px var(--brand)}
+.tile.opt1{border-top-color:var(--brand-red)}
+.topcard{margin-top:16px;border-top:3px solid var(--brand-red);scroll-margin-top:150px}
+.topby{display:flex;align-items:center;gap:10px;margin:0 0 12px;font-size:.8rem;color:var(--ink2)}
+.subh{margin:16px 0 6px;font-size:.85rem;font-weight:700;color:var(--ink2)}
 </style>
 </head>
 <body>
@@ -108,7 +117,21 @@ tr.sel td{background:rgba(28,173,228,.14)!important}
     <label class="fld grow"><span>Search</span><input id="q" type="search" placeholder="Cost center, material, storage location, reservation, document, user name"></label>
   </section>
   <div class="chips" id="chips"></div>
-  <section class="kpis" id="kpis"></section>
+  <section class="kpis" id="kpis"><div id="kpiMain" style="display:contents"></div><div id="kpiOpt" style="display:contents"></div></section>
+
+  <section class="card topcard" id="tileCard" hidden>
+    <h2><span id="tileTitle"></span><span class="badge-live">LIVE</span></h2>
+    <p class="hint" id="tileHint"></p>
+    <div class="tbox" id="tileBox"></div>
+    <div class="pager"><span id="tileInfo"></span><div><button class="btn" id="tileAll" type="button">See all</button></div></div>
+  </section>
+
+  <section class="card topcard" id="topCard">
+    <h2>Top 5 materials issued<span class="badge-live">LIVE</span></h2>
+    <p class="hint" id="topHint"></p>
+    <div class="topby"><span>Rank by</span><div class="seg" id="topBySeg"><button type="button" data-topby="val" class="on">Issue value</button><button type="button" data-topby="price">Price per unit</button></div></div>
+    <div class="tbox" id="top5"></div>
+  </section>
 
   <section class="grid">
     <article class="card">
@@ -170,8 +193,8 @@ const mIdx=d=>{const t=new Date(d*864e5);return t.getUTCFullYear()*12+t.getUTCMo
 const mName=k=>MON[k%12]+' '+Math.floor(k/12);
 const dayOf=v=>v?Math.floor(Date.parse(v)/864e5):null;
 
-let D=null,R=[],renderToken=0;
-const S={all:false,plant:'',cc:null,dept:null,from:null,to:null,q:'',mon:null,page:0};
+let D=null,R=[],renderToken=0,CUR=null,tileToken=0;
+const S={tile:null,tileAll:false,top:true,topBy:'val',all:false,plant:'',cc:null,dept:null,from:null,to:null,q:'',mon:null,page:0};
 
 function pass(r,skip){
   skip=skip||[];
@@ -196,14 +219,80 @@ function aggTable(list,head,cell,sel){
 }
 const byValue=m=>[...m.entries()].sort((a,b)=>b[1].amt-a[1].amt);
 
+// one item per material: net quantity and value (issues minus reversals), lines, last posting day
+function matItems(rows){const m=new Map();for(const r of rows){let x=m.get(r.mat);if(!x)m.set(r.mat,x={mat:r.mat,n:0,qty:0,amt:0,unit:r.unit,last:0});x.n++;x.qty+=r.qty;x.amt+=r.amt;if(r.day!==null&&r.day>x.last)x.last=r.day;}return [...m.values()];}
+const unitPrice=x=>x.qty>0&&x.amt>0?x.amt/x.qty:0;
+const fmtPrice=v=>v?'₹'+v.toLocaleString('en-IN',{maximumFractionDigits:2}):'–';
+const fmtQty=(q,u)=>q.toLocaleString('en-IN',{maximumFractionDigits:3})+' '+u;
+const shareOf=(v,t)=>t?(v/t*100).toFixed(1)+'%':'–';
+const matHead=first=>`<thead><tr><th>${first}</th><th>Material</th><th class="num">Lines</th><th class="num">Net quantity</th><th class="num">Net value</th><th class="num">Price per unit</th><th>Last issued</th><th class="num">Share</th></tr></thead>`;
+const matRow=(x,i,total)=>`<tr><td>${i+1}</td><td>${esc(x.mat)}</td><td class="num">${fmtN(x.n)}</td><td class="num nw">${fmtQty(x.qty,esc(x.unit))}</td><td class="num nw"><b>${fmtINR(x.amt)}</b></td><td class="num nw">${fmtPrice(unitPrice(x))}</td><td class="nw">${x.last?fmtDay(x.last):'–'}</td><td class="num">${shareOf(x.amt,total)}</td></tr>`;
+
+function renderTop(){
+  if(!CUR||!D)return;
+  const its=matItems(CUR.rows),total=CUR.amt;
+  const top=its.slice().sort((a,b)=>b.amt-a.amt).slice(0,5),topVal=top.reduce((s,x)=>s+x.amt,0);
+  const shown=S.topBy==='price'?its.filter(x=>unitPrice(x)>0).sort((a,b)=>unitPrice(b)-unitPrice(a)).slice(0,5):top;
+  $('kpiOpt').innerHTML=`<button type="button" class="tile tilebtn opt1" data-tile="top" aria-expanded="${S.top}"><div class="tv">${fmtINR(topVal)}</div><div class="tl">Top 5 materials issued</div><div class="ts">${total?shareOf(topVal,total)+' of the net issue value · ':''}${S.top?'click to hide':'click to show'}</div></button>`;
+  $('topCard').hidden=!S.top;
+  for(const b of document.querySelectorAll('#topBySeg button'))b.classList.toggle('on',b.dataset.topby===S.topBy);
+  $('topHint').textContent=S.topBy==='price'?'The 5 materials issued at the highest price per unit (net value divided by net quantity) for the current filters.':'The 5 materials with the most net issue value (issues minus reversals) for the current filters.';
+  if(S.top)$('top5').innerHTML=shown.length?'<table>'+matHead('#')+'<tbody>'+shown.map((x,i)=>matRow(x,i,total)).join('')+'</tbody></table>':'<div class="empty">Nothing matches the filters.</div>';
+}
+
+// details of a tile: click a tile to open them under the tiles
+const TILE_INFO={
+  val:['Net issue value','Issues (movement 201) minus reversals (202) for the current filters, and where the value went by plant.'],
+  lines:['Issue lines','Every issue line of the current filters, newest first.'],
+  ccs:['Cost centers','Cost centers that had issues for the current filters, most net value first.'],
+  mats:['Materials','Materials issued for the current filters, most net value first.']
+};
+const MVT_TXT={'201':'201 · Issue to a cost center','202':'202 · Reversal of an issue'};
+function renderTile(){
+  const k=S.tile;
+  if(!k||!CUR||!D||!TILE_INFO[k]){$('tileCard').hidden=true;return;}
+  $('tileCard').hidden=false;
+  $('tileTitle').textContent=TILE_INFO[k][0];$('tileHint').textContent=TILE_INFO[k][1];
+  const rows=CUR.rows,total=CUR.amt,none='<div class="empty">Nothing matches the filters.</div>';
+  let list=null,thead='',rowFn=null,html='',paged=true,n=0;
+  if(k==='val'){
+    paged=false;const mv=new Map(),pl=new Map();for(const r of rows){add(mv,r.mvt,r);add(pl,r.plant,r);}
+    html='<h3 class="subh">Issues and reversals</h3>'+aggTable([...mv.entries()].sort((a,b)=>b[1].amt-a[1].amt),'Movement',m=>esc(MVT_TXT[m]||m))+'<h3 class="subh">By plant</h3>'+aggTable(byValue(pl),'Plant',p=>esc(p));
+  }else if(k==='lines'){
+    list=rows.slice().sort((a,b)=>(b.day||0)-(a.day||0)||b.doc.localeCompare(a.doc));
+    thead='<thead><tr><th>#</th><th>Posting date</th><th>Mat. doc</th><th>Cost center</th><th>Department</th><th>Material</th><th class="num">Qty</th><th class="num">Value</th><th>Posted by</th></tr></thead>';
+    rowFn=(r,i)=>`<tr><td>${i+1}</td><td class="nw">${r.day===null?'–':fmtDay(r.day)}</td><td class="nw">${esc(r.doc)}</td><td>${esc(r.cc)}</td><td class="nw">${esc(deptLabel(r.dept))}</td><td>${esc(r.mat)}</td><td class="num nw">${fmtQty(r.qty,esc(r.unit))}</td><td class="num nw">${fmtINR(r.amt)}</td><td class="nw" title="${esc(uTip(r.user))}">${esc(uName(r.user))}</td></tr>`;
+  }else if(k==='ccs'){
+    paged=false;const m=new Map();for(const r of rows){let x=m.get(r.cc);if(!x)m.set(r.cc,x={cc:r.cc,dept:r.dept,n:0,amt:0});x.n++;x.amt+=r.amt;}
+    const ls=[...m.values()].sort((a,b)=>b.amt-a.amt);n=ls.length;
+    html=ls.length?'<table><thead><tr><th>#</th><th>Cost center</th><th>Department</th><th class="num">Lines</th><th class="num">Net value</th><th class="num">Share</th></tr></thead><tbody>'+ls.map((x,i)=>`<tr><td>${i+1}</td><td>${esc(x.cc)}</td><td class="nw">${esc(deptLabel(x.dept))}</td><td class="num">${fmtN(x.n)}</td><td class="num nw"><b>${fmtINR(x.amt)}</b></td><td class="num">${shareOf(x.amt,total)}</td></tr>`).join('')+'</tbody></table>':none;
+  }else if(k==='mats'){
+    list=matItems(rows).sort((a,b)=>b.amt-a.amt);thead=matHead('#');rowFn=(x,i)=>matRow(x,i,total);
+  }
+  if(list){
+    n=list.length;const slice=S.tileAll?list:list.slice(0,25),first=S.tileAll?slice.slice(0,300):slice;
+    $('tileBox').innerHTML=list.length?`<table>${thead}<tbody>${first.map(rowFn).join('')}</tbody></table>`:none;
+    // See all can mean thousands of lines: the first rows appear at once and the rest are added in batches
+    const token=++tileToken;let done=first.length;
+    const more=()=>{if(token!==tileToken||done>=slice.length)return;const tb=$('tileBox').querySelector('tbody');if(!tb)return;tb.insertAdjacentHTML('beforeend',slice.slice(done,done+500).map((x,i)=>rowFn(x,done+i)).join(''));done+=500;setTimeout(more,0);};
+    setTimeout(more,0);
+  }else{tileToken++;$('tileBox').innerHTML=html;}
+  $('tileInfo').textContent=!n?'':paged?(S.tileAll||n<=25?`All ${fmtN(n)} shown`:`Showing the first 25 of ${fmtN(n)}`):`${fmtN(n)} cost centers`;
+  $('tileAll').hidden=!paged||n<=25;$('tileAll').textContent=S.tileAll?'Show first 25':'See all '+fmtN(n);
+}
+const reveal=id=>{const el=$(id);if(el&&!el.hidden)el.scrollIntoView({behavior:'smooth',block:'start'});};
+
 function render(){
   if(!D)return;  // the data is still loading
   const rows=R.filter(r=>pass(r));
   // KPIs
   let amt=0;const ccs=new Set(),mats=new Set();
   for(const r of rows){amt+=r.amt;ccs.add(r.cc);mats.add(r.mat);}
-  $('kpis').innerHTML=[[fmtINR(amt),'Net issue value'],[fmtN(rows.length),'Issue lines'],[fmtN(ccs.size),'Cost centers'],[fmtN(mats.size),'Materials']]
-    .map(t=>`<div class="tile"><div class="tv">${t[0]}</div><div class="tl">${t[1]}</div></div>`).join('');
+  CUR={rows,amt};
+  // every tile opens its details under the tiles
+  $('kpiMain').innerHTML=[[fmtINR(amt),'Net issue value','val'],[fmtN(rows.length),'Issue lines','lines'],[fmtN(ccs.size),'Cost centers','ccs'],[fmtN(mats.size),'Materials','mats']]
+    .map(t=>`<button type="button" class="tile tilebtn" data-tile="${t[2]}" aria-expanded="${S.tile===t[2]}"><div class="tv">${t[0]}</div><div class="tl">${t[1]}</div><div class="ts">${S.tile===t[2]?'click to hide':'click for details'}</div></button>`).join('');
+  renderTop();renderTile();
   // chips
   const c=[];
   if(S.plant)c.push(['plant','Plant '+S.plant]);
@@ -256,6 +345,12 @@ document.addEventListener('click',e=>{
     if(c==='date'){S.from=S.to=null;$('dFrom').value=$('dTo').value='';}
     if(c==='all')setMonthDates();
     if(c==='q'||c==='all'){S.q='';$('q').value='';}}
+  else if(t.dataset.tile!==undefined){const k=t.dataset.tile;
+    if(k==='top'){S.top=!S.top;renderTop();if(S.top)reveal('topCard');}
+    else{S.tile=S.tile===k?null:k;S.tileAll=false;render();if(S.tile)reveal('tileCard');}
+    return;}
+  else if(t.dataset.topby!==undefined){S.topBy=t.dataset.topby;renderTop();return;}
+  else if(t.id==='tileAll'){S.tileAll=!S.tileAll;renderTile();return;}
   else if(t.id==='seeAll'){S.all=!S.all;render();if(!S.all)document.querySelector('.tscroll').scrollTop=0;return;}
   else return;
   S.page=0;render();
