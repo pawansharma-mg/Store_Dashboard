@@ -1,18 +1,19 @@
 # Mittal Group SAP dashboard
 
 A live, multi-page dashboard on top of SAP S/4HANA Cloud OData CDS views. A small Python server (`backend/serve_dashboard.py`) calls SAP, caches the
-result and serves the five pages of `frontend/`. There is no database and no build step: standard library only, Python 3.12.
+result and serves the six pages of `frontend/` (five data pages and one Summary page that combines them). There is no database and no build step: standard library only, Python 3.12.
 
 ```
 dashboard_build/
   backend/    Python server, SAP access, lookup tables and the hand-edited data files (backend/data)
-  frontend/   the five pages (HTML, CSS and JavaScript in one file each) and the logo
+  frontend/   the six pages (HTML, CSS and JavaScript in one file each) and the logo
   Dockerfile  Cloud Run image (copies backend and frontend)
   README.md
 ```
 
 | Page | Menu tab | CDS view(s) | What it shows |
 |---|---|---|---|
+| `/summary` | Summary | the four views below (no extra SAP call) | One page with the headline figures of the five pages below, filtered by plant and date |
 | `/` | Pending PR | `YY1_STORE_PENDING_PR_CDS` | Purchase requisitions still to be ordered: ageing, plant and PO status, purchasing group, user, month and day wise, item list |
 | `/issue` | Store Issue | `YY1_STORE_RESERVATION_CDS` | Goods issued to cost centers since 1 Jan 2026, by department, cost center, material, month and day |
 | `/po` | Pending Purchase Orders | `YY1_PO_ITEM_SUPPLIER_CDS` + `YY1_PO_ITEM_STATUS_CDS` | PO items since 1 Jan 2026 with supplier; by default only items still to be delivered (fully or in part) |
@@ -92,6 +93,7 @@ Frontend (`frontend/`): what the browser shows. The server serves these files; i
 | `frontend/po_template.html` | Pending Purchase Orders page |
 | `frontend/po_approval_template.html` | PO Approval Pending page |
 | `frontend/stock_template.html` | Store Stock page |
+| `frontend/summary_template.html` | Summary page: reads `/api/pr`, `/api/issue`, `/api/po`, `/api/stock` and `/api/po-approvers` in the browser |
 | `frontend/logo.png` | Logo |
 
 Project level:
@@ -103,6 +105,13 @@ Project level:
 | `..\Start_Live_Dashboard.bat` | Local launcher (starts `backend\serve_dashboard.py`) |
 
 ## Page rules
+
+### Summary (`/summary`)
+* The first tab of the menu. It adds no SAP call of its own: the browser reads the same `/api/*` data as the other pages and works the figures out with the **same rules as those pages** (copied from them), so a figure here equals the figure on the page with the same filters.
+* Top row: one headline tile per page (Pending PR items, Store issue value, PO value still to deliver, POs waiting for approval, Store stock value); click a tile to jump to its card. Below, one card per page with four tiles, a small table (by plant, top 5 departments, top 5 suppliers, top 5 approvers, top 5 materials) and an "Open page" link.
+* Filters: Plant and a date range (the whole current month at first; "Current month" resets it). The dates apply to Pending PR (PR creation date), Store Issue (posting date), Pending Purchase Orders and PO Approval Pending (PO creation date). Store Stock is the stock of today and takes only the plant. Under each figure "all dates" shows the same figure without the dates.
+* Definitions used: Pending PR = quantity still not ordered, not closed, status "No PO yet"; PO = still to be delivered > 0 (value to deliver as on the PO page); approval = POs In Approval (state 03) or on the approver list, approver = confirmed or likely; stock = Store locations for Top 5 and Not used for 5 months. If the rules of a page change, change this page too (`prepPR`, `prepIssue`, `prepPO`, `buildApprovals`, `calcStock`).
+* Each card fills as its data arrives; a view that fails shows its error in its card.
 
 ### Pending PR (`/`)
 * Dates and counts follow the **PR creation (requisition) date**, never the release date.

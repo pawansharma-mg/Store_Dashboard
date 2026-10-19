@@ -36,6 +36,7 @@ TPL = os.path.join(FRONTEND, 'dashboard_template.html')
 ISSUE_TPL = os.path.join(FRONTEND, 'issue_template.html')
 PO_TPL = os.path.join(FRONTEND, 'po_template.html')
 STOCK_TPL = os.path.join(FRONTEND, 'stock_template.html')
+SUMMARY_TPL = os.path.join(FRONTEND, 'summary_template.html')
 PO_APPROVAL_TPL = os.path.join(FRONTEND, 'po_approval_template.html')
 LOGO = os.path.join(FRONTEND, 'logo.png')
 DEFAULT_BASE = 'https://my413077-api.s4hana.cloud.sap/sap/opu/odata/sap/YY1_STORE_PENDING_PR_CDS'
@@ -367,7 +368,7 @@ def stock_view(rows, asof_day, *extra):
     return stock_compact(rows, asof_day, load_stock_locations(), extra[0].state if extra else None)
 
 
-PAGES = {'/': TPL, '/index.html': TPL, '/issue': ISSUE_TPL, '/po': PO_TPL, '/po-approval': PO_APPROVAL_TPL, '/stock': STOCK_TPL}
+PAGES = {'/': TPL, '/index.html': TPL, '/issue': ISSUE_TPL, '/po': PO_TPL, '/po-approval': PO_APPROVAL_TPL, '/stock': STOCK_TPL, '/summary': SUMMARY_TPL}
 # User ID -> full name, put into the page like the data (no '<' in names, so it is safe inside a script tag).
 USERS_JSON = json.dumps(USER_NAMES, ensure_ascii=False, separators=(',', ':'))
 PGS_JSON = json.dumps(PG_NAMES, ensure_ascii=False, separators=(',', ':'))
