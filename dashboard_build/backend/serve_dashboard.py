@@ -15,9 +15,11 @@ import gzip
 import json
 import os
 import re
+import socket
 import sys
 import threading
 import time
+import traceback
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -64,6 +66,8 @@ CONSUME_QUERY = {'$select': ','.join(CONSUME_FIELDS), '$orderby': _ORDER,
 DEFAULT_USER = 'POWERBI_USER_PRD'
 PAGE = 5000
 CLOUD = bool(os.environ.get('K_SERVICE'))
+CSP = ("default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; "
+       "base-uri 'none'; form-action 'none'; frame-ancestors 'self'")
 
 
 def log(msg):
@@ -143,7 +147,8 @@ class Sap:
         # query may be a list of variants, simplest last: the first one SAP accepts is kept.
         self.queries = query if isinstance(query, list) else [query]
         self.base, self.entity, self.compact = base.rstrip('/'), entity, compact
-        # (base, entity, query) of views fetched together with this one; their rows are passed to compact after the main rows
+        # (base, entity, query[, fold[, optional]]) of views fetched together with this one; their rows are passed to compact after the main rows.
+        # An optional one that fails is left out (compact then gets one argument less) instead of failing the whole view.
         self.extra = list(extra)
         token = base64.b64encode(f'{user}:{password}'.encode('utf-8')).decode('ascii')
         self._auth = 'Basic ' + token
@@ -152,6 +157,19 @@ class Sap:
         self.cache = None          # (fetched_at, raw_json_bytes, gzipped_bytes)
 
     def _get(self, url):
+        """One SAP call. A network hiccup (timeout, connection reset) or a 502 / 503 / 504 is tried again up to 3 times; the login and
+        authorization errors are never retried (a wrong password must not be sent again and again)."""
+        for attempt in range(3):
+            try:
+                return self._get_once(url)
+            except SapError as e:
+                if attempt < 2 and getattr(e, 'transient', False):
+                    log(f'SAP did not answer ({e}); trying again in {2 * (attempt + 1)} s')
+                    time.sleep(2 * (attempt + 1))
+                    continue
+                raise
+
+    def _get_once(self, url):
         req = urllib.request.Request(url, headers={'Authorization': self._auth, 'Accept': 'application/json',
                                                    'Accept-Encoding': 'gzip'})
         try:
@@ -170,12 +188,17 @@ class Sap:
             if e.headers.get('Content-Encoding') == 'gzip':
                 body = gzip.decompress(body)
             detail = re.search(r'"value"\s*:\s*"([^"]+)"', body.decode('utf-8', 'replace'))
-            raise SapError(f'SAP returned HTTP {e.code}' + (f': {detail.group(1)}' if detail else '.'),
-                           400 if e.code == 400 else 502)
+            err = SapError(f'SAP returned HTTP {e.code}' + (f': {detail.group(1)}' if detail else '.'), 400 if e.code == 400 else 502)
+            err.transient = e.code in (502, 503, 504)
+            raise err
         except urllib.error.URLError as e:
-            raise SapError(f'Could not reach SAP: {e.reason}')
+            err = SapError(f'Could not reach SAP: {e.reason}')
+            err.transient = True
+            raise err
         except (TimeoutError, OSError) as e:
-            raise SapError(f'Could not reach SAP: {e}')
+            err = SapError(f'Could not reach SAP: {e}')
+            err.transient = True
+            raise err
 
     def _fetch_rows(self, base=None, entity=None, queries=None, fold=None):
         # fold(state, rows) -> state, called page by page when given: for views with too many rows to keep in memory
@@ -230,14 +253,23 @@ class Sap:
 
     def _refresh(self):
         rows = self._fetch_rows()
-        extra = [self._fetch_rows(x[0], x[1], [x[2]], x[3] if len(x) > 3 else None) for x in self.extra]
+        extra, used = [], []
+        for x in self.extra:
+            try:
+                extra.append(self._fetch_rows(x[0], x[1], [x[2]], x[3] if len(x) > 3 else None))
+                used.append(x)
+            except SapError as e:
+                if len(x) > 4 and x[4] and e.status not in (401, 403):
+                    log(f'{x[1]} could not be read ({e}); {self.entity} is shown without it')
+                    continue
+                raise
         # Today's date in India: Cloud Run runs on UTC, which is still yesterday until 05:30 IST.
         asof_day = int((time.time() + 5.5 * 3600) // 86400)
         data = self.compact(rows, asof_day, *extra)
         data['fetchedAt'] = int(time.time() * 1000)
         raw = json.dumps(data, separators=(',', ':'), ensure_ascii=False).encode('utf-8')
         self.cache = (time.time(), raw, gzip.compress(raw, 6))
-        log(f'fetched {len(rows):,} rows from SAP ({self.entity})' + ''.join(f' + {len(x):,} ({e})' for x, (_, e, *_) in zip(extra, self.extra)))
+        log(f'fetched {len(rows):,} rows from SAP ({self.entity})' + ''.join(f' + {len(x):,} ({e})' for x, (_, e, *_) in zip(extra, used)))
         return self.cache[1], self.cache[2]
 
     def _refresh_in_background(self):
@@ -245,6 +277,8 @@ class Sap:
             self._refresh()
         except SapError as e:
             log(f'background refresh failed: {e}')
+        except Exception as e:
+            log(f'background refresh of {self.entity} failed: {e}\n{traceback.format_exc()}')
         finally:
             self.busy.release()
 
@@ -380,7 +414,7 @@ def make_handler(apis):
         def log_message(self, *a):
             pass
 
-        def _send(self, code, body, ctype, gz=None):
+        def _send(self, code, body, ctype, gz=None, cache='no-store'):
             wants_gz = 'gzip' in self.headers.get('Accept-Encoding', '')
             if wants_gz and gz is None and len(body) > 1024:
                 gz = gzip.compress(body, 6)
@@ -392,11 +426,18 @@ def make_handler(apis):
                 self.send_header('Content-Encoding', 'gzip')
             self.send_header('Vary', 'Accept-Encoding')
             self.send_header('Content-Length', str(len(body)))
-            self.send_header('Cache-Control', 'no-store')
+            self.send_header('Cache-Control', cache)
             self.send_header('X-Content-Type-Options', 'nosniff')
             self.send_header('Referrer-Policy', 'no-referrer')
+            # the pages are self-contained (inline script and style, the logo, calls to this server only)
+            self.send_header('Content-Security-Policy', CSP)
+            self.send_header('X-Frame-Options', 'SAMEORIGIN')
             self.end_headers()
-            self.wfile.write(body)
+            if self.command != 'HEAD':
+                self.wfile.write(body)
+
+        def do_HEAD(self):
+            self.do_GET()
 
         def do_GET(self):
             u = urllib.parse.urlparse(self.path)
@@ -407,7 +448,7 @@ def make_handler(apis):
                 return self._send(200, html.encode('utf-8'), 'text/html; charset=utf-8')
             if u.path == '/logo.png':
                 with open(LOGO, 'rb') as f:
-                    return self._send(200, f.read(), 'image/png')
+                    return self._send(200, f.read(), 'image/png', cache='public, max-age=86400')
             if u.path == '/api/po-approvers':
                 return self._send(200, json.dumps({**load_approvers(), 'rules': load_rules()}, ensure_ascii=False).encode('utf-8'), 'application/json; charset=utf-8')
             if u.path in apis:
@@ -419,8 +460,16 @@ def make_handler(apis):
                     log(str(e))
                     body = json.dumps({'error': str(e)}).encode('utf-8')
                     return self._send(e.status, body, 'application/json; charset=utf-8')
+                except Exception as e:  # a bug in a compact function must come back as a message, not as a dropped connection
+                    log(f'{u.path} failed: {e}\n{traceback.format_exc()}')
+                    body = json.dumps({'error': f'The server could not prepare this data ({type(e).__name__}). See its window for details.'}).encode('utf-8')
+                    return self._send(500, body, 'application/json; charset=utf-8')
             self._send(404, b'Not found', 'text/plain')
     return H
+
+
+class _Srv6(ThreadingHTTPServer):
+    address_family = socket.AF_INET6
 
 
 def main():
@@ -458,7 +507,7 @@ def main():
              extra=[(PO_STATUS_BASE, 'YY1_PO_ITEM_STATUS', PO_STATUS_QUERY)])
     # Store stock: about 27,000 rows from SAP of which about 5,000 hold stock; same 30 minute refresh as the other big views.
     stock = Sap(STOCK_BASE, STOCK_ENTITY, STOCK_QUERY, stock_view, user, password, max(args.ttl, 1800), min_refresh=300,
-                extra=[(ISSUE_BASE, 'YY1_Store_Reservation', CONSUME_QUERY, consume_fold)])
+                extra=[(ISSUE_BASE, 'YY1_Store_Reservation', CONSUME_QUERY, consume_fold, True)])
     apis = {'/api/pr': sap, '/api/issue': issue, '/api/po': po, '/api/stock': stock}
     del password
 
@@ -491,6 +540,13 @@ def main():
     # On Windows, address reuse lets a second copy bind the same port while the old one keeps answering.
     ThreadingHTTPServer.allow_reuse_address = os.name != 'nt'
     srv = ThreadingHTTPServer((host, args.port), make_handler(apis))
+    if not CLOUD:
+        # "localhost" tries the IPv6 address ::1 first; if nothing listens there Windows waits about 2 seconds before it uses IPv4, on every new connection
+        try:
+            srv6 = _Srv6(('::1', args.port), make_handler(apis))
+            threading.Thread(target=srv6.serve_forever, daemon=True).start()
+        except OSError as e:
+            log(f'IPv6 loopback not available ({e}); use http://127.0.0.1:{args.port}/ if localhost is slow')
     if CLOUD:
         log(f'Dashboard listening on port {args.port}')
     else:

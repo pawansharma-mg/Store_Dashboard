@@ -64,6 +64,10 @@ Browsers cannot call SAP directly (no CORS, and the password would sit in the pa
   * `extra=[(base, entity, query[, fold])]` reads more views together with the main one and passes their rows to the compact function.
     With a `fold(state, rows)` function the extra rows are processed page by page and not kept in memory (used for the ~290,000 goods issue rows of the stock page; `Folded` holds the result).
   * After one 401 no view calls SAP again (`Sap.auth_failed`), so a bad login cannot lock the SAP user.
+  * A network hiccup (timeout, connection reset) or a 502 / 503 / 504 from SAP is tried again up to 3 times (after 2 s and 4 s); 400, 401 and 403 are never retried.
+  * An `extra` entry can be optional (`(base, entity, query, fold, True)`): if it cannot be read the view is served without it. The goods issues of the stock page are optional: without them the stock still shows and only "Not used for 5 months" is missing.
+  * Any other error while preparing a view comes back as `{"error": ...}` with status 500 and is written with its traceback in the server window; it never drops the connection.
+* **Server details:** a local server listens on `127.0.0.1` and on the IPv6 loopback `::1` (otherwise `localhost` waits about 2 seconds on every new connection, because it tries `::1` first). `HEAD` works. Every response carries `Content-Security-Policy` (pages are self-contained), `X-Frame-Options: SAMEORIGIN`, `X-Content-Type-Options: nosniff` and `Referrer-Policy: no-referrer`; the logo is cached for a day, everything else is `no-store`.
 * **Compact JSON** (`backend/pr_data.py`): each `*_compact` function turns SAP rows into arrays of numbers plus shared dictionaries (plants, users, units ...),
   so a page with 60,000 rows is a few MB gzipped. The row layouts are documented in the docstrings.
 * **Pages** are templates with placeholders: `__DATA__` (offline build only), `__USERS__` (user names), `__PGS__` (purchasing group names),
@@ -79,6 +83,7 @@ Backend (`backend/`): everything that talks to SAP or holds data.
 |---|---|
 | `backend/serve_dashboard.py` | Server: login handling, `Sap` class, view queries, routes, startup |
 | `backend/pr_data.py` | Field lists, filters, the `*_compact` functions, and the lookup tables (purchasing group, material group, users, departments) |
+| `backend/check_data.py` | Check of a running dashboard: does every page and API answer, which names / descriptions / approvers are still missing (see below) |
 | `backend/build_dashboard.py` | Offline: builds a static Pending PR HTML from a saved JSON in the project folder (the other pages need the server) |
 | `backend/data/stock_locations.csv` | The store locations the stock page covers, with their category (see below) |
 | `backend/data/po_approvers.csv` | Confirmed approver per PO (optional; `po_approvers.xlsx` in the same folder is read first when present) |
@@ -103,6 +108,13 @@ Project level:
 | `Dockerfile`, `.gcloudignore` | Cloud Run image |
 | `..\GCP_DEPLOY.md` | Step by step Cloud Run deployment |
 | `..\Start_Live_Dashboard.bat` | Local launcher (starts `backend\serve_dashboard.py`) |
+
+## Checking the dashboard
+
+With the dashboard running, `python backend/check_data.py` (stdlib only) answers: does every page and API work, and what is still missing in the lookup tables:
+purchasing groups and material groups without a name, user IDs without a name, reservation creators without a department, Store Issue lines without a department,
+POs In Approval without a confirmed or likely approver, listed stock locations that hold no stock, and how old the data is. It exits with 1 when a page or an API fails.
+Run it after changing `pr_data.py` or the CSV files, and before a deployment.
 
 ## Page rules
 
@@ -183,12 +195,11 @@ Project level:
 
 ## Deploying to Cloud Run
 
-Follow `..\GCP_DEPLOY.md` (secrets in Secret Manager, IAP for access, region asia-south1). The image contains `backend/serve_dashboard.py`, `backend/pr_data.py`, `backend/data/stock_locations.csv` and the whole `frontend/` folder (see `Dockerfile`; the deploy command keeps `--source dashboard_build`). Things to know:
+Follow `..\GCP_DEPLOY.md` (secrets in Secret Manager, IAP for access, region asia-south1). The image contains `backend/serve_dashboard.py`, `backend/pr_data.py`, `backend/data/stock_locations.csv`, `backend/data/po_approver_rules.csv` and the whole `frontend/` folder (see `Dockerfile`; the deploy command keeps `--source dashboard_build`). Things to know:
 
 * The new pages have **not been deployed yet**; run the deploy command of Step 5 again to publish them.
-* `backend/data/po_approvers.csv` and `backend/data/po_approver_rules.csv` are not copied into the image, so `/po-approval` has no approver names on Cloud Run until they are added to the `COPY` lines of the `Dockerfile`.
-* The deploy guide sets `--memory 512Mi` (chosen when only Pending PR existed). Peak memory with all views loaded (about 48,000 issue rows, 66,000 + 34,000 PO rows, 27,000 stock rows) has not been measured on Cloud Run;
-  raise it (for example `--memory 1Gi`) if the container restarts for lack of memory. Locally the server stays near 100 MB.
+* `backend/data/po_approvers.csv` / `po_approvers.xlsx` (the confirmed approvers, an export that is out of date after a day) are not copied into the image, so `/po-approval` on Cloud Run shows only the "likely" approvers from the rules.
+* Memory: with all views loaded (about 48,000 issue rows, 66,000 + 34,000 PO rows, 27,000 stock rows and 290,000 goods issue rows read page by page) the server peaked at about 300 MB while loading on a PC and settles near 100 MB, so the deploy guide uses `--memory 1Gi` (512Mi is too tight). Not measured on Cloud Run itself.
 * Keep `--max-instances 1`: the caches live in memory and SAP should be called from one place.
 
 ## Known limitations

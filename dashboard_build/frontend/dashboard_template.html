@@ -186,7 +186,7 @@ tbody tr:hover td{background:rgba(28,173,228,.07)}
 .tbox table{min-width:0}
 .tbox thead th{position:sticky;top:0;background:var(--surface);z-index:1}
 .tbox tfoot td{position:sticky;bottom:0;background:var(--surface);font-weight:700;border-top:2px solid var(--grid)}
-.nav{display:flex;gap:6px;padding:8px 20px;background:var(--surface);border-bottom:1px solid var(--border)}
+.nav{display:flex;flex-wrap:wrap;gap:6px;padding:8px 20px;background:var(--surface);border-bottom:1px solid var(--border)}
 .nav a{font-size:.78rem;font-weight:600;color:var(--ink2);text-decoration:none;padding:6px 12px;border-radius:999px;background:var(--plane)}
 .nav a.on{background:var(--brand);color:#fff}
 .lnk{border:0;background:none;padding:0;color:var(--brand-dark);font-weight:600;text-decoration:underline}
@@ -218,6 +218,7 @@ tbody tr:hover td{background:rgba(28,173,228,.07)}
 .stick .top{position:static}
 @media (max-width:700px){.stick{position:static}}
 .tscroll>table>thead th{position:sticky;top:0;z-index:3;background:var(--surface);box-shadow:0 2px 0 var(--grid)}
+[hidden]{display:none!important}
 </style>
 </head>
 <body>
