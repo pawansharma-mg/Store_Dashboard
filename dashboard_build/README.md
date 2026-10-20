@@ -194,6 +194,6 @@ Follow `..\GCP_DEPLOY.md` (secrets in Secret Manager, IAP for access, region asi
 * The real approver of a PO is not in the SAP views; names come from the confirmed list or from inferred rules.
 * About 476 Pending PR items have no purchasing group in SAP.
 * Items in USD or EUR are shown in document currency (SAP shows INR).
-* Store Issue user IDs `CB9980000048` and `CB9980000041` have no name yet, and free-text "Requisitioner" names are not mapped.
+* The SAP user name (the second entry in `USER_NAMES`) of `CB9980000048` (Nikhilesh Pindoliya) and `CB9980000041` (Suresh Kot) is not known and left empty. Department-type PR creators (MRP Controll, Coil divisio, Cup division ...) are shown as SAP gives them, cut at 12 characters, and free-text "Requisitioner" names are not mapped.
 * The stock page total for the listed locations was ₹7,59,48,211 on 19 Oct 2026 against ₹7,58,57,011 in the user's SAP report (₹91,200 apart, 0.12%); the cause is not found yet.
   `..\Store_Stock_by_location.xlsx` (summary, by location, all lines) was made to compare it line by line.

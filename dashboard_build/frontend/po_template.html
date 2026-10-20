@@ -182,7 +182,7 @@ const $=id=>document.getElementById(id);
 // SAP user ID -> [full name, User Name]. The server fills the users script tag from pr_data.USER_NAMES.
 const USER_NAMES=(()=>{try{return JSON.parse(document.getElementById('users').textContent);}catch(e){return {};}})();
 const uName=id=>USER_NAMES[id]?USER_NAMES[id][0]:id;
-const uTip=id=>USER_NAMES[id]?id+' ('+USER_NAMES[id][1]+')':id;
+const uTip=id=>USER_NAMES[id]?id+(USER_NAMES[id][1]?' ('+USER_NAMES[id][1]+')':''):id;
 const PG_NAMES=(()=>{try{return JSON.parse(document.getElementById('pgs').textContent);}catch(e){return {};}})();
 const pgName=c=>PG_NAMES[c]||c;
 const pgTip=c=>'Purchasing group '+c+(PG_NAMES[c]?'':' (no description yet)');

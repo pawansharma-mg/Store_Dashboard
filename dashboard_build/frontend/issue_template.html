@@ -178,7 +178,7 @@ const $=id=>document.getElementById(id);
 // an ID that is not listed (or a department user) is shown as it is.
 const USER_NAMES=(()=>{try{return JSON.parse(document.getElementById('users').textContent);}catch(e){return {};}})();
 const uName=id=>USER_NAMES[id]?USER_NAMES[id][0]:id;
-const uTip=id=>USER_NAMES[id]?id+' ('+USER_NAMES[id][1]+')':id;
+const uTip=id=>USER_NAMES[id]?id+(USER_NAMES[id][1]?' ('+USER_NAMES[id][1]+')':''):id;
 // Department is decided on the server (pr_data.cc_info / USER_DEPT); basis says how: 1 machine list, 2 cost center code, 3 reservation creator, 4 none.
 const BASIS=['','Exact: the cost center is in the machine list','Inferred: department code of the cost center (same code as the machine list)','Plant-common cost center, placed by its function (Admin / HR / Security)','The reservation creator belongs to this department (your list)','The reservation creator mostly issues to this department','No department found'];
 const deptLabel=k=>k||'(none)';

@@ -325,7 +325,7 @@ const typeName=t=>PR_TYPES[t]?t+' · '+PR_TYPES[t]:t;
 // an ID that is not listed (or a department user) is shown as it is.
 const USER_NAMES=(()=>{try{return JSON.parse(document.getElementById('users').textContent);}catch(e){return {};}})();
 const uName=id=>USER_NAMES[id]?USER_NAMES[id][0]:id;
-const uTip=id=>USER_NAMES[id]?id+' ('+USER_NAMES[id][1]+')':id;
+const uTip=id=>USER_NAMES[id]?id+(USER_NAMES[id][1]?' ('+USER_NAMES[id][1]+')':''):id;
 const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const PAGE=25;
 

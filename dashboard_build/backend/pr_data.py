@@ -509,12 +509,14 @@ USER_NAMES = {
     'CB9980000038': ['Surya Karma', 'SURYA'],
     'CB9980000039': ['Haresh Mayekar', 'HARESH'],
     'CB9980000040': ['Pratosh Yadav', 'PRATOSH'],
+    'CB9980000041': ['Suresh Kot', ''],  # SAP user name not known yet
     'CB9980000042': ['Pawan Sharma', 'PAWAN'],
     'CB9980000043': ['Case Toolroom MG', 'CASE_TOOLROOM'],
     'CB9980000044': ['Neeraj Sharma', 'NEERAJ'],
     'CB9980000045': ['Case Production', 'CASE_PRD'],
     'CB9980000046': ['Kamal Soianki', 'KAMALS'],
     'CB9980000047': ['Rahul Yadav', 'RAHUL'],
+    'CB9980000048': ['Nikhilesh Pindoliya', ''],  # SAP user name not known yet
     'CB9980000049': ['Case QC', 'CASEQC'],
     'CB9980000050': ['Nitesh Jain', 'NITESH2'],
     'CB9980000051': ['Vikram Baid', 'VIKRAM'],
