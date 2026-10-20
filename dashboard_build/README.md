@@ -130,6 +130,8 @@ Run it after changing `pr_data.py` or the CSV files, and before a deployment.
 ### Pending PR (`/`)
 * Dates and counts follow the **PR creation (requisition) date**, never the release date.
 * Purchasing group is shown by name (`PG_NAMES`). The page opens with the date range set to the whole current month; edit it for older data.
+* **Every tile opens its details** when clicked (click again to hide; the page scrolls to them; they follow the filters): Pending PR items (one row per PR, oldest first), Net value (by plant, by PR type, the 10 PRs with the most value), Delivery date passed, Older than 1 year and Quantity to check (the items, longest overdue / oldest / biggest quantity first). Long lists show the first 25 with "See all".
+  The last three tiles also filter the whole page, as before: the details have a button "Filter the whole page to these N items" (click again to remove it; the same chips show it). An empty group says so and offers no filter.
 * Known gap: the CDS view leaves out partly ordered items (status B), so the dashboard shows 494 where SAP shows 503. This can only be fixed in SAP.
 
 ### Store Issue (`/issue`)

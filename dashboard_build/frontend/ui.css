@@ -57,6 +57,10 @@ h1{font-size:1.15rem;letter-spacing:-.01em}
 .chip[data-clr="all"]{background:transparent;border-style:dashed;color:var(--ink2)}
 
 /* tiles and cards */
+.tilebtn{text-align:left;font:inherit;color:inherit;cursor:pointer;width:100%}
+.cta{display:inline-block;margin-top:4px;font-size:.72rem;font-weight:600;color:var(--brand-dark)}
+.topcard{margin-top:16px;border-top:3px solid var(--brand-red);scroll-margin-top:150px}
+.subh{margin:16px 0 6px;font-size:.85rem;font-weight:700;color:var(--ink2)}
 .tile{border-radius:var(--radius);box-shadow:var(--shadow);transition:transform .15s ease,box-shadow .15s ease,border-color .15s}
 .tile{min-width:0}
 .tv{letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -118,7 +122,7 @@ tr.sel td:first-child{box-shadow:inset 3px 0 0 var(--brand)}
 }
 @media (max-width:480px){
   .sumcard .kpis{grid-template-columns:minmax(0,1fr)}
-  .tv{font-size:1.35rem}
+  .tile .tv{white-space:normal;overflow:visible;text-overflow:clip;font-size:clamp(1.15rem,5.6vw,1.5rem)}
 }
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 @media print{.stick,.totop,.bar[aria-label="Filters"],.chips{display:none!important}.card,.tile{box-shadow:none!important;break-inside:avoid}}

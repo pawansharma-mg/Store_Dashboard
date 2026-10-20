@@ -49,7 +49,7 @@
     var v = parseFloat(m[1].replace(/,/g, ''));
     return m[2] === 'Cr' ? v * 1e7 : m[2] === 'L' ? v * 1e5 : v;
   }
-  var VALUE_HEAD = /value|amount|deliver/i, NOT_VALUE = /price|share|lines|items|quantity|qty/i;
+  var VALUE_HEAD = /value|amount|to deliver/i, NOT_VALUE = /price|share|lines|items|quantity|qty/i;
   function bars() {
     var tables = document.querySelectorAll('.tbox table');
     for (var i = 0; i < tables.length; i++) {

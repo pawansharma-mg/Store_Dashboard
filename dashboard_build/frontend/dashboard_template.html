@@ -247,6 +247,13 @@ tbody tr:hover td{background:rgba(28,173,228,.07)}
 
   <section class="kpis" id="kpis" aria-label="Summary"></section>
 
+  <section class="card topcard" id="tileCard" hidden>
+    <div class="cardhead"><h2><span id="tileTitle"></span><span class="badge-live">LIVE</span></h2><span id="tileAct"></span></div>
+    <p class="hint" id="tileHint"></p>
+    <div class="tbox" id="tileBox"></div>
+    <div class="pager"><span id="tileInfo"></span><div class="btns"><button id="tileAll" type="button">See all</button></div></div>
+  </section>
+
   <section class="grid">
     <article class="card">
       <h2><span class="sec-badge">1</span>Ageing<span class="badge-live">LIVE</span></h2>
@@ -313,7 +320,7 @@ tbody tr:hover td{background:rgba(28,173,228,.07)}
 <script>
 (function(){
 const EMBED=JSON.parse(document.getElementById('data').textContent);
-let D=null,R=[],M0=0,M1=0,lastFetch=0,renderToken=0;
+let D=null,R=[],M0=0,M1=0,lastFetch=0,renderToken=0,TILE=null,TILEALL=false,tileToken=0;
 const $=id=>document.getElementById(id);
 const STATUS=['No PO yet','PO created','RFQ created'];
 const STCOL=['var(--s1)','var(--s2)','var(--s3)'];
@@ -375,12 +382,75 @@ function renderChips(){
 function renderKPIs(rows){
   const n=rows.length;let amt=0,od=0,old=0,sus=0;const prs=new Set();
   for(const r of rows){prs.add(r.pr);if(r.sus)sus++;else amt+=r.amt;if(r.od)od++;if(r.age>365)old++;}
+  // every tile opens its details under the tiles; Delivery date passed, Older than 1 year and Quantity to check also keep their filter (button inside the details)
+  const cta=k=>`<span class="cta">${TILE===k?'click to hide':'click for details'}</span>`;
+  const btn=(k,extra,inner)=>`<button type="button" class="tile tilebtn" data-tile="${k}" aria-expanded="${TILE===k}"${extra||''}>${inner}</button>`;
   $('kpis').innerHTML=
-   `<div class="hero"><div class="big">${fmtN(n)}</div><div class="lab">Pending PR items · quantity not yet ordered<br>${fmtN(prs.size)} pending PRs</div></div>`+
-   `<div class="tile"><div class="tl">Net value</div><div class="tv">${fmtINR(amt)}</div><div class="ts">Excludes ${fmtN(sus)} quantity entries to check</div></div>`+
-   `<button type="button" class="tile" data-act="overdue" aria-pressed="${S.flag==='overdue'}"><div class="tl"><span class="dot" style="background:var(--serious)"></span>Delivery date passed</div><div class="tv">${fmtN(od)}</div><div class="ts">${pct(od,n)}% of items in view</div></button>`+
-   `<button type="button" class="tile" data-act="old" aria-pressed="${S.age===7}"><div class="tl"><span class="dot" style="background:var(--crit)"></span>Older than 1 year</div><div class="tv">${fmtN(old)}</div><div class="ts">${pct(old,n)}% of items in view</div></button>`+
-   `<button type="button" class="tile" data-act="suspect" aria-pressed="${S.flag==='suspect'}"><div class="tl"><span class="dot" style="background:var(--warn)"></span>Quantity to check</div><div class="tv">${fmtN(sus)}</div><div class="ts">Quantity above 10 lakh</div></button>`;
+   `<button type="button" class="hero tilebtn" data-tile="items" aria-expanded="${TILE==='items'}"><div class="big">${fmtN(n)}</div><div class="lab">Pending PR items · quantity not yet ordered<br>${fmtN(prs.size)} pending PRs<br>${cta('items')}</div></button>`+
+   btn('value','',`<div class="tl">Net value</div><div class="tv">${fmtINR(amt)}</div><div class="ts">Excludes ${fmtN(sus)} quantity entries to check<br>${cta('value')}</div>`)+
+   btn('overdue',` aria-pressed="${S.flag==='overdue'}"`,`<div class="tl"><span class="dot" style="background:var(--serious)"></span>Delivery date passed</div><div class="tv">${fmtN(od)}</div><div class="ts">${pct(od,n)}% of items in view<br>${cta('overdue')}</div>`)+
+   btn('old',` aria-pressed="${S.age===7}"`,`<div class="tl"><span class="dot" style="background:var(--crit)"></span>Older than 1 year</div><div class="tv">${fmtN(old)}</div><div class="ts">${pct(old,n)}% of items in view<br>${cta('old')}</div>`)+
+   btn('suspect',` aria-pressed="${S.flag==='suspect'}"`,`<div class="tl"><span class="dot" style="background:var(--warn)"></span>Quantity to check</div><div class="tv">${fmtN(sus)}</div><div class="ts">Quantity above 10 lakh<br>${cta('suspect')}</div>`);
+}
+
+// details of a tile
+const TILE_INFO={
+  items:['Pending PRs','One row per pending PR of the current filters, oldest first.'],
+  value:['Net value of the pending items','Where the value sits for the current filters. Items with a quantity above 10 lakh (probably a typing mistake) are left out of the value.'],
+  overdue:['Delivery date passed','Items whose delivery date is before today, longest overdue first.'],
+  old:['Older than 1 year','Items whose PR was created more than 365 days ago, oldest first.'],
+  suspect:['Quantity to check','Items with an open quantity above 10 lakh. The quantity is probably a typing mistake (for example a material number typed in the quantity field), so their value is left out of every total.']
+};
+function renderTile(rows){
+  const k=TILE,card=$('tileCard');
+  if(!k||!TILE_INFO[k]){card.hidden=true;return;}
+  card.hidden=false;
+  $('tileTitle').textContent=TILE_INFO[k][0];$('tileHint').textContent=TILE_INFO[k][1];
+  let none='<div class="empty">No items match the filters.</div>';
+  let list=null,thead='',rowFn=null,html='',n=0,paged=true,act='';
+  const col=(t,num,f)=>({t,num,f});
+  const C={pr:col('PR / item',0,r=>`${esc(r.pr)} / ${parseInt(r.item,10)}`),mat:col('Material',0,r=>esc(r.mat)),txt:col('Description',0,r=>esc(r.text)),plant:col('Plant',0,r=>esc(r.plant)),
+    qty:col('Open qty',1,r=>`${fmtQty(r.pend)} ${esc(r.unit)}`),val:col('Value',1,r=>fmtINR(r.amt)),day:col('PR date',0,r=>fmtDay(r.prDay)),age:col('Age (d)',1,r=>fmtN(r.age)),
+    del:col('Delivery',0,r=>r.delDay===null?'–':fmtDay(r.delDay)),late:col('Days overdue',1,r=>fmtN(D.asofDay-r.delDay)),user:col('Created by',0,r=>esc(uName(r.user)))};
+  const setList=(rs,cols)=>{list=rs;thead='<thead><tr><th>#</th>'+cols.map(c=>`<th class="${c.num?'num':''}">${c.t}</th>`).join('')+'</tr></thead>';
+    rowFn=(r,i)=>`<tr><td>${i+1}</td>`+cols.map(c=>`<td class="${c.num?'num ':''}nw">${c.f(r)}</td>`).join('')+'</tr>';};
+  // the filter of the whole page; nothing to offer when no item is in this group
+  const filterBtn=(active,label)=>{if(!label&&!active){none='<div class="empty">No item in view is in this group.</div>';return '';}return `<button type="button" class="chip" data-act="${k}" aria-pressed="${active}">${active?'The whole page shows only these items · click to remove':'Filter the whole page to these '+fmtN(label)+' items'}</button>`;};
+  // one row per PR
+  const byPr=()=>{const m=new Map();for(const r of rows){let x=m.get(r.pr);if(!x)m.set(r.pr,x={pr:r.pr,prDay:r.prDay,age:r.age,type:r.type,plant:r.plant,user:r.user,n:0,amt:0,od:0,sts:new Set()});x.n++;if(!r.sus)x.amt+=r.amt;if(r.od)x.od++;x.sts.add(r.st);}return [...m.values()];};
+  if(k==='items'){
+    const prs=byPr().sort((a,b)=>b.age-a.age||a.pr.localeCompare(b.pr));list=prs;
+    thead='<thead><tr><th>#</th><th>PR</th><th>PR date</th><th class="num">Age (d)</th><th>PR type</th><th>Plant</th><th class="num">Items</th><th class="num">Value</th><th class="num">Delivery date passed</th><th>Created by</th><th>Status</th></tr></thead>';
+    rowFn=(x,i)=>`<tr><td>${i+1}</td><td class="nw">${esc(x.pr)}</td><td class="nw">${fmtDay(x.prDay)}</td><td class="num">${fmtN(x.age)}</td><td class="nw">${esc(x.type)}</td><td>${esc(x.plant)}</td><td class="num">${fmtN(x.n)}</td><td class="num nw">${fmtINR(x.amt)}</td><td class="num">${x.od?fmtN(x.od):'–'}</td><td class="nw" title="${esc(uTip(x.user))}">${esc(uName(x.user))}</td><td class="nw">${[...x.sts].sort().map(i=>STATUS[i]).join(' / ')}</td></tr>`;
+  }else if(k==='value'){
+    paged=false;const pl=new Map(),ty=new Map();for(const r of rows){addAgg(pl,r.plant,r);addAgg(ty,r.type,r);}
+    const byVal=m=>[...m.entries()].sort((a,b)=>b[1].amt-a[1].amt);
+    const top=byPr().sort((a,b)=>b.amt-a.amt).slice(0,10);
+    html='<h3 class="subh">By plant</h3>'+aggTable(byVal(pl),['Plant'],k2=>`<td class="nw">${esc(k2)}</td>`)+
+      '<h3 class="subh">By PR type</h3>'+aggTable(byVal(ty),['PR type'],k2=>`<td class="nw">${esc(typeName(k2))}</td>`)+
+      '<h3 class="subh">10 PRs with the most value</h3>'+(top.length?'<table><thead><tr><th>#</th><th>PR</th><th>PR date</th><th>Plant</th><th class="num">Items</th><th class="num">Value</th><th>Created by</th></tr></thead><tbody>'+top.map((x,i)=>`<tr><td>${i+1}</td><td class="nw">${esc(x.pr)}</td><td class="nw">${fmtDay(x.prDay)}</td><td>${esc(x.plant)}</td><td class="num">${fmtN(x.n)}</td><td class="num nw">${fmtINR(x.amt)}</td><td class="nw">${esc(uName(x.user))}</td></tr>`).join('')+'</tbody></table>':none);
+    n=0;
+  }else if(k==='overdue'){
+    const rs=rows.filter(r=>r.od).sort((a,b)=>a.delDay-b.delDay||a.pr.localeCompare(b.pr));setList(rs,[C.pr,C.mat,C.txt,C.plant,C.qty,C.val,C.del,C.late,C.age]);
+    act=filterBtn(S.flag==='overdue',rs.length);
+  }else if(k==='old'){
+    const rs=rows.filter(r=>r.age>365).sort((a,b)=>b.age-a.age||a.pr.localeCompare(b.pr));setList(rs,[C.pr,C.mat,C.txt,C.plant,C.qty,C.val,C.day,C.age,C.user]);
+    act=filterBtn(S.age===7,rs.length);
+  }else if(k==='suspect'){
+    const rs=rows.filter(r=>r.sus).sort((a,b)=>b.pend-a.pend);setList(rs,[C.pr,C.mat,C.txt,C.plant,C.qty,C.day,C.age,C.user]);
+    act=filterBtn(S.flag==='suspect',rs.length);
+  }
+  $('tileAct').innerHTML=act;
+  if(list){
+    n=list.length;const slice=TILEALL?list:list.slice(0,25),first=TILEALL?slice.slice(0,300):slice;
+    $('tileBox').innerHTML=list.length?`<table>${thead}<tbody>${first.map(rowFn).join('')}</tbody></table>`:none;
+    // See all can be a long list: the first rows appear at once and the rest are added in batches
+    const token=++tileToken;let done=first.length;
+    const more=()=>{if(token!==tileToken||done>=slice.length)return;const tb=$('tileBox').querySelector('tbody');if(!tb)return;tb.insertAdjacentHTML('beforeend',slice.slice(done,done+500).map((x,i)=>rowFn(x,done+i)).join(''));done+=500;setTimeout(more,0);};
+    setTimeout(more,0);
+  }else{tileToken++;$('tileBox').innerHTML=html;}
+  $('tileInfo').textContent=!n?'':paged?(TILEALL||n<=25?`All ${fmtN(n)} shown`:`Showing the first 25 of ${fmtN(n)}`):'';
+  $('tileAll').hidden=!paged||n<=25;$('tileAll').textContent=TILEALL?'Show first 25':'See all '+fmtN(n);
 }
 
 function renderAge(){
@@ -519,7 +589,7 @@ function renderMonthDay(){
 
 function render(){
   const rows=R.filter(r=>pass(r));
-  renderChips();renderKPIs(rows);renderAge();renderPlant();renderDim();renderMonth();renderTable(rows);renderPending();renderMonthDay();
+  renderChips();renderKPIs(rows);renderTile(rows);renderAge();renderPlant();renderDim();renderMonth();renderTable(rows);renderPending();renderMonthDay();
 }
 function setMonthDates(){const t=new Date(D.asofDay*864e5);const y=t.getUTCFullYear(),m=t.getUTCMonth();const a=Date.UTC(y,m,1)/864e5,b=Date.UTC(y,m+1,0)/864e5;S.from=a;S.to=b;$('dFrom').value=new Date(a*864e5).toISOString().slice(0,10);$('dTo').value=new Date(b*864e5).toISOString().slice(0,10);}
 function reset(keepStatus){
@@ -536,6 +606,8 @@ document.addEventListener('click',e=>{
   else if(t.dataset.plant!==undefined){S.plant=S.plant===t.dataset.plant?'':t.dataset.plant;$('plantSel').value=S.plant;S.page=0;}
   else if(t.dataset.val!==undefined){S.dimVal=S.dimVal===t.dataset.val?null:t.dataset.val;S.page=0;}
   else if(t.dataset.dim!==undefined){S.dim=t.dataset.dim;S.dimVal=null;S.page=0;}
+  else if(t.dataset.tile!==undefined){const k=t.dataset.tile;TILE=TILE===k?null:k;TILEALL=false;}
+  else if(t.id==='tileAll'){TILEALL=!TILEALL;}
   else if(t.dataset.act){const a=t.dataset.act;
     if(a==='old')S.age=S.age===7?-1:7;else S.flag=S.flag===a?'':a;S.page=0;}
   else if(t.dataset.clr){const c=t.dataset.clr;
@@ -554,6 +626,7 @@ document.addEventListener('click',e=>{
   else if(t.id==='seeAll'){S.all=!S.all;}
   else return;
   render();
+  if(t.dataset.tile!==undefined&&TILE){const c=$('tileCard');if(c&&!c.hidden)c.scrollIntoView({behavior:'smooth',block:'start'});}
 });
 $('plantSel').addEventListener('change',e=>{S.plant=e.target.value;S.page=0;render();});
 $('typeSel').addEventListener('change',e=>{S.type=e.target.value;S.page=0;render();});
