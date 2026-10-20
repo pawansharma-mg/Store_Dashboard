@@ -211,7 +211,7 @@ tr.sel td{background:rgba(28,173,228,.14)!important}
 const $=id=>document.getElementById(id);
 const MG_NAMES=(()=>{try{return JSON.parse(document.getElementById('mgs').textContent);}catch(e){return {};}})();
 const mgName=c=>c?(MG_NAMES[c]||c):'(no material group)';
-const STK={'01':'Unrestricted use','02':'Quality inspection'};
+const STK={'01':'Unrestricted use','02':'Quality inspection','07':'Blocked stock'};
 const stkName=c=>c===''?'No stock type':(STK[c]||'Stock type '+c);
 const SPN={'':'In our stores','O':'At vendor (subcontracting)','E':'Sales order stock'};
 const spName=c=>SPN[c]!==undefined?SPN[c]:'Special stock '+c;
@@ -298,6 +298,7 @@ const TILE_INFO={
   lines:['Stock lines','One line per material, storage location and stock type, most stock value first.'],
   slocs:['Storage locations with stock','Locations that hold stock for the current filters, most stock value first.'],
   qi:['In quality inspection','Stock lines in quality inspection (stock type 02), most stock value first.'],
+  blocked:['Blocked stock','Stock lines in blocked stock (stock type 07), most stock value first.'],
   listed:['Store locations in your list','Every location of the list, with or without stock. The plant and category filters apply.'],
   vendor:['At vendor (subcontracting)','Stock lines lying at a vendor (special stock O), most stock value first.']
 };
@@ -322,6 +323,7 @@ function renderTile(){
   else if(k==='mats')html=items(itemsOf(rows));
   else if(k==='lines')html=lines(rows);
   else if(k==='qi')html=lines(rows.filter(r=>r.st==='02'));
+  else if(k==='blocked')html=lines(rows.filter(r=>r.st==='07'));
   else if(k==='vendor')html=lines(rows.filter(r=>r.sp==='O'));
   else if(k==='slocs'){paged=false;const ls=[...locAgg().values()].sort((a,b)=>b.val-a.val);n=ls.length;html=locTable(ls);}
   else if(k==='listed'){
@@ -340,11 +342,11 @@ function render(){
   const rows=R.filter(r=>pass(r));
   CUR={rows,total:rows.reduce((s,r)=>s+r.val,0)};renderTop();
   // KPIs
-  let val=0,quality=0,vendor=0,ipmVal=0;const mats=new Set(),slocs=new Set();
-  for(const r of rows){val+=r.val;mats.add(r.p);slocs.add(r.skey);if(r.st==='02')quality+=r.val;if(r.sp==='O')vendor+=r.val;if(r.kind===IPM)ipmVal+=r.val;}
+  let val=0,quality=0,blocked=0,vendor=0,ipmVal=0;const mats=new Set(),slocs=new Set();
+  for(const r of rows){val+=r.val;mats.add(r.p);slocs.add(r.skey);if(r.st==='02')quality+=r.val;if(r.st==='07')blocked+=r.val;if(r.sp==='O')vendor+=r.val;if(r.kind===IPM)ipmVal+=r.val;}
   const tiles=[[fmtINR(val),'Stock value (INR)','val']];
   if(SPLIT)tiles.push([fmtINR(val-ipmVal),'Store stock value','store'],[fmtINR(ipmVal),IPM+' value','ipm']);
-  tiles.push([fmtN(mats.size),'Materials with stock','mats'],[fmtN(rows.length),'Stock lines (material × location × type)','lines'],[fmtN(slocs.size),'Storage locations with stock','slocs'],[fmtINR(quality),'In quality inspection','qi'],D.onlyListed?[fmtN(D.listedCount),'Store locations in your list','listed']:[fmtINR(vendor),'At vendor (subcontracting)','vendor']);
+  tiles.push([fmtN(mats.size),'Materials with stock','mats'],[fmtN(rows.length),'Stock lines (material × location × type)','lines'],[fmtN(slocs.size),'Storage locations with stock','slocs'],[fmtINR(quality),'In quality inspection','qi'],...(R.some(r=>r.st==='07')?[[fmtINR(blocked),'Blocked stock','blocked']]:[]),D.onlyListed?[fmtN(D.listedCount),'Store locations in your list','listed']:[fmtINR(vendor),'At vendor (subcontracting)','vendor']);
   // every tile opens its details under the tiles
   $('kpiMain').innerHTML=tiles
     .map(t=>`<button type="button" class="tile tilebtn" data-tile="${t[2]}" aria-expanded="${S.tile===t[2]}"><div class="tv">${t[0]}</div><div class="tl">${t[1]}</div><div class="ts">${S.tile===t[2]?'click to hide':'click for details'}</div></button>`).join('');

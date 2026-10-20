@@ -135,6 +135,7 @@ html{scroll-behavior:smooth}
   <div class="tools">
     <div class="live"><span class="dot" id="liveDot" style="background:var(--warn)"></span><span id="liveTxt">Connecting to SAP…</span></div>
     <button id="refresh" class="btn" type="button">Refresh</button>
+    <button id="printBtn" class="btn alt printbtn" type="button" title="Print this page or save it as a PDF">Print</button>
     <div class="seg" id="themeSeg" role="group" aria-label="Colour mode"><button type="button" data-th="light" title="Normal (light) mode">Normal</button><button type="button" data-th="dark" title="Dark mode">Dark</button></div>
   </div>
 </header>
@@ -147,6 +148,10 @@ html{scroll-behavior:smooth}
     <button type="button" class="btn alt" id="monthBtn">Current month</button>
   </section>
   <p class="hint rangenote" id="rangeNote">The dates apply to Pending PR (PR creation date), Store Issue (posting date), Pending Purchase Orders and PO Approval Pending (PO creation date). Store Stock is the stock of today. "All dates" under a figure ignores the dates.</p>
+
+  <div class="printhead" id="printHead"></div>
+  <h2 class="hl-title" id="hlTitle" hidden>Needs a look</h2>
+  <section class="hl-grid" id="highlights" aria-label="Highlights"></section>
 
   <section class="kpis" id="heads"></section>
 
@@ -297,6 +302,49 @@ const status=(key,drawn)=>ERR[key]?`<div class="loading err">${esc(ERR[key])}</d
 const section=(id,tiles,tbl)=>`<div class="kpis">${tiles.join('')}</div><div class="tbox sumtable">${tbl}</div>`;
 const head=(href,big,label,sub)=>`<a class="tile tilebtn" href="${href}"><div class="tv">${big}</div><div class="tl">${label}</div><div class="ts">${sub}</div></a>`;
 
+/* ---------- highlights: what needs a look ---------- */
+const pct=(a,b)=>b?Math.round(a/b*100):0;
+const MONN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+// a month of Store Issue far above the usual month (4 times the median), over all the data of the chosen plant
+function issueOutlier(){
+  const R=PREP.issue;if(!R)return null;
+  const m=new Map();
+  for(const r of R){if(!plantOk(r.plant)||r.day===null||r.day===undefined)continue;const d=new Date(r.day*DAYMS),k=d.getUTCFullYear()*12+d.getUTCMonth();m.set(k,(m.get(k)||0)+r.amt);}
+  const v=[...m.values()].filter(x=>x>0).sort((a,b)=>a-b);if(v.length<4)return null;
+  const median=v[Math.floor(v.length/2)];let best=null;
+  for(const [k,x] of m)if(median>0&&x>=4*median&&(!best||x>best.x))best={k,x};
+  return best?{label:MONN[best.k%12]+' '+Math.floor(best.k/12),x:best.x,median}:null;
+}
+// PO items still to be delivered although the PO is older than 90 days (all dates of the chosen plant)
+function poOld(){
+  const R=PREP.po;if(!R||!RAW.po)return null;const asof=RAW.po.asofDay,pos=new Set();let amt=0,oldest=null;
+  for(const r of R){if(!(r.still>0)||!plantOk(r.plant)||asof-r.day<=90)continue;pos.add(r.po);if(r.cur==='INR')amt+=r.pendAmt;if(oldest===null||r.day<oldest)oldest=r.day;}
+  return pos.size?{n:pos.size,amt,oldest}:null;
+}
+function highlights(pr,is,po,ap,st){
+  const L=[],add=(sev,ico,href,t,s)=>L.push({sev,ico,href,t,s});
+  if(pr){
+    if(pr.sel.old>0)add('crit','alert','/',`${fmtN(pr.sel.old)} pending PR items are older than 1 year`,'Created more than 365 days ago and still not ordered.');
+    else if(pr.all.old>0)add('warn','alert','/',`${fmtN(pr.all.old)} pending PR items are older than 1 year`,'They were created before the chosen dates. Open Pending PR and clear the dates to see them.');
+    if(pr.sel.od>0)add('warn','clock','/',`${fmtN(pr.sel.od)} pending PR items passed their delivery date`,`${pct(pr.sel.od,pr.sel.n)}% of the ${fmtN(pr.sel.n)} pending items in these dates (${fmtN(pr.all.od)} on all dates).`);
+  }
+  const o=issueOutlier();
+  if(o)add('warn','alert','/issue',`Store issue in ${o.label} was ${fmtINR(o.x)}`,`${Math.round(o.x/o.median)} times a usual month (about ${fmtINR(o.median)}). Worth a look on the Store Issue page.`);
+  const old=poOld();
+  if(old)add('warn','clock','/po',`${fmtN(old.n)} POs older than 90 days are still waiting for delivery`,`${fmtINR(old.amt)} still to be delivered. The oldest PO was created on ${fmtDay(old.oldest)}.`);
+  if(ap){
+    if(ap.all.over>0)add('warn','check','/po-approval',`${fmtN(ap.all.over)} POs have waited more than 30 days for approval`,ap.all.oldest?`The oldest is PO ${esc(ap.all.oldest.po)}, waiting ${fmtN(ap.all.oldest.age)} days.`:'');
+    else if(ap.all.n>0)add('ok','check','/po-approval','No PO has waited more than 30 days for approval',`${fmtN(ap.all.n)} POs are In Approval, the oldest for ${fmtN(ap.all.oldest?ap.all.oldest.age:0)} days.`);
+  }
+  if(st&&st.used&&st.deadN>0)add(st.store&&st.deadVal/st.store>=.25?'warn':'info','moon','/stock',`${fmtN(st.deadN)} Store materials were not used for 5 months`,`${fmtINR(st.deadVal)}, ${pct(st.deadVal,st.store)}% of the Store stock value. The list is on the Store Stock page.`);
+  const rank={crit:0,warn:1,info:2,ok:3};
+  return L.sort((a,b)=>rank[a.sev]-rank[b.sev]);
+}
+function fillPrint(){
+  const t=RAW&&Object.keys(RAW).map(k=>RAW[k].fetchedAt).filter(Boolean);
+  $('printHead').innerHTML=`<b>Mittal Group · Summary</b><br>Printed ${new Date().toLocaleString('en-GB')} · Plant: ${esc(S.plant||'All')} · Dates: ${S.from!==null?fmtDay(S.from):'start'} – ${S.to!==null?fmtDay(S.to):'today'}${t&&t.length?' · SAP data updated '+hhmm(Math.min(...t)):''}`;
+}
+
 function renderAll(){
   if(RAW.po&&APTRIED&&PREP.apprFor!==RAW.po)buildApprovals();
   // plant list from the data loaded so far
@@ -314,6 +362,9 @@ function renderAll(){
   heads.push(ap?head('#sec-appr',fmtN(ap.sel.n),'POs waiting for approval',`${fmtINR(ap.sel.amt)} · oldest ${ap.sel.oldest?fmtN(ap.sel.oldest.age)+' days':'–'}`):loadHead('#sec-appr','POs waiting for approval','po'));
   heads.push(st?head('#sec-stock',fmtINR(st.tot),'Store stock value',st.split?`Store ${fmtINR(st.store)} · ${IPM} ${fmtINR(st.ipm)}`:'today'):loadHead('#sec-stock','Store stock value','stock'));
   $('heads').innerHTML=heads.join('');
+  const hl=highlights(pr,is,po,ap,st);
+  $('highlights').innerHTML=hl.map(h=>`<a class="hlc ${h.sev}" data-ico="${h.ico}" href="${h.href}"><b>${h.t}</b><span>${h.s}</span></a>`).join('');
+  $('hlTitle').hidden=!hl.length;
 
   $('body-pr').innerHTML=status('pr',pr&&section('pr',[
     tile(fmtN(pr.sel.n),'Pending PR items',`${fmtN(pr.sel.prs)} PRs · all dates: ${fmtN(pr.all.n)}`),
@@ -373,6 +424,8 @@ $('dFrom').addEventListener('change',e=>{S.from=dayOf(e.target.value);renderAll(
 $('dTo').addEventListener('change',e=>{S.to=dayOf(e.target.value);renderAll();});
 $('monthBtn').addEventListener('click',()=>{setMonthDates();renderAll();});
 $('refresh').addEventListener('click',()=>load(true));
+$('printBtn').addEventListener('click',()=>window.print());
+window.addEventListener('beforeprint',fillPrint);
 const root=document.documentElement;
 function setTheme(t,save){root.dataset.theme=t;for(const b of document.querySelectorAll('#themeSeg button'))b.classList.toggle('on',b.dataset.th===t);if(save){try{localStorage.setItem('spr-theme',t);}catch(e){}}}
 let savedTheme='dark';try{savedTheme=localStorage.getItem('spr-theme')||'dark';}catch(e){}

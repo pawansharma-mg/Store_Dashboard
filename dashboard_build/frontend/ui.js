@@ -2,6 +2,7 @@
    - bars behind the value column of the summary tables
    - an icon on every tile, and numbers that count up (or move from the old to the new number when a filter changes)
    - bar and donut charts above the month / day / ageing / plant / category tables (a click on a bar or a slice does what the table row does)
+   - a CSV button in the heading of every table card (a list that shows only its first rows is opened to all rows first, then put back)
    - a shadow under the header once scrolled, a back-to-top button, and "/" to jump to the search box */
 (function () {
   'use strict';
@@ -92,7 +93,7 @@
 
   // ---------------------------------------------------------------- an icon on every tile
   var ICON_RULES = [
-    [/top 5|expensive/i, 'trophy'], [/not used/i, 'moon'], [/quality/i, 'shield'], [/lines|items/i, 'box'], [/location/i, 'pin'], [/supplier/i, 'truck'],
+    [/top 5|expensive/i, 'trophy'], [/not used/i, 'moon'], [/blocked/i, 'lock'], [/quality/i, 'shield'], [/lines|items/i, 'box'], [/location/i, 'pin'], [/supplier/i, 'truck'],
     [/cost center/i, 'target'], [/quantity to check/i, 'alert'], [/approval/i, 'check'], [/day|oldest|waiting|overdue|older|passed/i, 'clock'],
     [/value|amount|deliver|₹/i, 'coin'], [/material|purchase order|\bprs?\b|\bpos\b/i, 'box']
   ];
@@ -250,8 +251,109 @@
     }
   }
 
+  // ---------------------------------------------------------------- download a table as CSV (opens in Excel)
+  var PAGE_SLUG = { '/': 'pending-pr', '/issue': 'store-issue', '/po': 'purchase-orders', '/po-approval': 'po-approval', '/stock': 'store-stock' }[location.pathname];
+  function slug(t) { return t.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'table'; }
+  function cardTitle(card) {
+    var h = card.querySelector('h2');
+    if (!h) return 'table';
+    var c = h.cloneNode(true);
+    [].forEach.call(c.querySelectorAll('.sec-badge,.badge-live,.csvbtn,.opn'), function (e) { e.remove(); });
+    return c.textContent.trim() || 'table';
+  }
+  function mainTables(card) { // the tables of a card, not the little tables inside an opened row
+    var out = [];
+    [].forEach.call(card.querySelectorAll('.tscroll table, .tbox table'), function (t) {
+      if (!t.parentElement.closest('table') && t.tBodies[0] && out.indexOf(t) < 0) out.push(t);
+    });
+    return out;
+  }
+  function field(v) { v = String(v); return /[",\r\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+  function csvCell(td) { // "₹1.21 Cr" and "₹39.27 L" become whole rupees, so Excel can add them up; everything else stays as shown
+    var t = td.textContent.replace(/\s+/g, ' ').trim();
+    if (/^₹?\s*-?[\d,]+(\.\d+)?\s*(Cr|L)$/.test(t) || /^₹\s*-?[\d,]+(\.\d+)?$/.test(t)) {
+      var v = num(t);
+      if (isFinite(v)) return String(Math.round(v * 100) / 100);
+    }
+    return t;
+  }
+  function tableLines(t) {
+    var lines = [], hr = t.tHead && t.tHead.rows[0];
+    if (hr) lines.push([].map.call(hr.cells, function (c) { return field(c.textContent.replace(/\s+/g, ' ').trim().replace(/ [▲▼]$/, '')); }).join(','));
+    [].forEach.call(t.tBodies[0].rows, function (r) {
+      if (r.classList.contains('subrow') || (r.cells.length === 1 && r.cells[0].classList.contains('empty'))) return;
+      lines.push([].map.call(r.cells, function (c) { return field(csvCell(c)); }).join(','));
+    });
+    return lines;
+  }
+  function rowCount(card) { return card.querySelectorAll('.tscroll table > tbody > tr:not(.subrow), .tbox table > tbody > tr:not(.subrow)').length; }
+  function openAll(card) { // a list that shows only its first rows is opened to every row first; resolves with a function that puts it back
+    var btn = card.querySelector('#seeAll,#tileAll');
+    if (!btn || btn.hidden || !/^See all/i.test(btn.textContent)) return Promise.resolve(function () {});
+    var n = parseInt(btn.textContent.replace(/[^\d]/g, ''), 10) || 0;
+    btn.click();
+    return new Promise(function (resolve) {
+      var t0 = Date.now();
+      (function wait() {
+        if ((n && rowCount(card) >= n) || Date.now() - t0 > 9000) {
+          return resolve(function () {
+            var b = card.querySelector('#seeAll,#tileAll');
+            if (b && /^Show first/i.test(b.textContent)) b.click();
+          });
+        }
+        setTimeout(wait, 150);
+      })();
+    });
+  }
+  function download(name, text) {
+    var blob = new Blob(['\ufeff' + text], { type: 'text/csv;charset=utf-8' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+  }
+  function exportCard(card, btn) {
+    btn.disabled = true;
+    openAll(card).then(function (restore) {
+      var out = [];
+      mainTables(card).forEach(function (t, i) {
+        if (i) {
+          out.push('');
+          var h = t.closest('.tbox') && t.closest('.tbox').previousElementSibling;
+          if (h && /^H3$/.test(h.tagName)) out.push(field(h.textContent.trim()));
+        } else if (mainTables(card).length > 1) {
+          var h0 = t.closest('.tbox') && t.closest('.tbox').previousElementSibling;
+          if (h0 && /^H3$/.test(h0.tagName)) out.push(field(h0.textContent.trim()));
+        }
+        out = out.concat(tableLines(t));
+      });
+      var d = new Date(), stamp = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+      if (out.length) download(PAGE_SLUG + '_' + slug(cardTitle(card)) + '_' + stamp + '.csv', out.join('\r\n'));
+      restore();
+      btn.disabled = false;
+    });
+  }
+  function csvButtons() {
+    if (!PAGE_SLUG) return;
+    var cards = document.querySelectorAll('.card');
+    for (var i = 0; i < cards.length; i++) {
+      var card = cards[i], h = card.querySelector('h2');
+      if (card.hasAttribute('data-csv') || !h || !mainTables(card).length) continue;
+      card.setAttribute('data-csv', '1');
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'csvbtn';
+      b.textContent = 'CSV';
+      b.title = 'Download this table as a CSV file (opens in Excel)';
+      b.addEventListener('click', exportCard.bind(null, card, b));
+      h.appendChild(b);
+    }
+  }
+
   // ---------------------------------------------------------------- run, and again after every redraw of the page
-  function enhance() { bars(); icons(); charts(); countUps(); }
+  function enhance() { bars(); icons(); charts(); countUps(); csvButtons(); }
   var timer = null;
   new MutationObserver(function (muts) {
     for (var i = 0; i < muts.length; i++) { // our own number animation is not a redraw
