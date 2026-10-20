@@ -342,7 +342,7 @@ function render(){
   for(const r of rows){pos.add(r.po);sups.add(r.sup);if(r.cur==='INR'){amt+=r.amt;open+=r.pendAmt;}else fx++;}
   CUR={rows,amt,open};
   // every tile opens its details under the tiles
-  $('kpis').innerHTML=[[fmtINR(amt),'Net PO value (INR)'+(fx?` · ${fmtN(fx)} other-currency items not added`:''),'val'],[fmtINR(open),'Value still to be delivered (INR)','open'],[fmtN(pos.size),'Purchase orders','pos'],[fmtN(rows.length),'PO items','items'],[fmtN(sups.size),'Suppliers','sups']]
+  $('kpis').innerHTML=[[fmtINR(open),'Pending value · still to be delivered (INR)'+(fx?` · ${fmtN(fx)} other-currency items not added`:''),'open'],[fmtINR(amt),'Net PO value (INR) · full order value of these items, the delivered part included','val'],[fmtN(pos.size),'Purchase orders','pos'],[fmtN(rows.length),'PO items','items'],[fmtN(sups.size),'Suppliers','sups']]
     .map(t=>`<button type="button" class="tile tilebtn" data-tile="${t[2]}" aria-expanded="${S.tile===t[2]}"><div class="tv">${t[0]}</div><div class="tl">${t[1]}</div><div class="ts">${S.tile===t[2]?'click to hide':'click for details'}</div></button>`).join('');
   renderTile();
   // chips
@@ -393,7 +393,7 @@ function render(){
   const token=++renderToken;let done=first.length;
   const more=()=>{if(token!==renderToken||done>=slice.length)return;document.querySelector('#tbl tbody').insertAdjacentHTML('beforeend',slice.slice(done,done+600).map(rowHtml).join(''));done+=600;setTimeout(more,0);};
   setTimeout(more,0);
-  $('tcount').textContent=fmtN(rows.length)+' items in '+fmtN(pos.size)+' purchase orders';
+  $('tcount').innerHTML=fmtN(rows.length)+' items in '+fmtN(pos.size)+' purchase orders · <b>Pending value '+fmtINR(open)+'</b> (still to be delivered) · Net value '+fmtINR(amt)+' (full order value)'+(fx?' · '+fmtN(fx)+' other-currency items not added':'');
   $('pinfo').textContent=!rows.length?'':rows.length<=PAGE||S.all?`All ${fmtN(rows.length)} items shown`:`Showing the first ${fmtN(PAGE)} of ${fmtN(rows.length)}`;
   $('seeAll').hidden=rows.length<=PAGE;$('seeAll').textContent=S.all?'Show first '+PAGE:'See all '+fmtN(rows.length);
 }
