@@ -1098,9 +1098,10 @@ USER_DEPT = {u: dept for dept, users in DEPT_USERS.items() for u in users}
 
 # Department of the user who raised the reservation, as given by the user on 20-Oct-2026 ("Store Issue me department kaise lena hai: user ke hisaab se").
 # This is the first layer of the Store Issue department: it replaces the department the cost center would give. A line without a reservation, or a
-# reservation creator who is not listed here, is placed by the cost center layers below. Not given yet: Omprakash Sahu (CB9980000035, CCP in DEPT_USERS),
-# Surya Karma (CB9980000038, Coil in DEPT_USERS) and Nipendra Jha (CB9980000093, posts only).
+# reservation creator who is not listed here, is placed by the cost center layers below. Not given: Nipendra Jha (CB9980000093, he only posts issues).
 ISSUE_USER_DEPT = {
+    'CB9980000035': 'CCP',                              # Omprakash Sahu
+    'CB9980000038': 'Coil',                             # Surya Karma
     'CB9980000048': 'Cup Quality & FG',                 # Nikhilesh Pindoliya
     'CB9980000088': 'Cup Quality & FG',                 # Cup QC
     'CB9980000025': 'Maintenance Case, Cup, Coin',      # Pushpendra Singh Chouhan
