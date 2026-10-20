@@ -272,10 +272,11 @@ function poList(rows){
   return [...m.values()];
 }
 const shareOf=(v,t)=>t?(v/t*100).toFixed(1)+'%':'–';
-const qtyTxt=m=>m.size&&[...m.values()].every(v=>v===0)?'0':[...m.entries()].map(([u,v])=>v.toLocaleString('en-IN',{maximumFractionDigits:3})+' '+esc(u)).join(' + ')||'–';
+// one unit per line (a PO can mix KG, PC, M2 ...); the CSV export joins the lines with " + " (class qlist)
+const qtyTxt=m=>m.size&&[...m.values()].every(v=>v===0)?'0':[...m.entries()].map(([u,v])=>v.toLocaleString('en-IN',{maximumFractionDigits:3})+' '+esc(u)).join('<br>')||'–';
 const relTxt=p=>p==='03'?'In Approval':p==='08'?'Rejected':'Released';
 const poHead=first=>`<thead><tr><th>${first}</th><th>PO</th><th>Created on</th><th>Supplier</th><th>PO type</th><th>Plant</th><th class="num">Items</th><th class="num">Items pending</th><th class="num">Quantity to be delivered</th><th class="num">Delivered quantity</th><th class="num">Net value</th><th class="num">To deliver</th><th>Release</th></tr></thead>`;
-const poRow=(x,i)=>`<tr><td>${i+1}</td><td class="nw">${esc(x.po)}</td><td class="nw">${x.day===null?'–':fmtDay(x.day)}</td><td class="supc" title="${esc('Supplier '+D.suppliers[x.sup][0])}">${esc(D.suppliers[x.sup][1]||D.suppliers[x.sup][0])}</td><td class="nw" title="${esc(typeName(x.type))}">${esc(x.type)}</td><td class="nw">${esc([...x.plants].sort().join(' / '))}</td><td class="num">${fmtN(x.n)}</td><td class="num">${fmtN(x.still)}</td><td class="num nw qtd">${qtyTxt(x.q)}</td><td class="num nw">${qtyTxt(x.g)}</td><td class="num nw">${fv(x.amt,x)}</td><td class="num nw">${fv(x.pend,x)}</td><td class="nw">${relTxt(x.rel)}</td></tr>`;
+const poRow=(x,i)=>`<tr><td>${i+1}</td><td class="nw">${esc(x.po)}</td><td class="nw">${x.day===null?'–':fmtDay(x.day)}</td><td class="supc" title="${esc('Supplier '+D.suppliers[x.sup][0])}">${esc(D.suppliers[x.sup][1]||D.suppliers[x.sup][0])}</td><td class="nw" title="${esc(typeName(x.type))}">${esc(x.type)}</td><td class="nw">${esc([...x.plants].sort().join(' / '))}</td><td class="num">${fmtN(x.n)}</td><td class="num">${fmtN(x.still)}</td><td class="num nw qtd qlist">${qtyTxt(x.q)}</td><td class="num nw qlist">${qtyTxt(x.g)}</td><td class="num nw">${fv(x.amt,x)}</td><td class="num nw">${fv(x.pend,x)}</td><td class="nw">${relTxt(x.rel)}</td></tr>`;
 const TILE_INFO={
   val:['Net PO value','Net order value (INR) of the PO items of the current filters: by PO type, by plant, and the 10 purchase orders with the most value.'],
   open:['Value still to be delivered','Purchase orders with a value still to be delivered (INR) for the current filters, most value to deliver first, with the quantity still to be delivered and the quantity already delivered (per unit when the items of a PO have different units).'],

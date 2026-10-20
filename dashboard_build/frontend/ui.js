@@ -270,7 +270,12 @@
   }
   function field(v) { v = String(v); return /[",\r\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
   function csvCell(td) { // "₹1.21 Cr" and "₹39.27 L" become whole rupees, so Excel can add them up; everything else stays as shown
-    var t = td.textContent.replace(/\s+/g, ' ').trim();
+    var c = td;
+    if (td.querySelector('br')) { // a line break must not glue the words together: " + " in a list of quantities (class qlist), else a space
+      c = td.cloneNode(true);
+      [].forEach.call(c.querySelectorAll('br'), function (b) { b.replaceWith(td.classList.contains('qlist') ? ' + ' : ' '); });
+    }
+    var t = c.textContent.replace(/\s+/g, ' ').trim();
     if (/^₹?\s*-?[\d,]+(\.\d+)?\s*(Cr|L)$/.test(t) || /^₹\s*-?[\d,]+(\.\d+)?$/.test(t)) {
       var v = num(t);
       if (isFinite(v)) return String(Math.round(v * 100) / 100);
