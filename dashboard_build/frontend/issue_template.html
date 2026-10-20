@@ -391,6 +391,17 @@ function setData(d){
   if(S.dept!==null&&!dc.has(S.dept))S.dept=null;
   $('deptSel').value=S.dept===null?'':S.dept;
 }
+// a link from the Summary page: ?tile=KEY&plant=1010&from=2026-10-01&to=2026-10-31 (dates=all clears the dates); used once, on the first load
+let LINK=(()=>{try{const q=new URLSearchParams(location.search);return q.has('tile')||q.has('plant')||q.has('from')||q.has('to')||q.has('dates')?q:null;}catch(e){return null;}})();
+function applyLink(){
+  if(!LINK)return;const q=LINK;LINK=null;
+  if(q.has('plant')){S.plant=q.get('plant')||'';if(![...$('plantSel').options].some(o=>o.value===S.plant))S.plant='';$('plantSel').value=S.plant;}
+  if(q.get('dates')==='all'){S.from=S.to=null;$('dFrom').value=$('dTo').value='';}
+  else if(q.has('from')||q.has('to')){S.from=dayOf(q.get('from'));S.to=dayOf(q.get('to'));$('dFrom').value=S.from===null?'':new Date(S.from*864e5).toISOString().slice(0,10);$('dTo').value=S.to===null?'':new Date(S.to*864e5).toISOString().slice(0,10);}
+  const k=q.get('tile');
+  if(k==='top'){S.top=true;S.reveal='topCard';}
+  else if(k&&TILE_INFO[k]){S.tile=k;S.tileAll=false;S.reveal='tileCard';}
+}
 function setLive(kind,text){$('liveDot').style.background=kind==='ok'?'var(--good)':kind==='err'?'var(--crit)':'var(--warn)';$('liveTxt').textContent=text;$('refresh').disabled=kind==='busy';}
 const hhmm=ms=>new Date(ms).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
 let loading=false;
@@ -401,7 +412,8 @@ async function load(force){
     const res=await fetch('/api/issue'+(force?'?refresh=1':''),{cache:'no-store'});
     const j=await res.json().catch(()=>({}));
     if(!res.ok)throw new Error(j.error||('HTTP '+res.status));
-    setData(j);if(!S.dInit){S.dInit=true;setMonthDates();}render();
+    setData(j);if(!S.dInit){S.dInit=true;setMonthDates();applyLink();}render();
+    if(S.reveal){const id=S.reveal;S.reveal=null;setTimeout(()=>reveal(id),150);}
     setLive('ok','Live from SAP · updated '+hhmm(j.fetchedAt)+' · '+fmtN(R.length)+' lines');
   }catch(e){
     const msg=e.message==='Failed to fetch'?'The dashboard server is not running. Start it again with Start_Live_Dashboard.bat.':e.message;

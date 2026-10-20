@@ -318,14 +318,13 @@
     btn.disabled = true;
     openAll(card).then(function (restore) {
       var out = [];
-      mainTables(card).forEach(function (t, i) {
-        if (i) {
-          out.push('');
-          var h = t.closest('.tbox') && t.closest('.tbox').previousElementSibling;
+      var tabs = mainTables(card);
+      tabs.forEach(function (t, i) {
+        if (i) out.push('');
+        if (tabs.length > 1) { // the small heading above a table (a tile's details hold several tables)
+          var h = t.previousElementSibling;
+          if (!h || !/^H3$/.test(h.tagName)) { h = t.closest('.tbox') && t.closest('.tbox').previousElementSibling; }
           if (h && /^H3$/.test(h.tagName)) out.push(field(h.textContent.trim()));
-        } else if (mainTables(card).length > 1) {
-          var h0 = t.closest('.tbox') && t.closest('.tbox').previousElementSibling;
-          if (h0 && /^H3$/.test(h0.tagName)) out.push(field(h0.textContent.trim()));
         }
         out = out.concat(tableLines(t));
       });

@@ -79,6 +79,12 @@ tr.subrow th,tr.subrow td{border-bottom:1px solid var(--grid);padding:4px 10px;b
 .tscroll{overflow:auto;max-height:75vh}
 .tscroll table{min-width:1080px}
 .pager{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;margin-top:12px;color:var(--ink2)}
+.tile .ts{font-size:.72rem;font-weight:600;color:var(--brand-dark);margin-top:6px}
+.tilebtn{text-align:left;font:inherit;color:inherit;cursor:pointer;width:100%}
+.tilebtn:hover{box-shadow:0 0 0 2px rgba(28,173,228,.35)}
+.tilebtn[aria-expanded="true"]{box-shadow:0 0 0 2px var(--brand)}
+.topcard{margin-top:16px;border-top:3px solid var(--brand-red);scroll-margin-top:150px}
+.subh{margin:16px 0 6px;font-size:.85rem;font-weight:700;color:var(--ink2)}
 .empty{padding:28px 0;color:var(--ink2);text-align:center}
 .note{margin-top:16px;color:var(--ink2);font-size:12.5px;max-width:110ch}
 .footer{text-align:center;font-size:.72rem;color:var(--muted);padding:0 20px 24px}
@@ -125,6 +131,13 @@ tr.subrow th,tr.subrow td{border-bottom:1px solid var(--grid);padding:4px 10px;b
   </section>
   <div class="chips" id="chips"></div>
   <section class="kpis" id="kpis"></section>
+
+  <section class="card topcard" id="tileCard" hidden>
+    <h2><span id="tileTitle"></span><span class="badge-live">LIVE</span></h2>
+    <p class="hint" id="tileHint"></p>
+    <div class="tbox" id="tileBox"></div>
+    <div class="pager"><span id="tileInfo"></span><div><button class="btn" id="tileAll" type="button">See all</button></div></div>
+  </section>
 
   <section class="grid">
     <article class="card">
@@ -202,9 +215,9 @@ const dayOf=v=>v?Math.floor(Date.parse(v)/864e5):null;
 const iso=d=>new Date(d*864e5).toISOString().slice(0,10);
 function setMonthDates(){const t=new Date(D.asofDay*864e5);const y=t.getUTCFullYear(),m=t.getUTCMonth();const a=Date.UTC(y,m,1)/864e5,b=Date.UTC(y,m+1,0)/864e5;S.from=a;S.to=b;$('dFrom').value=iso(a);$('dTo').value=iso(b);}
 
-let D=null,P=[],AP={},RULES=[],APINFO={file:'',savedAt:0};
+let D=null,P=[],AP={},RULES=[],APINFO={file:'',savedAt:0},CUR=null,tileToken=0;
 // show: 'appr' = In Approval (state 03 or on the approver list), 'other' = release not completed but not In Approval (state 08), 'all'
-const S={all:false,show:'appr',plant:'',type:null,user:null,appr:null,pg:null,age:null,sup:null,from:null,to:null,q:'',page:0};
+const S={tile:null,tileAll:false,all:false,show:'appr',plant:'',type:null,user:null,appr:null,pg:null,age:null,sup:null,from:null,to:null,q:'',page:0};
 const OPEN=new Set();
 
 function pass(p,skip){
@@ -243,13 +256,81 @@ function poValue(p){
   return parts.join(' + ');
 }
 
+const byValue=m=>[...m.entries()].sort((a,b)=>b[1].amt-a[1].amt||b[1].n-a[1].n);
+const apprCell=p=>p.approver?`<b>${esc(p.approver)}</b>${p.proc==='03'?'':' *'}`:p.likely?`<i title="${esc('Likely, not confirmed. '+p.likely.basis)}">~ ${esc(p.likely.approver)}</i>`:'–';
+const poHead=first=>`<thead><tr><th>${first}</th><th>PO</th><th>Created on</th><th class="num">Pending</th><th>Supplier</th><th>PO type</th><th>Plant</th><th class="num">Items</th><th class="num">Net value</th><th>Approver</th></tr></thead>`;
+const poRow=(p,i)=>`<tr><td>${i+1}</td><td class="nw">${esc(p.po)}</td><td class="nw">${fmtDay(p.day)}</td><td class="num"><span class="pill a${p.bucket}">${fmtN(p.age)} d</span></td><td title="${esc('Supplier '+D.suppliers[p.sup][0])}">${esc(supName(p.sup))}</td><td class="nw" title="${esc(typeName(p.type))}">${esc(p.type)}</td><td class="nw">${esc(p.plant)}</td><td class="num">${fmtN(p.items.length)}</td><td class="num nw">${poValue(p)}</td><td class="nw">${apprCell(p)}</td></tr>`;
+const shareOf=(v,t)=>t?(v/t*100).toFixed(1)+'%':'–';
+const TILE_INFO={
+  pos:['POs waiting for approval','The purchase orders of the current filters, the one waiting longest first.'],
+  val:['Net value','Net value (INR) of the POs of the current filters: by PO type, by plant, and the 10 POs with the most value.'],
+  items:['PO items','Every PO item of the POs of the current filters, most value first.'],
+  sups:['Suppliers','Suppliers of the POs of the current filters, most net value first.'],
+  oldest:['Waiting the longest','How long the POs have waited (days since the PO was created), and the 10 that have waited longest.'],
+  appr:['Approvers','Who the POs wait for: confirmed (the approver list) and likely (a rule, not confirmed), one row per approver, most POs first.']
+};
+function renderTile(){
+  const k=S.tile;
+  if(!k||!CUR||!D||!TILE_INFO[k]){$('tileCard').hidden=true;return;}
+  $('tileCard').hidden=false;
+  $('tileTitle').textContent=TILE_INFO[k][0];$('tileHint').textContent=TILE_INFO[k][1];
+  const rows=CUR.rows,none='<div class="empty">Nothing matches the filters.</div>';
+  let list=null,thead='',rowFn=null,html='',n=0,unit='rows';
+  const oldestFirst=()=>rows.slice().sort((a,b)=>b.age-a.age||a.po.localeCompare(b.po));
+  if(k==='pos'){
+    list=oldestFirst();thead=poHead('#');rowFn=poRow;unit='purchase orders';
+  }else if(k==='val'){
+    const ty=new Map(),pl=new Map();for(const p of rows){add(ty,p.type,p);for(const x of p.plants)add(pl,x,p);}
+    const top=rows.slice().sort((a,b)=>b.amt-a.amt).slice(0,10);
+    html='<h3 class="subh">By PO type</h3>'+aggTable(byValue(ty),'PO type',x=>esc(typeName(x)))+'<h3 class="subh">By plant</h3>'+aggTable(byValue(pl),'Plant',x=>esc(x))+
+      '<h3 class="subh">The 10 POs with the most value</h3>'+(top.length?`<table>${poHead('#')}<tbody>${top.map(poRow).join('')}</tbody></table>`:none);
+  }else if(k==='items'){
+    list=[];for(const p of rows)for(const r of p.items)list.push({p,r});
+    list.sort((a,b)=>(b.r.cur==='INR'?b.r.amt:0)-(a.r.cur==='INR'?a.r.amt:0)||b.p.age-a.p.age);unit='items';
+    thead='<thead><tr><th>#</th><th>PO</th><th>Item</th><th>Supplier</th><th>Material</th><th class="num">Quantity</th><th class="num">Price</th><th class="num">Net value</th><th class="num">Pending</th></tr></thead>';
+    rowFn=({p,r},i)=>`<tr><td>${i+1}</td><td class="nw">${esc(p.po)}</td><td>${r.item}</td><td>${esc(supName(p.sup))}</td><td>${r.mat?esc(r.mat)+' · ':''}${esc(r.text)}</td><td class="num nw">${r.qty.toLocaleString('en-IN',{maximumFractionDigits:3})} ${esc(r.unit)}</td><td class="num nw">${fmtAmt(r.price,r.cur)}</td><td class="num nw">${fmtAmt(r.amt,r.cur)}</td><td class="num"><span class="pill a${p.bucket}">${fmtN(p.age)} d</span></td></tr>`;
+  }else if(k==='sups'){
+    const m=new Map();for(const p of rows){let x=m.get(p.sup);if(!x)m.set(p.sup,x={n:0,items:0,amt:0,fx:0,oldest:0});x.n++;x.items+=p.items.length;x.amt+=p.amt;if(p.fx.size)x.fx++;if(p.age>x.oldest)x.oldest=p.age;}
+    list=byValue(m);unit='suppliers';
+    thead='<thead><tr><th>#</th><th>Supplier</th><th>GSTIN</th><th class="num">POs</th><th class="num">Items</th><th class="num">Net value</th><th class="num">Waiting longest</th><th class="num">Share</th></tr></thead>';
+    rowFn=([s,x],i)=>`<tr><td>${i+1}</td><td>${esc(supLabel(s))}</td><td class="nw">${esc(D.suppliers[s][2]||'–')}</td><td class="num">${fmtN(x.n)}</td><td class="num">${fmtN(x.items)}</td><td class="num nw"><b>${x.amt===0&&x.fx>0?'other cur.':fmtINR(x.amt)}</b></td><td class="num nw">${fmtN(x.oldest)} days</td><td class="num">${shareOf(x.amt,CUR.amt)}</td></tr>`;
+  }else if(k==='oldest'){
+    const ag=new Map();for(const p of rows)add(ag,p.bucket,p);
+    const top=oldestFirst().slice(0,10);
+    html='<h3 class="subh">Pending for how long</h3>'+aggTable([...ag.entries()].sort((a,b)=>a[0]-b[0]),'Pending for',x=>esc(AGES[x]))+
+      '<h3 class="subh">The 10 POs that have waited longest</h3>'+(top.length?`<table>${poHead('#')}<tbody>${top.map(poRow).join('')}</tbody></table>`:none);
+  }else if(k==='appr'){
+    const m=new Map();
+    for(const p of rows){let x=m.get(p.apprKey);if(!x)m.set(p.apprKey,x={n:0,sure:0,likely:0,amt:0,fx:0,oldest:0});x.n++;if(p.approver)x.sure++;else if(p.likely)x.likely++;x.amt+=p.amt;if(p.fx.size)x.fx++;if(p.age>x.oldest)x.oldest=p.age;}
+    const ls=[...m.entries()].sort((a,b)=>b[1].n-a[1].n||b[1].amt-a[1].amt);
+    const tot=ls.reduce((s,[,x])=>({n:s.n+x.n,sure:s.sure+x.sure,likely:s.likely+x.likely,amt:s.amt+x.amt}),{n:0,sure:0,likely:0,amt:0});
+    const row=([k2,x])=>`<tr><td>${esc(k2)}</td><td class="num">${fmtN(x.n)}</td><td class="num">${fmtN(x.sure)}</td><td class="num">${fmtN(x.likely)}</td><td class="num nw">${x.amt===0&&x.fx>0?'other cur.':fmtINR(x.amt)}</td><td class="num nw">${fmtN(x.oldest)} days</td></tr>`;
+    html=ls.length?`<table><thead><tr><th>Approver</th><th class="num">POs</th><th class="num">Confirmed</th><th class="num">Likely</th><th class="num">Net value</th><th class="num">Waiting longest</th></tr></thead><tbody>${ls.map(row).join('')}</tbody><tfoot><tr><td>Total (${fmtN(ls.length)})</td><td class="num">${fmtN(tot.n)}</td><td class="num">${fmtN(tot.sure)}</td><td class="num">${fmtN(tot.likely)}</td><td class="num nw">${fmtINR(tot.amt)}</td><td></td></tr></tfoot></table><p class="hint">Likely approvers come from po_approver_rules.csv and are an inference, not a confirmed approver.</p>`:none;
+    n=ls.length;
+  }
+  if(list){
+    n=list.length;const slice=S.tileAll?list:list.slice(0,25),first=S.tileAll?slice.slice(0,300):slice;
+    $('tileBox').innerHTML=list.length?`<table>${thead}<tbody>${first.map(rowFn).join('')}</tbody></table>`:none;
+    // See all can mean thousands of lines: the first rows appear at once and the rest are added in batches
+    const token=++tileToken;let done=first.length;
+    const more=()=>{if(token!==tileToken||done>=slice.length)return;const tb=$('tileBox').querySelector('tbody');if(!tb)return;tb.insertAdjacentHTML('beforeend',slice.slice(done,done+500).map((x,i)=>rowFn(x,done+i)).join(''));done+=500;setTimeout(more,0);};
+    setTimeout(more,0);
+  }else{tileToken++;$('tileBox').innerHTML=html;}
+  $('tileInfo').textContent=!list||!n?'':(S.tileAll||n<=25?`All ${fmtN(n)} ${unit} shown`:`Showing the first 25 of ${fmtN(n)} ${unit}`);
+  $('tileAll').hidden=!list||n<=25;$('tileAll').textContent=S.tileAll?'Show first 25':'See all '+fmtN(n);
+}
+const reveal=id=>{const el=$(id);if(el&&!el.hidden)el.scrollIntoView({behavior:'smooth',block:'start'});};
+
 function render(){
   if(!D)return;  // the data is still loading
   const rows=P.filter(p=>pass(p));
   let amt=0,items=0,fx=0,known=0,likely=0,oldest=null;const sups=new Set();
   for(const p of rows){amt+=p.amt;items+=p.items.length;sups.add(p.sup);if(p.fx.size)fx++;if(p.approver)known++;else if(p.likely)likely++;if(oldest===null||p.age>oldest.age)oldest=p;}
-  $('kpis').innerHTML=[[fmtN(rows.length),SHOW_TXT[S.show]==='In approval'?'POs In Approval':'POs ('+SHOW_TXT[S.show].toLowerCase()+')'],[fmtINR(amt),'Net value (INR)'+(fx?` · ${fmtN(fx)} other-currency POs not added`:'')],[fmtN(items),'PO items'],[fmtN(sups.size),'Suppliers'],[oldest?fmtN(oldest.age)+' days':'–',oldest?'Oldest: PO '+oldest.po+' ('+fmtDay(oldest.day)+')':'Oldest'],[fmtN(known)+' + '+fmtN(likely)+' of '+fmtN(rows.length),'POs: confirmed approver + likely approver']]
-    .map(t=>`<div class="tile"><div class="tv">${t[0]}</div><div class="tl">${esc(t[1])}</div></div>`).join('');
+  CUR={rows,amt,items,known,likely,oldest};
+  // every tile opens its details under the tiles
+  $('kpis').innerHTML=[[fmtN(rows.length),SHOW_TXT[S.show]==='In approval'?'POs In Approval':'POs ('+SHOW_TXT[S.show].toLowerCase()+')','pos'],[fmtINR(amt),'Net value (INR)'+(fx?` · ${fmtN(fx)} other-currency POs not added`:''),'val'],[fmtN(items),'PO items','items'],[fmtN(sups.size),'Suppliers','sups'],[oldest?fmtN(oldest.age)+' days':'–',oldest?'Oldest: PO '+oldest.po+' ('+fmtDay(oldest.day)+')':'Oldest','oldest'],[fmtN(known)+' + '+fmtN(likely)+' of '+fmtN(rows.length),'POs: confirmed approver + likely approver','appr']]
+    .map(t=>`<button type="button" class="tile tilebtn" data-tile="${t[2]}" aria-expanded="${S.tile===t[2]}"><div class="tv">${t[0]}</div><div class="tl">${esc(t[1])}</div><div class="ts">${S.tile===t[2]?'click to hide':'click for details'}</div></button>`).join('');
+  renderTile();
   // chips
   const c=[];
   if(S.show!=='appr')c.push(['show','Show: '+SHOW_TXT[S.show]]);
@@ -323,6 +404,8 @@ document.addEventListener('click',e=>{
     if(c==='date'){S.from=S.to=null;$('dFrom').value=$('dTo').value='';}
     if(c==='all')setMonthDates();
     if(c==='q'||c==='all'){S.q='';$('q').value='';}}
+  else if(t.dataset.tile!==undefined){const k=t.dataset.tile;S.tile=S.tile===k?null:k;S.tileAll=false;render();if(S.tile)reveal('tileCard');return;}
+  else if(t.id==='tileAll'){S.tileAll=!S.tileAll;renderTile();return;}
   else if(t.id==='seeAll'){S.all=!S.all;render();if(!S.all){const sc=document.querySelector('.tscroll');if(sc)sc.scrollTop=0;}return;}
   else return;
   S.page=0;render();
@@ -398,6 +481,15 @@ function setData(d,ap){
   D=d;AP=(ap&&ap.approvers)||{};RULES=(ap&&ap.rules)||[];APINFO={file:(ap&&ap.file)||'',savedAt:(ap&&ap.savedAt)||0};
   buildPOs();fillSelects();
 }
+// a link from the Summary page: ?tile=pos&plant=1010&from=2026-10-01&to=2026-10-31 (dates=all clears the dates); used once, on the first load
+let LINK=(()=>{try{const q=new URLSearchParams(location.search);return q.has('tile')||q.has('plant')||q.has('from')||q.has('to')||q.has('dates')?q:null;}catch(e){return null;}})();
+function applyLink(){
+  if(!LINK)return;const q=LINK;LINK=null;
+  if(q.has('plant')){S.plant=q.get('plant')||'';if(![...$('plantSel').options].some(o=>o.value===S.plant))S.plant='';$('plantSel').value=S.plant;}
+  if(q.get('dates')==='all'){S.from=S.to=null;$('dFrom').value=$('dTo').value='';}
+  else if(q.has('from')||q.has('to')){S.from=dayOf(q.get('from'));S.to=dayOf(q.get('to'));$('dFrom').value=S.from===null?'':iso(S.from);$('dTo').value=S.to===null?'':iso(S.to);}
+  const k=q.get('tile');if(k&&TILE_INFO[k]){S.tile=k;S.tileAll=false;S.reveal=true;}
+}
 function setLive(kind,text){$('liveDot').style.background=kind==='ok'?'var(--good)':kind==='err'?'var(--crit)':'var(--warn)';$('liveTxt').textContent=text;$('refresh').disabled=kind==='busy';}
 const hhmm=ms=>new Date(ms).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
 let loading=false;
@@ -409,7 +501,7 @@ async function load(force){
     const j=await res.json().catch(()=>({}));
     if(!res.ok)throw new Error(j.error||('HTTP '+res.status));
     const ap=ares&&ares.ok?await ares.json().catch(()=>null):null;
-    setData(j,ap);if(!S.dInit){S.dInit=true;setMonthDates();}render();
+    setData(j,ap);if(!S.dInit){S.dInit=true;setMonthDates();applyLink();}render();if(S.reveal){S.reveal=false;setTimeout(()=>reveal('tileCard'),150);}
     const n=P.filter(p=>p.group==='appr').length;
     setLive('ok','Live from SAP · updated '+hhmm(j.fetchedAt)+' · '+fmtN(n)+' POs In Approval');
   }catch(e){

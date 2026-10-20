@@ -113,6 +113,7 @@ tr.sel td{background:rgba(28,173,228,.14)!important}
 .opn{margin-left:auto;font-size:.78rem;font-weight:600;color:var(--brand-dark);text-decoration:none;white-space:nowrap}
 .opn:hover{text-decoration:underline}
 a.tile{display:block;text-decoration:none;color:inherit}
+a.tile .tl::after{content:" \203A";color:var(--brand-dark);font-weight:700}
 a.tilebtn:hover{box-shadow:0 0 0 2px rgba(28,173,228,.35)}
 .sumgrid{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;margin-top:12px}
 @media (min-width:1000px){.sumgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
@@ -296,7 +297,16 @@ function calcStock(){
 }
 
 /* ---------- drawing ---------- */
-const tile=(big,label,sub)=>`<div class="tile"><div class="tv">${big}</div><div class="tl">${label}</div>${sub?`<div class="ts">${sub}</div>`:''}</div>`;
+// a tile opens the details of the same tile on its page, with the plant and dates chosen here: /po?tile=open&plant=1010&from=..&to=..
+// dates: 'sel' = the dates chosen here, 'all' = no dates, null = the page has no dates (Store Stock)
+function go(page,key,dates){
+  const a=['tile='+key];
+  if(S.plant)a.push('plant='+encodeURIComponent(S.plant));
+  if(dates==='all')a.push('dates=all');
+  else if(dates==='sel'){if(S.from===null&&S.to===null)a.push('dates=all');else{if(S.from!==null)a.push('from='+iso(S.from));if(S.to!==null)a.push('to='+iso(S.to));}}
+  return page+'?'+a.join('&');
+}
+const tile=(big,label,sub,href)=>href?`<a class="tile tilebtn" href="${href}" title="Open the details"><div class="tv">${big}</div><div class="tl">${label}</div>${sub?`<div class="ts">${sub}</div>`:''}</a>`:`<div class="tile"><div class="tv">${big}</div><div class="tl">${label}</div>${sub?`<div class="ts">${sub}</div>`:''}</div>`;
 const table=(cols,rows,empty)=>rows.length?`<table><thead><tr>${cols.map(c=>`<th${c[1]?` class="${c[1]}"`:''}>${c[0]}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map((v,i)=>`<td${cols[i][1]?` class="${cols[i][1]} nw"`:''}>${v}</td>`).join('')}</tr>`).join('')}</tbody></table>`:`<div class="empty">${empty||'Nothing in this range.'}</div>`;
 const status=(key,drawn)=>ERR[key]?`<div class="loading err">${esc(ERR[key])}</div>`:drawn||'<div class="loading">Loading from SAP…</div>';
 const section=(id,tiles,tbl)=>`<div class="kpis">${tiles.join('')}</div><div class="tbox sumtable">${tbl}</div>`;
@@ -324,19 +334,19 @@ function poOld(){
 function highlights(pr,is,po,ap,st){
   const L=[],add=(sev,ico,href,t,s)=>L.push({sev,ico,href,t,s});
   if(pr){
-    if(pr.sel.old>0)add('crit','alert','/',`${fmtN(pr.sel.old)} pending PR items are older than 1 year`,'Created more than 365 days ago and still not ordered.');
-    else if(pr.all.old>0)add('warn','alert','/',`${fmtN(pr.all.old)} pending PR items are older than 1 year`,'They were created before the chosen dates. Open Pending PR and clear the dates to see them.');
-    if(pr.sel.od>0)add('warn','clock','/',`${fmtN(pr.sel.od)} pending PR items passed their delivery date`,`${pct(pr.sel.od,pr.sel.n)}% of the ${fmtN(pr.sel.n)} pending items in these dates (${fmtN(pr.all.od)} on all dates).`);
+    if(pr.sel.old>0)add('crit','alert',go('/','old','sel'),`${fmtN(pr.sel.old)} pending PR items are older than 1 year`,'Created more than 365 days ago and still not ordered.');
+    else if(pr.all.old>0)add('warn','alert',go('/','old','all'),`${fmtN(pr.all.old)} pending PR items are older than 1 year`,'They were created before the chosen dates. Open Pending PR and clear the dates to see them.');
+    if(pr.sel.od>0)add('warn','clock',go('/','overdue','sel'),`${fmtN(pr.sel.od)} pending PR items passed their delivery date`,`${pct(pr.sel.od,pr.sel.n)}% of the ${fmtN(pr.sel.n)} pending items in these dates (${fmtN(pr.all.od)} on all dates).`);
   }
   const o=issueOutlier();
   if(o)add('warn','alert','/issue',`Store issue in ${o.label} was ${fmtINR(o.x)}`,`${Math.round(o.x/o.median)} times a usual month (about ${fmtINR(o.median)}). Worth a look on the Store Issue page.`);
   const old=poOld();
-  if(old)add('warn','clock','/po',`${fmtN(old.n)} POs older than 90 days are still waiting for delivery`,`${fmtINR(old.amt)} still to be delivered. The oldest PO was created on ${fmtDay(old.oldest)}.`);
+  if(old)add('warn','clock',go('/po','open','all'),`${fmtN(old.n)} POs older than 90 days are still waiting for delivery`,`${fmtINR(old.amt)} still to be delivered. The oldest PO was created on ${fmtDay(old.oldest)}.`);
   if(ap){
-    if(ap.all.over>0)add('warn','check','/po-approval',`${fmtN(ap.all.over)} POs have waited more than 30 days for approval`,ap.all.oldest?`The oldest is PO ${esc(ap.all.oldest.po)}, waiting ${fmtN(ap.all.oldest.age)} days.`:'');
-    else if(ap.all.n>0)add('ok','check','/po-approval','No PO has waited more than 30 days for approval',`${fmtN(ap.all.n)} POs are In Approval, the oldest for ${fmtN(ap.all.oldest?ap.all.oldest.age:0)} days.`);
+    if(ap.all.over>0)add('warn','check',go('/po-approval','oldest','all'),`${fmtN(ap.all.over)} POs have waited more than 30 days for approval`,ap.all.oldest?`The oldest is PO ${esc(ap.all.oldest.po)}, waiting ${fmtN(ap.all.oldest.age)} days.`:'');
+    else if(ap.all.n>0)add('ok','check',go('/po-approval','pos','all'),'No PO has waited more than 30 days for approval',`${fmtN(ap.all.n)} POs are In Approval, the oldest for ${fmtN(ap.all.oldest?ap.all.oldest.age:0)} days.`);
   }
-  if(st&&st.used&&st.deadN>0)add(st.store&&st.deadVal/st.store>=.25?'warn':'info','moon','/stock',`${fmtN(st.deadN)} Store materials were not used for 5 months`,`${fmtINR(st.deadVal)}, ${pct(st.deadVal,st.store)}% of the Store stock value. The list is on the Store Stock page.`);
+  if(st&&st.used&&st.deadN>0)add(st.store&&st.deadVal/st.store>=.25?'warn':'info','moon',go('/stock','dead',null),`${fmtN(st.deadN)} Store materials were not used for 5 months`,`${fmtINR(st.deadVal)}, ${pct(st.deadVal,st.store)}% of the Store stock value. The list is on the Store Stock page.`);
   const rank={crit:0,warn:1,info:2,ok:3};
   return L.sort((a,b)=>rank[a.sev]-rank[b.sev]);
 }
@@ -356,45 +366,45 @@ function renderAll(){
   const pr=calcPR(),is=calcIssue(),po=calcPO(),ap=calcAppr(),st=calcStock();
   const heads=[];
   const loadHead=(href,label,key)=>`<a class="tile tilebtn" href="${href}"><div class="tv">${ERR[key]?'–':'…'}</div><div class="tl">${label}</div><div class="ts">${ERR[key]?esc(ERR[key]):'loading'}</div></a>`;
-  heads.push(pr?head('#sec-pr',fmtN(pr.sel.n),'Pending PR items',`${fmtN(pr.sel.prs)} PRs · ${fmtINR(pr.sel.amt)} net value`):loadHead('#sec-pr','Pending PR items','pr'));
-  heads.push(is?head('#sec-issue',fmtINR(is.sel.amt),'Store issue value',`${fmtN(is.sel.n)} lines in the dates`):loadHead('#sec-issue','Store issue value','issue'));
-  heads.push(po?head('#sec-po',fmtINR(po.sel.open),'PO value still to deliver',`${fmtN(po.sel.pos)} POs · ${fmtN(po.sel.items)} items`):loadHead('#sec-po','PO value still to deliver','po'));
-  heads.push(ap?head('#sec-appr',fmtN(ap.sel.n),'POs waiting for approval',`${fmtINR(ap.sel.amt)} · oldest ${ap.sel.oldest?fmtN(ap.sel.oldest.age)+' days':'–'}`):loadHead('#sec-appr','POs waiting for approval','po'));
-  heads.push(st?head('#sec-stock',fmtINR(st.tot),'Store stock value',st.split?`Store ${fmtINR(st.store)} · ${IPM} ${fmtINR(st.ipm)}`:'today'):loadHead('#sec-stock','Store stock value','stock'));
+  heads.push(pr?head(go('/','items','sel'),fmtN(pr.sel.n),'Pending PR items',`${fmtN(pr.sel.prs)} PRs · ${fmtINR(pr.sel.amt)} net value`):loadHead('#sec-pr','Pending PR items','pr'));
+  heads.push(is?head(go('/issue','val','sel'),fmtINR(is.sel.amt),'Store issue value',`${fmtN(is.sel.n)} lines in the dates`):loadHead('#sec-issue','Store issue value','issue'));
+  heads.push(po?head(go('/po','open','sel'),fmtINR(po.sel.open),'PO value still to deliver',`${fmtN(po.sel.pos)} POs · ${fmtN(po.sel.items)} items`):loadHead('#sec-po','PO value still to deliver','po'));
+  heads.push(ap?head(go('/po-approval','pos','sel'),fmtN(ap.sel.n),'POs waiting for approval',`${fmtINR(ap.sel.amt)} · oldest ${ap.sel.oldest?fmtN(ap.sel.oldest.age)+' days':'–'}`):loadHead('#sec-appr','POs waiting for approval','po'));
+  heads.push(st?head(go('/stock','val',null),fmtINR(st.tot),'Store stock value',st.split?`Store ${fmtINR(st.store)} · ${IPM} ${fmtINR(st.ipm)}`:'today'):loadHead('#sec-stock','Store stock value','stock'));
   $('heads').innerHTML=heads.join('');
   const hl=highlights(pr,is,po,ap,st);
   $('highlights').innerHTML=hl.map(h=>`<a class="hlc ${h.sev}" data-ico="${h.ico}" href="${h.href}"><b>${h.t}</b><span>${h.s}</span></a>`).join('');
   $('hlTitle').hidden=!hl.length;
 
   $('body-pr').innerHTML=status('pr',pr&&section('pr',[
-    tile(fmtN(pr.sel.n),'Pending PR items',`${fmtN(pr.sel.prs)} PRs · all dates: ${fmtN(pr.all.n)}`),
-    tile(fmtINR(pr.sel.amt),'Net value',`all dates: ${fmtINR(pr.all.amt)}`),
-    tile(fmtN(pr.sel.od),'Delivery date passed',`all dates: ${fmtN(pr.all.od)}`),
-    tile(fmtN(pr.sel.old),'Older than 1 year',`all dates: ${fmtN(pr.all.old)}`)],
+    tile(fmtN(pr.sel.n),'Pending PR items',`${fmtN(pr.sel.prs)} PRs · all dates: ${fmtN(pr.all.n)}`,go('/','items','sel')),
+    tile(fmtINR(pr.sel.amt),'Net value',`all dates: ${fmtINR(pr.all.amt)}`,go('/','value','sel')),
+    tile(fmtN(pr.sel.od),'Delivery date passed',`all dates: ${fmtN(pr.all.od)}`,go('/','overdue','sel')),
+    tile(fmtN(pr.sel.old),'Older than 1 year',`all dates: ${fmtN(pr.all.old)}`,go('/','old','sel'))],
     table([['Plant',''],['Items','num'],['Net value','num']],pr.byPlant.map(([p,x])=>[esc(p),fmtN(x.n),fmtINR(x.amt)]))));
   $('body-issue').innerHTML=status('issue',is&&section('issue',[
-    tile(fmtINR(is.sel.amt),'Net issue value',`all dates: ${fmtINR(is.all.amt)}`),
-    tile(fmtN(is.sel.n),'Issue lines',`all dates: ${fmtN(is.all.n)}`),
-    tile(fmtN(is.sel.ccs),'Cost centers',`all dates: ${fmtN(is.all.ccs)}`),
-    tile(fmtN(is.sel.mats),'Materials',`all dates: ${fmtN(is.all.mats)}`)],
+    tile(fmtINR(is.sel.amt),'Net issue value',`all dates: ${fmtINR(is.all.amt)}`,go('/issue','val','sel')),
+    tile(fmtN(is.sel.n),'Issue lines',`all dates: ${fmtN(is.all.n)}`,go('/issue','lines','sel')),
+    tile(fmtN(is.sel.ccs),'Cost centers',`all dates: ${fmtN(is.all.ccs)}`,go('/issue','ccs','sel')),
+    tile(fmtN(is.sel.mats),'Materials',`all dates: ${fmtN(is.all.mats)}`,go('/issue','mats','sel'))],
     table([['Top 5 departments',''],['Lines','num'],['Net value','num']],is.topDept.map(([k,x])=>[esc(k||'(none)'),fmtN(x.n),fmtINR(x.amt)]))));
   $('body-po').innerHTML=status('po',po&&section('po',[
-    tile(fmtINR(po.sel.open),'Value still to be delivered',`all dates: ${fmtINR(po.all.open)}`),
-    tile(fmtINR(po.sel.amt),'Net PO value',`all dates: ${fmtINR(po.all.amt)}${po.sel.fx?` · ${fmtN(po.sel.fx)} other-currency items not added`:''}`),
-    tile(fmtN(po.sel.pos),'Purchase orders',`${fmtN(po.sel.items)} items · all dates: ${fmtN(po.all.pos)}`),
-    tile(fmtN(po.sel.sups),'Suppliers',`all dates: ${fmtN(po.all.sups)}`)],
+    tile(fmtINR(po.sel.open),'Value still to be delivered',`all dates: ${fmtINR(po.all.open)}`,go('/po','open','sel')),
+    tile(fmtINR(po.sel.amt),'Net PO value',`all dates: ${fmtINR(po.all.amt)}${po.sel.fx?` · ${fmtN(po.sel.fx)} other-currency items not added`:''}`,go('/po','val','sel')),
+    tile(fmtN(po.sel.pos),'Purchase orders',`${fmtN(po.sel.items)} items · all dates: ${fmtN(po.all.pos)}`,go('/po','pos','sel')),
+    tile(fmtN(po.sel.sups),'Suppliers',`all dates: ${fmtN(po.all.sups)}`,go('/po','sups','sel'))],
     table([['Top 5 suppliers by value to deliver',''],['POs','num'],['To deliver','num']],po.top.map(([k,x])=>[esc(k),fmtN(x.pos.size),fmtINR(x.open)]))));
   $('body-appr').innerHTML=status('po',ap&&section('appr',[
-    tile(fmtN(ap.sel.n),'POs In Approval',`all dates: ${fmtN(ap.all.n)}`),
-    tile(fmtINR(ap.sel.amt),'Net value (INR)',`all dates: ${fmtINR(ap.all.amt)}`),
-    tile(ap.sel.oldest?fmtN(ap.sel.oldest.age)+' days':'–','Oldest waiting',ap.sel.oldest?`PO ${esc(ap.sel.oldest.po)} (${fmtDay(ap.sel.oldest.day)})`:''),
-    tile(fmtN(ap.sel.over),'Waiting more than 30 days',`all dates: ${fmtN(ap.all.over)}`)],
+    tile(fmtN(ap.sel.n),'POs In Approval',`all dates: ${fmtN(ap.all.n)}`,go('/po-approval','pos','sel')),
+    tile(fmtINR(ap.sel.amt),'Net value (INR)',`all dates: ${fmtINR(ap.all.amt)}`,go('/po-approval','val','sel')),
+    tile(ap.sel.oldest?fmtN(ap.sel.oldest.age)+' days':'–','Oldest waiting',ap.sel.oldest?`PO ${esc(ap.sel.oldest.po)} (${fmtDay(ap.sel.oldest.day)})`:'',go('/po-approval','oldest','sel')),
+    tile(fmtN(ap.sel.over),'Waiting more than 30 days',`all dates: ${fmtN(ap.all.over)}`,go('/po-approval','oldest','sel'))],
     table([['Top 5 approvers',''],['POs','num'],['Net value','num']],ap.top.map(([k,x])=>[esc(k),fmtN(x.n),fmtINR(x.amt)]))));
   $('body-stock').innerHTML=status('stock',st&&section('stock',[
-    tile(fmtINR(st.tot),'Total stock value',st.split?`Store ${fmtINR(st.store)} · ${IPM} ${fmtINR(st.ipm)}`:''),
-    tile(fmtINR(st.topVal),'Top 5 materials (Store)',st.store?`${(st.topVal/st.store*100).toFixed(1)}% of the Store stock`:''),
-    tile(st.used?fmtN(st.deadN):'–','Not used for 5 months (Store)',st.used?`${fmtINR(st.deadVal)} · no goods issue since ${fmtDay(st.cut)}`:'goods issue data not loaded'),
-    tile(fmtINR(st.qi),'In quality inspection','stock type 02')],
+    tile(fmtINR(st.tot),'Total stock value',st.split?`Store ${fmtINR(st.store)} · ${IPM} ${fmtINR(st.ipm)}`:'',go('/stock','val',null)),
+    tile(fmtINR(st.topVal),'Top 5 materials (Store)',st.store?`${(st.topVal/st.store*100).toFixed(1)}% of the Store stock`:'',go('/stock','top',null)),
+    tile(st.used?fmtN(st.deadN):'–','Not used for 5 months (Store)',st.used?`${fmtINR(st.deadVal)} · no goods issue since ${fmtDay(st.cut)}`:'goods issue data not loaded',go('/stock','dead',null)),
+    tile(fmtINR(st.qi),'In quality inspection','stock type 02',go('/stock','qi',null))],
     table([['Top 5 materials (Store)',''],['Plant',''],['Stock value','num'],['Last used','']],st.top.map(x=>[esc(x.id+' '+x.name),esc(x.plant),fmtINR(x.val),!st.used?'–':x.last?fmtDay(x.last):'Not since '+fmtDay(st.from)]))));
   updateLive();
 }

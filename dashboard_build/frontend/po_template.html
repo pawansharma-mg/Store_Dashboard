@@ -81,6 +81,12 @@ tr.sel td{background:rgba(28,173,228,.14)!important}
 .matno{font-weight:600;font-variant-numeric:tabular-nums;color:var(--ink2);font-size:12px}
 .supc{min-width:170px}
 .pager{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;margin-top:12px;color:var(--ink2)}
+.tile .ts{font-size:.72rem;font-weight:600;color:var(--brand-dark);margin-top:6px}
+.tilebtn{text-align:left;font:inherit;color:inherit;cursor:pointer;width:100%}
+.tilebtn:hover{box-shadow:0 0 0 2px rgba(28,173,228,.35)}
+.tilebtn[aria-expanded="true"]{box-shadow:0 0 0 2px var(--brand)}
+.topcard{margin-top:16px;border-top:3px solid var(--brand-red);scroll-margin-top:150px}
+.subh{margin:16px 0 6px;font-size:.85rem;font-weight:700;color:var(--ink2)}
 .empty{padding:28px 0;color:var(--ink2);text-align:center}
 .note{margin-top:16px;color:var(--ink2);font-size:12.5px;max-width:110ch}
 .footer{text-align:center;font-size:.72rem;color:var(--muted);padding:0 20px 24px}
@@ -127,6 +133,13 @@ tr.sel td{background:rgba(28,173,228,.14)!important}
   </section>
   <div class="chips" id="chips"></div>
   <section class="kpis" id="kpis"></section>
+
+  <section class="card topcard" id="tileCard" hidden>
+    <h2><span id="tileTitle"></span><span class="badge-live">LIVE</span></h2>
+    <p class="hint" id="tileHint"></p>
+    <div class="tbox" id="tileBox"></div>
+    <div class="pager"><span id="tileInfo"></span><div><button class="btn" id="tileAll" type="button">See all</button></div></div>
+  </section>
 
   <section class="grid">
     <article class="card">
@@ -207,8 +220,8 @@ const mIdx=d=>{const t=new Date(d*864e5);return t.getUTCFullYear()*12+t.getUTCMo
 const mName=k=>MON[k%12]+' '+Math.floor(k/12);
 const dayOf=v=>v?Math.floor(Date.parse(v)/864e5):null;
 
-let D=null,R=[],renderToken=0;
-const S={all:false,plant:'',type:null,sup:null,del:'pending',rel:'',dt:'cr',grp:null,pg:null,from:null,to:null,q:'',mon:null,page:0};
+let D=null,R=[],renderToken=0,CUR=null,tileToken=0;
+const S={tile:null,tileAll:false,all:false,plant:'',type:null,sup:null,del:'pending',rel:'',dt:'cr',grp:null,pg:null,from:null,to:null,q:'',mon:null,page:0};
 
 function pass(r,skip){
   skip=skip||[];
@@ -246,14 +259,81 @@ function aggTable(list,head,cell,sel,limit){
 const byValue=m=>[...m.entries()].sort((a,b)=>b[1].amt-a[1].amt||b[1].n-a[1].n);
 const supLabel=i=>{const s=D.suppliers[i];return (s[1]||'(no name)')+' ('+s[0]+')';};
 
+// one entry per purchase order of the given items: items, net value (INR), value still to deliver (INR), other-currency items
+function poList(rows){
+  const m=new Map();
+  for(const r of rows){
+    let x=m.get(r.po);
+    if(!x)m.set(r.po,x={po:r.po,day:r.day,sup:r.sup,type:r.type,pg:r.pg,plants:new Set(),n:0,still:0,amt:0,pend:0,fx:0,rel:r.proc});
+    x.n++;x.plants.add(r.plant);if(r.still>0)x.still++;
+    if(r.cur==='INR'){x.amt+=r.amt;x.pend+=r.pendAmt;}else x.fx++;
+  }
+  return [...m.values()];
+}
+const shareOf=(v,t)=>t?(v/t*100).toFixed(1)+'%':'–';
+const relTxt=p=>p==='03'?'In Approval':p==='08'?'Rejected':'Released';
+const poHead=first=>`<thead><tr><th>${first}</th><th>PO</th><th>Created on</th><th>Supplier</th><th>PO type</th><th>Plant</th><th class="num">Items</th><th class="num">Still to deliver</th><th class="num">Net value</th><th class="num">To deliver</th><th>Release</th></tr></thead>`;
+const poRow=(x,i)=>`<tr><td>${i+1}</td><td class="nw">${esc(x.po)}</td><td class="nw">${x.day===null?'–':fmtDay(x.day)}</td><td class="supc" title="${esc('Supplier '+D.suppliers[x.sup][0])}">${esc(D.suppliers[x.sup][1]||D.suppliers[x.sup][0])}</td><td class="nw" title="${esc(typeName(x.type))}">${esc(x.type)}</td><td class="nw">${esc([...x.plants].sort().join(' / '))}</td><td class="num">${fmtN(x.n)}</td><td class="num">${fmtN(x.still)}</td><td class="num nw">${fv(x.amt,x)}</td><td class="num nw">${fv(x.pend,x)}</td><td class="nw">${relTxt(x.rel)}</td></tr>`;
+const TILE_INFO={
+  val:['Net PO value','Net order value (INR) of the PO items of the current filters: by PO type, by plant, and the 10 purchase orders with the most value.'],
+  open:['Value still to be delivered','Purchase orders with a value still to be delivered (INR) for the current filters, most value to deliver first.'],
+  pos:['Purchase orders','Every purchase order of the current filters, newest first.'],
+  items:['PO items','PO items of the current filters by delivery status, and the items with the most value first.'],
+  sups:['Suppliers','Suppliers of the current filters, most net value first.']
+};
+const ST_TXT={open:'Not delivered',partly:'Partly delivered',done:'Delivered',nogr:'No GR (nothing left, nothing received)',nodata:'No status data'};
+function renderTile(){
+  const k=S.tile;
+  if(!k||!CUR||!D||!TILE_INFO[k]){$('tileCard').hidden=true;return;}
+  $('tileCard').hidden=false;
+  $('tileTitle').textContent=TILE_INFO[k][0];$('tileHint').textContent=TILE_INFO[k][1];
+  const rows=CUR.rows,none='<div class="empty">Nothing matches the filters.</div>';
+  let list=null,thead='',rowFn=null,html='',n=0,unit='rows';
+  if(k==='val'){
+    const ty=new Map(),pl=new Map();for(const r of rows){add(ty,r.type,r);add(pl,r.plant,r);}
+    const top=poList(rows).sort((a,b)=>b.amt-a.amt).slice(0,10);
+    html='<h3 class="subh">By PO type</h3>'+aggTable(byValue(ty),'PO type',x=>esc(typeName(x)))+'<h3 class="subh">By plant</h3>'+aggTable(byValue(pl),'Plant',x=>esc(x))+
+      '<h3 class="subh">The 10 purchase orders with the most value</h3>'+(top.length?`<table>${poHead('#')}<tbody>${top.map(poRow).join('')}</tbody></table>`:none);
+  }else if(k==='open'){
+    list=poList(rows).filter(x=>x.pend>0||x.still>0).sort((a,b)=>b.pend-a.pend||b.still-a.still);thead=poHead('#');rowFn=poRow;unit='purchase orders';
+  }else if(k==='pos'){
+    list=poList(rows).sort((a,b)=>(b.day||0)-(a.day||0)||b.po.localeCompare(a.po));thead=poHead('#');rowFn=poRow;unit='purchase orders';
+  }else if(k==='items'){
+    const sm=new Map();for(const r of rows){let x=sm.get(r.st);if(!x)sm.set(r.st,x=agg());x.n++;x.pos.add(r.po);if(r.cur==='INR'){x.amt+=r.amt;x.pend+=r.pendAmt;}else x.fx++;}
+    html='<h3 class="subh">By delivery status</h3>'+aggTable([...sm.entries()].sort((a,b)=>b[1].amt-a[1].amt),'Delivery',x=>esc(ST_TXT[x]||x))+'<h3 class="subh">Items with the most value (first 25)</h3>';
+    const top=rows.filter(r=>r.cur==='INR').sort((a,b)=>b.amt-a.amt).slice(0,25);
+    html+=top.length?`<table><thead><tr><th>#</th><th>PO</th><th>Item</th><th>Supplier</th><th>Material</th><th class="num">Order quantity</th><th class="num">Quantity to be delivered</th><th class="num">Net value</th></tr></thead><tbody>${top.map((r,i)=>`<tr><td>${i+1}</td><td class="nw">${esc(r.po)}</td><td>${r.item}</td><td class="supc">${esc(D.suppliers[r.sup][1]||D.suppliers[r.sup][0])}</td><td class="matc">${r.mat?`<span class="matno">${esc(r.mat)}</span><br>`:''}${esc(r.text)}</td><td class="num nw">${r.qty.toLocaleString('en-IN',{maximumFractionDigits:3})} ${esc(r.unit)}</td><td class="num nw">${r.still===null?'–':r.still.toLocaleString('en-IN',{maximumFractionDigits:3})+' '+esc(r.unit)}</td><td class="num nw">${fmtINR(r.amt)}</td></tr>`).join('')}</tbody></table>`:none;
+  }else if(k==='sups'){
+    const m=new Map();for(const r of rows)add(m,r.sup,r);
+    list=byValue(m);unit='suppliers';
+    const tot=CUR.amt;
+    thead='<thead><tr><th>#</th><th>Supplier</th><th>GSTIN</th><th class="num">POs</th><th class="num">Items</th><th class="num">Net value</th><th class="num">To deliver</th><th class="num">Share</th></tr></thead>';
+    rowFn=([s,x],i)=>`<tr><td>${i+1}</td><td>${esc(supLabel(s))}</td><td class="nw">${esc(D.suppliers[s][2]||'–')}</td><td class="num">${fmtN(x.pos.size)}</td><td class="num">${fmtN(x.n)}</td><td class="num nw"><b>${fv(x.amt,x)}</b></td><td class="num nw">${fv(x.pend,x)}</td><td class="num">${shareOf(x.amt,tot)}</td></tr>`;
+  }
+  if(list){
+    n=list.length;const slice=S.tileAll?list:list.slice(0,25),first=S.tileAll?slice.slice(0,300):slice;
+    $('tileBox').innerHTML=list.length?`<table>${thead}<tbody>${first.map(rowFn).join('')}</tbody></table>`:none;
+    // See all can mean thousands of lines: the first rows appear at once and the rest are added in batches
+    const token=++tileToken;let done=first.length;
+    const more=()=>{if(token!==tileToken||done>=slice.length)return;const tb=$('tileBox').querySelector('tbody');if(!tb)return;tb.insertAdjacentHTML('beforeend',slice.slice(done,done+500).map((x,i)=>rowFn(x,done+i)).join(''));done+=500;setTimeout(more,0);};
+    setTimeout(more,0);
+  }else{tileToken++;$('tileBox').innerHTML=html;}
+  $('tileInfo').textContent=!list?'':!n?'':(S.tileAll||n<=25?`All ${fmtN(n)} ${unit} shown`:`Showing the first 25 of ${fmtN(n)} ${unit}`);
+  $('tileAll').hidden=!list||n<=25;$('tileAll').textContent=S.tileAll?'Show first 25':'See all '+fmtN(n);
+}
+const reveal=id=>{const el=$(id);if(el&&!el.hidden)el.scrollIntoView({behavior:'smooth',block:'start'});};
+
 function render(){
   if(!D)return;  // the data is still loading
   const rows=R.filter(r=>pass(r));
   // KPIs
   let amt=0,open=0,fx=0;const pos=new Set(),sups=new Set();
   for(const r of rows){pos.add(r.po);sups.add(r.sup);if(r.cur==='INR'){amt+=r.amt;open+=r.pendAmt;}else fx++;}
-  $('kpis').innerHTML=[[fmtINR(amt),'Net PO value (INR)'+(fx?` · ${fmtN(fx)} other-currency items not added`:'')],[fmtINR(open),'Value still to be delivered (INR)'],[fmtN(pos.size),'Purchase orders'],[fmtN(rows.length),'PO items'],[fmtN(sups.size),'Suppliers']]
-    .map(t=>`<div class="tile"><div class="tv">${t[0]}</div><div class="tl">${t[1]}</div></div>`).join('');
+  CUR={rows,amt,open};
+  // every tile opens its details under the tiles
+  $('kpis').innerHTML=[[fmtINR(amt),'Net PO value (INR)'+(fx?` · ${fmtN(fx)} other-currency items not added`:''),'val'],[fmtINR(open),'Value still to be delivered (INR)','open'],[fmtN(pos.size),'Purchase orders','pos'],[fmtN(rows.length),'PO items','items'],[fmtN(sups.size),'Suppliers','sups']]
+    .map(t=>`<button type="button" class="tile tilebtn" data-tile="${t[2]}" aria-expanded="${S.tile===t[2]}"><div class="tv">${t[0]}</div><div class="tl">${t[1]}</div><div class="ts">${S.tile===t[2]?'click to hide':'click for details'}</div></button>`).join('');
+  renderTile();
   // chips
   const c=[];
   if(S.plant)c.push(['plant','Plant '+S.plant]);
@@ -331,6 +411,8 @@ document.addEventListener('click',e=>{
     if(c==='date'){S.from=S.to=null;$('dFrom').value=$('dTo').value='';}
     if(c==='all')setMonthDates();
     if(c==='q'||c==='all'){S.q='';$('q').value='';}}
+  else if(t.dataset.tile!==undefined){const k=t.dataset.tile;S.tile=S.tile===k?null:k;S.tileAll=false;render();if(S.tile)reveal('tileCard');return;}
+  else if(t.id==='tileAll'){S.tileAll=!S.tileAll;renderTile();return;}
   else if(t.id==='seeAll'){S.all=!S.all;render();if(!S.all)document.querySelector('.tscroll').scrollTop=0;return;}
   else return;
   S.page=0;render();
@@ -395,6 +477,16 @@ function setData(d){
   if(S.sup!==null&&!sc.has(S.sup))S.sup=null;
   setSupInput();
 }
+// a link from the Summary page: ?tile=open&plant=1010&from=2026-10-01&to=2026-10-31 (dates=all clears the dates); used once, on the first load
+let LINK=(()=>{try{const q=new URLSearchParams(location.search);return q.has('tile')||q.has('plant')||q.has('from')||q.has('to')||q.has('dates')?q:null;}catch(e){return null;}})();
+function applyLink(){
+  if(!LINK)return;const q=LINK;LINK=null;
+  if(q.has('plant')){S.plant=q.get('plant')||'';if(![...$('plantSel').options].some(o=>o.value===S.plant))S.plant='';$('plantSel').value=S.plant;}
+  if(q.get('dates')==='all'){S.from=S.to=null;$('dFrom').value=$('dTo').value='';}
+  else if(q.has('from')||q.has('to')){S.from=dayOf(q.get('from'));S.to=dayOf(q.get('to'));$('dFrom').value=S.from===null?'':iso(S.from);$('dTo').value=S.to===null?'':iso(S.to);}
+  if(q.has('dates')||q.has('from')||q.has('to')){S.dt='cr';$('dtSel').value='cr';applyDate();}
+  const k=q.get('tile');if(k&&TILE_INFO[k]){S.tile=k;S.tileAll=false;S.reveal=true;}
+}
 function setLive(kind,text){$('liveDot').style.background=kind==='ok'?'var(--good)':kind==='err'?'var(--crit)':'var(--warn)';$('liveTxt').textContent=text;$('refresh').disabled=kind==='busy';}
 const hhmm=ms=>new Date(ms).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
 let loading=false;
@@ -405,7 +497,7 @@ async function load(force){
     const res=await fetch('/api/po'+(force?'?refresh=1':''),{cache:'no-store'});
     const j=await res.json().catch(()=>({}));
     if(!res.ok)throw new Error(j.error||('HTTP '+res.status));
-    setData(j);if(!S.dInit){S.dInit=true;setMonthDates();}render();
+    setData(j);if(!S.dInit){S.dInit=true;setMonthDates();applyLink();}render();if(S.reveal){S.reveal=false;setTimeout(()=>reveal('tileCard'),150);}
     setLive('ok','Live from SAP · updated '+hhmm(j.fetchedAt)+' · '+fmtN(R.length)+' items');
   }catch(e){
     const msg=e.message==='Failed to fetch'?'The dashboard server is not running. Start it again with Start_Live_Dashboard.bat.':e.message;

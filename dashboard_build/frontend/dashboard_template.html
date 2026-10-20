@@ -320,7 +320,7 @@ tbody tr:hover td{background:rgba(28,173,228,.07)}
 <script>
 (function(){
 const EMBED=JSON.parse(document.getElementById('data').textContent);
-let D=null,R=[],M0=0,M1=0,lastFetch=0,renderToken=0,TILE=null,TILEALL=false,tileToken=0;
+let D=null,R=[],M0=0,M1=0,lastFetch=0,renderToken=0,TILE=null,TILEALL=false,tileToken=0,REVEAL=false;
 const $=id=>document.getElementById(id);
 const STATUS=['No PO yet','PO created','RFQ created'];
 const STCOL=['var(--s1)','var(--s2)','var(--s3)'];
@@ -683,6 +683,15 @@ function setData(d){
   $('note').textContent=`No PO yet means the item has no purchase order or RFQ (ProcessingStatus N). Age counts days from the PR creation date to ${fmtDay(D.asofDay)}. Open qty is requested quantity minus ordered quantity. ${fmtN(susN)} items have a quantity above 10 lakh, which looks like a data-entry error (for example a material number typed in the quantity field), so their value is left out of the net value totals. The PR creation date starts as the whole current month and moves on by itself; change it, or clear it with the x on its chip, to see older PRs.`;
 }
 
+// a link from the Summary page: ?tile=KEY&plant=1010&from=2026-10-01&to=2026-10-31 (dates=all clears the dates); used once, on the first load
+let LINK=(()=>{try{const q=new URLSearchParams(location.search);return q.has('tile')||q.has('plant')||q.has('from')||q.has('to')||q.has('dates')?q:null;}catch(e){return null;}})();
+function applyLink(){
+  if(!LINK)return;const q=LINK;LINK=null;
+  if(q.has('plant')){S.plant=q.get('plant')||'';if(![...$('plantSel').options].some(o=>o.value===S.plant))S.plant='';$('plantSel').value=S.plant;}
+  if(q.get('dates')==='all'){S.from=S.to=null;$('dFrom').value=$('dTo').value='';}
+  else if(q.has('from')||q.has('to')){S.from=dayOf(q.get('from'));S.to=dayOf(q.get('to'));$('dFrom').value=S.from===null?'':new Date(S.from*864e5).toISOString().slice(0,10);$('dTo').value=S.to===null?'':new Date(S.to*864e5).toISOString().slice(0,10);}
+  const k=q.get('tile');if(k&&TILE_INFO[k]){TILE=k;TILEALL=false;REVEAL=true;}
+}
 function setLive(kind,text){
   $('liveDot').style.background=kind==='ok'?'var(--good)':kind==='err'?'var(--crit)':'var(--warn)';
   $('liveTxt').textContent=text;
@@ -697,7 +706,8 @@ async function load(force){
     const res=await fetch('/api/pr'+(force?'?refresh=1':''),{cache:'no-store'});
     const j=await res.json().catch(()=>({}));
     if(!res.ok)throw new Error(j.error||('HTTP '+res.status));
-    lastFetch=j.fetchedAt;setData(j);if(!S.dInit){S.dInit=true;setMonthDates();}render();
+    lastFetch=j.fetchedAt;setData(j);if(!S.dInit){S.dInit=true;setMonthDates();applyLink();}render();
+    if(REVEAL){REVEAL=false;setTimeout(()=>{const c=$('tileCard');if(c&&!c.hidden)c.scrollIntoView({behavior:'smooth',block:'start'});},150);}
     setLive('ok','Live from SAP · updated '+hhmm(lastFetch)+' · '+fmtN(R.length)+' items');
   }catch(e){
     const msg=e.message==='Failed to fetch'?'The dashboard server is not running. Start it again with Start_Live_Dashboard.bat.':e.message;
