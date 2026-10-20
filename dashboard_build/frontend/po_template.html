@@ -88,6 +88,7 @@ tr.sel td{background:rgba(28,173,228,.14)!important}
 .pager{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;margin-top:12px;color:var(--ink2)}
 .tile .ts{font-size:.72rem;font-weight:600;color:var(--brand-dark);margin-top:6px}
 .tbox th.qh{white-space:normal;line-height:1.25;min-width:80px}
+.tscroll th.qh{white-space:normal;line-height:1.25;min-width:84px}
 .tbox th.qh,.tbox td.qlist{padding-left:6px}
 .qmore{font-size:.72rem;font-weight:600;color:var(--muted);cursor:help}
 .tilebtn{text-align:left;font:inherit;color:inherit;cursor:pointer;width:100%}
@@ -343,8 +344,8 @@ function renderTile(){
 const reveal=id=>{const el=$(id);if(el&&!el.hidden)el.scrollIntoView({behavior:'smooth',block:'start'});};
 
 // the columns of the PO items list, in this order (the row cells in rowHtml and these headers share the keys)
-const COLS=['n','po','item','pday','cday','user','type','sup','mat','plant','sloc','pg','qty','gr','still','price','amt','dlv','pend','del','rel'];
-const HEAD={n:'<th class="num">#</th>',po:'<th>PO</th>',item:'<th>Item</th>',pday:'<th>PO date</th>',cday:'<th>Created on</th>',user:'<th>Created by</th>',type:'<th>PO type</th>',sup:'<th>Supplier</th>',mat:'<th>Material</th>',plant:'<th>Plant</th>',sloc:'<th>S.Loc</th>',pg:'<th>Purch. group</th>',qty:'<th class="num">Order quantity</th>',gr:'<th class="num">Delivered quantity</th>',still:'<th class="num qtd">Quantity to be delivered</th>',price:'<th class="num">Price</th>',amt:'<th class="num">Net value</th>',dlv:'<th class="num">Delivered value</th>',pend:'<th class="num qtd">Value to be delivered</th>',del:'<th>Delivery</th>',rel:'<th>Release</th>'};
+const COLS=['n','po','item','qty','gr','still','price','amt','dlv','pend','del','rel','sup','mat','type','plant','sloc','pg','pday','cday','user'];
+const HEAD={n:'<th class="num">#</th>',po:'<th>PO</th>',item:'<th>Item</th>',pday:'<th>PO date</th>',cday:'<th>Created on</th>',user:'<th>Created by</th>',type:'<th>PO type</th>',sup:'<th>Supplier</th>',mat:'<th>Material</th>',plant:'<th>Plant</th>',sloc:'<th>S.Loc</th>',pg:'<th>Purch. group</th>',qty:'<th class="num qh">Order quantity</th>',gr:'<th class="num qh">Delivered quantity</th>',still:'<th class="num qtd qh">Quantity to be delivered</th>',price:'<th class="num">Price</th>',amt:'<th class="num">Net value</th>',dlv:'<th class="num qh">Delivered value</th>',pend:'<th class="num qtd qh">Value to be delivered</th>',del:'<th>Delivery</th>',rel:'<th>Release</th>'};
 
 function render(){
   if(!D)return;  // the data is still loading
