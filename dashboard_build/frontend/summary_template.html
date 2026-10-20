@@ -211,7 +211,8 @@ function setMonthDates(){const t=new Date(todayDay()*DAYMS);const y=t.getUTCFull
 function prepPR(d){const out=[];for(const a of d.rows){if(!(a[9]>0)||a[15]||a[14]!==0)continue;out.push({plant:d.plants[a[2]],pr:a[0],qty:a[8],amt:a[11],day:a[12],del:a[13]});}return out;}
 function prepIssue(d){return d.rows.map(a=>({day:a[0],plant:d.plants[a[2]],amt:a[7],cc:a[1],mat:a[4],dept:a[13]===undefined?'':d.depts[a[13]]}));}
 // Purchase order page: pending delivery = still to be delivered > 0; value to deliver as on that page (asset POs have none)
-function prepPO(d){return d.rows.map(a=>{const type=d.types[a[4]],qty=a[15],amt=a[17],still=a[23];return {day:a[0],po:a[2],sup:a[5],plant:d.plants[a[6]],cur:d.curs[a[14]],amt,still,pendAmt:type!=='ZAST'&&still>0&&qty>0?amt*Math.min(still,qty)/qty:0};});}
+// values in rupees: other currencies are converted at the PO's exchange rate (a[24]; 1 for INR, 0 when SAP gives none)
+function prepPO(d){return d.rows.map(a=>{const type=d.types[a[4]],qty=a[15],cur=d.curs[a[14]],rate=cur==='INR'?1:(a[24]>0?a[24]:0),amt=a[17]*rate,still=a[23];return {day:a[0],po:a[2],sup:a[5],plant:d.plants[a[6]],cur,amt,still,pendAmt:type!=='ZAST'&&still>0&&qty>0?a[17]*Math.min(still,qty)/qty*rate:0};});}
 // PO approval page: one entry per PO that is In Approval (state 03) or on the approver list
 function ruleFor(p){
   for(const r of RULES){
@@ -264,10 +265,10 @@ function calcIssue(){
 function calcPO(){
   const R=PREP.po;if(!R)return null;const d=RAW.po;
   const agg=date=>{let amt=0,open=0,fx=0,items=0;const pos=new Set(),sups=new Set();
-    for(const r of R){if(!(r.still>0)||!plantOk(r.plant)||(date&&!inR(r.day)))continue;items++;pos.add(r.po);sups.add(r.sup);if(r.cur==='INR'){amt+=r.amt;open+=r.pendAmt;}else fx++;}
+    for(const r of R){if(!(r.still>0)||!plantOk(r.plant)||(date&&!inR(r.day)))continue;items++;pos.add(r.po);sups.add(r.sup);amt+=r.amt;open+=r.pendAmt;if(r.cur!=='INR')fx++;}
     return {amt,open,fx,items,pos:pos.size,sups:sups.size};};
   const sp=new Map();
-  for(const r of R){if(!(r.still>0)||!plantOk(r.plant)||!inR(r.day)||r.cur!=='INR')continue;let x=sp.get(r.sup);if(!x)sp.set(r.sup,x={pos:new Set(),open:0});x.pos.add(r.po);x.open+=r.pendAmt;}
+  for(const r of R){if(!(r.still>0)||!plantOk(r.plant)||!inR(r.day))continue;let x=sp.get(r.sup);if(!x)sp.set(r.sup,x={pos:new Set(),open:0});x.pos.add(r.po);x.open+=r.pendAmt;}
   const top=[...sp.entries()].sort((a,b)=>b[1].open-a[1].open).slice(0,5).map(([k,x])=>{const s=d.suppliers[k];return [(s[1]||'(no name)')+' ('+s[0]+')',x];});
   return {sel:agg(true),all:agg(false),top};
 }
@@ -328,7 +329,7 @@ function issueOutlier(){
 // PO items still to be delivered although the PO is older than 90 days (all dates of the chosen plant)
 function poOld(){
   const R=PREP.po;if(!R||!RAW.po)return null;const asof=RAW.po.asofDay,pos=new Set();let amt=0,oldest=null;
-  for(const r of R){if(!(r.still>0)||!plantOk(r.plant)||asof-r.day<=90)continue;pos.add(r.po);if(r.cur==='INR')amt+=r.pendAmt;if(oldest===null||r.day<oldest)oldest=r.day;}
+  for(const r of R){if(!(r.still>0)||!plantOk(r.plant)||asof-r.day<=90)continue;pos.add(r.po);amt+=r.pendAmt;if(oldest===null||r.day<oldest)oldest=r.day;}
   return pos.size?{n:pos.size,amt,oldest}:null;
 }
 function highlights(pr,is,po,ap,st){
@@ -390,7 +391,7 @@ function renderAll(){
     table([['Top 5 departments',''],['Lines','num'],['Net value','num']],is.topDept.map(([k,x])=>[esc(k||'(none)'),fmtN(x.n),fmtINR(x.amt)]))));
   $('body-po').innerHTML=status('po',po&&section('po',[
     tile(fmtINR(po.sel.open),'Value still to be delivered',`all dates: ${fmtINR(po.all.open)}`,go('/po','open','sel')),
-    tile(fmtINR(po.sel.amt),'Net PO value',`all dates: ${fmtINR(po.all.amt)}${po.sel.fx?` · ${fmtN(po.sel.fx)} other-currency items not added`:''}`,go('/po','val','sel')),
+    tile(fmtINR(po.sel.amt),'Net PO value',`all dates: ${fmtINR(po.all.amt)}${po.sel.fx?` · includes ${fmtN(po.sel.fx)} other-currency items converted to INR`:''}`,go('/po','val','sel')),
     tile(fmtN(po.sel.pos),'Purchase orders',`${fmtN(po.sel.items)} items · all dates: ${fmtN(po.all.pos)}`,go('/po','pos','sel')),
     tile(fmtN(po.sel.sups),'Suppliers',`all dates: ${fmtN(po.all.sups)}`,go('/po','sups','sel'))],
     table([['Top 5 suppliers by value to deliver',''],['POs','num'],['To deliver','num']],po.top.map(([k,x])=>[esc(k),fmtN(x.pos.size),fmtINR(x.open)]))));

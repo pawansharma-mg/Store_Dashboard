@@ -251,12 +251,12 @@ function pass(r,skip){
   return true;
 }
 
-// POs: distinct purchase orders; amt: INR items only (other currencies are counted in fx and not added)
+// POs: distinct purchase orders; amt, pend: in rupees (other currencies converted at the PO's exchange rate; fx counts those items)
 const agg=()=>({n:0,amt:0,pend:0,pos:new Set(),fx:0,q:new Map()});
 const addQ=(m,r)=>{if(r.still>0)m.set(r.unit,(m.get(r.unit)||0)+r.still);};
-function add(m,k,r){let x=m.get(k);if(!x)m.set(k,x=agg());x.n++;x.pos.add(r.po);addQ(x.q,r);if(r.cur==='INR'){x.amt+=r.amt;x.pend+=r.pendAmt;}else x.fx++;}
+function add(m,k,r){let x=m.get(k);if(!x)m.set(k,x=agg());x.n++;x.pos.add(r.po);addQ(x.q,r);x.amt+=r.amtI;x.pend+=r.pendI;if(r.cur!=='INR')x.fx++;}
 // a row with only other-currency items has no INR value: say so instead of showing 0
-const fv=(v,x)=>v===0&&x.fx>0?'<span title="Other currency: not added into the INR totals">other cur.</span>':fmtINR(v);
+const fv=(v,x)=>fmtINR(v);
 function aggTable(list,head,cell,sel,limit){
   if(!list.length)return '<div class="empty">Nothing matches the filters.</div>';
   const tot=agg();for(const [,x] of list){tot.n+=x.n;tot.amt+=x.amt;tot.pend+=x.pend;tot.fx+=x.fx;for(const p of x.pos)tot.pos.add(p);for(const [u,v] of x.q)tot.q.set(u,(tot.q.get(u)||0)+v);}
@@ -277,7 +277,7 @@ function poList(rows){
     if(!x)m.set(r.po,x={po:r.po,day:r.day,sup:r.sup,type:r.type,pg:r.pg,plants:new Set(),n:0,still:0,q:new Map(),g:new Map(),amt:0,pend:0,dlv:0,fx:0,rel:r.proc});
     x.n++;x.plants.add(r.plant);if(r.still>0){x.still++;x.q.set(r.unit,(x.q.get(r.unit)||0)+r.still);}
     if(r.gr!==null&&r.gr!==undefined)x.g.set(r.unit,(x.g.get(r.unit)||0)+r.gr);
-    if(r.cur==='INR'){x.amt+=r.amt;x.pend+=r.pendAmt;x.dlv+=r.dlvAmt;}else x.fx++;
+    x.amt+=r.amtI;x.pend+=r.pendI;x.dlv+=r.dlvI;if(r.cur!=='INR')x.fx++;
   }
   return [...m.values()];
 }
@@ -319,10 +319,10 @@ function renderTile(){
   }else if(k==='pos'){
     list=poList(rows).sort((a,b)=>(b.day||0)-(a.day||0)||b.po.localeCompare(a.po));thead=poHead('#');rowFn=poRow;unit='purchase orders';
   }else if(k==='items'){
-    const sm=new Map();for(const r of rows){let x=sm.get(r.st);if(!x)sm.set(r.st,x=agg());x.n++;x.pos.add(r.po);addQ(x.q,r);if(r.cur==='INR'){x.amt+=r.amt;x.pend+=r.pendAmt;}else x.fx++;}
+    const sm=new Map();for(const r of rows){let x=sm.get(r.st);if(!x)sm.set(r.st,x=agg());x.n++;x.pos.add(r.po);addQ(x.q,r);x.amt+=r.amtI;x.pend+=r.pendI;if(r.cur!=='INR')x.fx++;}
     html='<h3 class="subh">By delivery status</h3>'+aggTable([...sm.entries()].sort((a,b)=>b[1].amt-a[1].amt),'Delivery',x=>esc(ST_TXT[x]||x))+'<h3 class="subh">Items with the most value (first 25)</h3>';
-    const top=rows.filter(r=>r.cur==='INR').sort((a,b)=>b.amt-a.amt).slice(0,25);
-    html+=top.length?`<table><thead><tr><th>#</th><th>PO</th><th>Item</th><th>Supplier</th><th>Material</th><th class="num">Order quantity</th><th class="num">Quantity to be delivered</th><th class="num">Net value</th><th class="num">Value to be delivered</th></tr></thead><tbody>${top.map((r,i)=>`<tr><td>${i+1}</td><td class="nw">${esc(r.po)}</td><td>${r.item}</td><td class="supc">${esc(D.suppliers[r.sup][1]||D.suppliers[r.sup][0])}</td><td class="matc">${r.mat?`<span class="matno">${esc(r.mat)}</span><br>`:''}${esc(r.text)}</td><td class="num nw">${r.qty.toLocaleString('en-IN',{maximumFractionDigits:3})} ${esc(r.unit)}</td><td class="num nw">${r.still===null?'–':r.still.toLocaleString('en-IN',{maximumFractionDigits:3})+' '+esc(r.unit)}</td><td class="num nw">${fmtINR(r.amt)}</td><td class="num nw">${r.pendAmt?fmtINR(r.pendAmt):'–'}</td></tr>`).join('')}</tbody></table>`:none;
+    const top=rows.filter(r=>r.rate>0).sort((a,b)=>b.amtI-a.amtI).slice(0,25);
+    html+=top.length?`<table><thead><tr><th>#</th><th>PO</th><th>Item</th><th>Supplier</th><th>Material</th><th class="num">Order quantity</th><th class="num">Quantity to be delivered</th><th class="num">Net value</th><th class="num">Value to be delivered</th></tr></thead><tbody>${top.map((r,i)=>`<tr><td>${i+1}</td><td class="nw">${esc(r.po)}</td><td>${r.item}</td><td class="supc">${esc(D.suppliers[r.sup][1]||D.suppliers[r.sup][0])}</td><td class="matc">${r.mat?`<span class="matno">${esc(r.mat)}</span><br>`:''}${esc(r.text)}</td><td class="num nw">${r.qty.toLocaleString('en-IN',{maximumFractionDigits:3})} ${esc(r.unit)}</td><td class="num nw">${r.still===null?'–':r.still.toLocaleString('en-IN',{maximumFractionDigits:3})+' '+esc(r.unit)}</td><td class="num nw">${fmtAmt(r.amt,r.cur)}</td><td class="num nw">${r.pendAmt?fmtAmt(r.pendAmt,r.cur):'–'}</td></tr>`).join('')}</tbody></table>`:none;
   }else if(k==='sups'){
     const m=new Map();for(const r of rows)add(m,r.sup,r);
     list=byValue(m);unit='suppliers';
@@ -352,10 +352,10 @@ function render(){
   const rows=R.filter(r=>pass(r));
   // KPIs
   let amt=0,open=0,dlv=0,fx=0;const pos=new Set(),sups=new Set();
-  for(const r of rows){pos.add(r.po);sups.add(r.sup);if(r.cur==='INR'){amt+=r.amt;open+=r.pendAmt;dlv+=r.dlvAmt;}else fx++;}
+  for(const r of rows){pos.add(r.po);sups.add(r.sup);amt+=r.amtI;open+=r.pendI;dlv+=r.dlvI;if(r.cur!=='INR')fx++;}
   CUR={rows,amt,open,dlv};
   // every tile opens its details under the tiles
-  $('kpis').innerHTML=[[fmtINR(amt),'Total order value (INR)'+(fx?` · ${fmtN(fx)} other-currency items not added`:''),'val'],[fmtINR(dlv),'Delivered value (INR) · goods already received','delivered'],[fmtINR(open),'Pending value (INR) · still to be delivered','open'],[fmtN(pos.size),'Purchase orders','pos'],[fmtN(rows.length),'PO items','items'],[fmtN(sups.size),'Suppliers','sups']]
+  $('kpis').innerHTML=[[fmtINR(amt),'Total order value (INR)'+(fx?` · includes ${fmtN(fx)} other-currency items converted to INR at the PO's exchange rate`:''),'val'],[fmtINR(dlv),'Delivered value (INR) · goods already received','delivered'],[fmtINR(open),'Pending value (INR) · still to be delivered','open'],[fmtN(pos.size),'Purchase orders','pos'],[fmtN(rows.length),'PO items','items'],[fmtN(sups.size),'Suppliers','sups']]
     .map(t=>`<button type="button" class="tile tilebtn" data-tile="${t[2]}" aria-expanded="${S.tile===t[2]}"><div class="tv">${t[0]}</div><div class="tl">${t[1]}</div><div class="ts">${S.tile===t[2]?'click to hide':'click for details'}</div></button>`).join('');
   renderTile();
   // chips
@@ -417,7 +417,7 @@ function render(){
     gr:`<td class="num nw">${qf(r.gr,r.unit)}</td>`,
     still:`<td class="num nw qtd">${qf(r.still,r.unit)}</td>`,
     price:`<td class="num nw">${fmtAmt(r.price,r.cur)}</td>`,
-    amt:`<td class="num nw">${fmtAmt(r.amt,r.cur)}</td>`,
+    amt:`<td class="num nw"${r.cur!=='INR'&&r.rate>0?` title="${esc('= '+fmtINR(r.amtI)+' at the PO exchange rate '+r.rate)}"`:''}>${fmtAmt(r.amt,r.cur)}</td>`,
     dlv:`<td class="num nw">${r.dlvAmt?fmtAmt(r.dlvAmt,r.cur):'–'}</td>`,
     pend:`<td class="num nw qtd">${r.pendAmt?fmtAmt(r.pendAmt,r.cur):(r.type==='ZAST'&&r.still>0?'<span title="Asset PO: SAP shows no value to be delivered">–</span>':'–')}</td>`,
     del:`<td title="${esc(st[2])}"><span class="pill ${st[0]}">${st[1]}</span></td>`,
@@ -429,7 +429,7 @@ function render(){
   const token=++renderToken;let done=first.length;
   const more=()=>{if(token!==renderToken||done>=slice.length)return;document.querySelector('#tbl tbody').insertAdjacentHTML('beforeend',slice.slice(done,done+600).map((r,i)=>rowHtml(r,done+i)).join(''));done+=600;setTimeout(more,0);};
   setTimeout(more,0);
-  $('tcount').innerHTML=fmtN(rows.length)+' items in '+fmtN(pos.size)+' purchase orders · Total order value '+fmtINR(amt)+' · Delivered value '+fmtINR(dlv)+' · <b>Pending value '+fmtINR(open)+'</b>'+(fx?' · '+fmtN(fx)+' other-currency items not added':'');
+  $('tcount').innerHTML=fmtN(rows.length)+' items in '+fmtN(pos.size)+' purchase orders · Total order value '+fmtINR(amt)+' · Delivered value '+fmtINR(dlv)+' · <b>Pending value '+fmtINR(open)+'</b>'+(fx?' · includes '+fmtN(fx)+' other-currency items converted to INR at the PO\'s exchange rate':'');
   $('pinfo').textContent=!rows.length?'':rows.length<=PAGE||S.all?`All ${fmtN(rows.length)} items shown`:`Showing the first ${fmtN(PAGE)} of ${fmtN(rows.length)}`;
   $('seeAll').hidden=rows.length<=PAGE;$('seeAll').textContent=S.all?'Show first '+PAGE:'See all '+fmtN(rows.length);
 }
@@ -501,6 +501,8 @@ function setData(d){
     r.pendAmt=r.type!=='ZAST'&&r.still>0&&r.qty>0?r.amt*Math.min(r.still,r.qty)/r.qty:0;
     // delivered value as in SAP: goods received x net value / order quantity
     r.dlvAmt=r.gr!==null&&r.qty>0?r.amt*r.gr/r.qty:0;
+    // the same values in rupees, as SAP's own list shows them: other currencies are converted at the PO's exchange rate (1 for INR)
+    r.rate=r.cur==='INR'?1:(a[24]>0?a[24]:0);r.amtI=r.amt*r.rate;r.pendI=r.pendAmt*r.rate;r.dlvI=r.dlvAmt*r.rate;
     r.hay=(r.po+' '+s[0]+' '+s[1]+' '+s[2]+' '+r.mat+' '+r.text+' '+r.grp+' '+mgName(r.grp)+' '+pgName(r.pg)+' '+r.user+' '+uName(r.user)+' '+r.plant+' '+r.sloc+' '+r.type+' '+(PO_TYPES[r.type]||'')).toLowerCase();
     return r;
   });

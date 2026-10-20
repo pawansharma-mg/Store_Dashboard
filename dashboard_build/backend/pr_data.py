@@ -30,12 +30,15 @@ PO_FIELDS = [
     'ReleaseIsNotCompleted', 'PurchasingProcessingStatus', 'PurchasingOrganization', 'PurchasingGroup',
     'Supplier', 'SupplierName', 'TaxNumber3', 'DocumentCurrency', 'MaterialGroup', 'Material', 'MaterialType',
     'PurchaseOrderItemText', 'Plant', 'StorageLocation', 'NetAmount', 'OrderQuantity', 'NetPriceAmount',
-    'PurchaseOrderQuantityUnit',
+    'PurchaseOrderQuantityUnit', 'ExchangeRate',
 ]
 # The supplier view repeats every PO item many times (about 5 times on average, up to 81) and only the "delivered" flag differs
 # between the repeats, so items are counted once and the delivery comes from YY1_PO_ITEM_STATUS_CDS (same key, no date field).
 PO_STATUS_FIELDS = ['PurchaseOrder', 'PurchaseOrderItem', 'GoodsReceiptQty', 'StillToBeDeliveredQuantity']
 PO_DATE_FILTER = "CreationDate ge datetime'2026-01-01T00:00:00'"
+# The view's ExchangeRate is the rate scaled down by 100: 0.9525 for 95.25 rupees per US dollar, 1.086 for 108.60 per euro (checked against
+# SAP's Purchase Order Items export, where Net Order Value = amount x 95.25 / x 108.6). So rupees = amount x ExchangeRate x 100.
+EXCHANGE_RATE_FACTOR = 100
 
 # Store stock from YY1_STORE_STOCK_CDS: an analytical view with the parameter P_DisplayCurrency (INR), read as
 # YY1_Store_Stock(P_DisplayCurrency='INR')/Results. The measures (stock quantity, stock value) are added up over the fields that are not
@@ -649,9 +652,11 @@ def to_compact(rows, asof_day):
 
 def po_compact(rows, asof_day, status_rows=()):
     """Rows (one per PO item): [creationDay, poDay, po, item, type, supplier, plant, sloc, material, itemText, materialGroup,
-    materialType, createdBy, unit, currency, qty, price, amount, flags, purchGroup, purchOrg, procState, deliveredQty, toDeliverQty].
+    materialType, createdBy, unit, currency, qty, price, amount, flags, purchGroup, purchOrg, procState, deliveredQty, toDeliverQty,
+    rateToInr].
     flags: 1 release not completed. Delivered and to-deliver quantity come from the status view (null when it has no row).
-    Supplier entries are [id, name, GSTIN]. Amount and price are in the document currency."""
+    Supplier entries are [id, name, GSTIN]. Amount and price are in the document currency; rateToInr is the PO's exchange rate (1 for INR,
+    0 when SAP gives none), so amount x rateToInr is the value in rupees as SAP's own list shows it."""
     dicts = {k: {} for k in ('types', 'plants', 'slocs', 'mats', 'texts', 'groups', 'mtypes', 'users', 'units', 'curs', 'pgs', 'orgs', 'procs')}
     sup_idx, sup_list = {}, []
 
@@ -706,6 +711,7 @@ def po_compact(rows, asof_day, status_rows=()):
             code('orgs', r.get('PurchasingOrganization') or ''),
             code('procs', r.get('PurchasingProcessingStatus') or ''),
             *got,
+            1.0 if (r.get('DocumentCurrency') or '') == 'INR' else max(round(_f(r.get('ExchangeRate')) * EXCHANGE_RATE_FACTOR, 4), 0.0),
         ])
     data = {'asofDay': asof_day, 'rows': out, 'suppliers': sup_list}
     for k, d in dicts.items():
