@@ -72,7 +72,7 @@ Browsers cannot call SAP directly (no CORS, and the password would sit in the pa
   so a page with 60,000 rows is a few MB gzipped. The row layouts are documented in the docstrings.
 * **Pages** are templates with placeholders: `__DATA__` (offline build only), `__USERS__` (user names), `__PGS__` (purchasing group names),
   `__MGS__` (material group names). The server fills them on every request, so **a template edit shows after a browser refresh; a change in a `.py` file needs a restart**.
-* **API**: `/api/pr`, `/api/issue`, `/api/po`, `/api/stock` (add `?refresh=1` to force SAP), `/api/po-approvers`, `/healthz`, `/logo.png`.
+* **API**: `/api/pr`, `/api/issue`, `/api/po`, `/api/stock` (add `?refresh=1` to force SAP), `/api/po-approvers`, `/healthz`, `/logo.png`, and the shared look `/ui.css` and `/ui.js` (revalidated on every load, so an edit shows after a refresh).
   All responses are `no-store`; errors come back as `{"error": "..."}` and the page shows them next to the red status dot.
 
 ## Files
@@ -99,6 +99,8 @@ Frontend (`frontend/`): what the browser shows. The server serves these files; i
 | `frontend/po_approval_template.html` | PO Approval Pending page |
 | `frontend/stock_template.html` | Store Stock page |
 | `frontend/summary_template.html` | Summary page: reads `/api/pr`, `/api/issue`, `/api/po`, `/api/stock` and `/api/po-approvers` in the browser |
+| `frontend/ui.css` | The look shared by all pages (menu with icons, header, filter card, tiles, cards, tables with bars, loading shimmer, phone layout, print). Loaded after each page's own styles; colours come from the page variables, so Normal and Dark both follow. Generated once from a script, but it is a plain file: edit it directly |
+| `frontend/ui.js` | Small helpers shared by all pages: bars behind the value column of the summary tables, shadow under the header once scrolled, back-to-top button, `/` jumps to the search box. It changes no figure |
 | `frontend/logo.png` | Logo |
 
 Project level:
@@ -176,6 +178,8 @@ Run it after changing `pr_data.py` or the CSV files, and before a deployment.
 
 * The date range opens as the whole current month and moves with the calendar; edit the dates to look at older data.
 * "See all" shows every row (drawn in batches); the heading bar and table headings stay while scrolling; Normal | Dark switch (remembered in the browser).
+* The summary tables show a bar behind their value column (the longest bar is the biggest value of that table). The menu tabs have icons and scroll sideways on a phone; on a phone the filters sit in a two column card.
+* Keyboard: `/` jumps to the search box; a button at the bottom right brings you back to the top of a long page.
 * Dropdown options show no counts; codes are shown with descriptions where a list exists.
 * Click a row in a summary table to filter the whole page; the chips under the filters show what is active and clear it.
 

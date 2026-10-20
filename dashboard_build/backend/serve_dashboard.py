@@ -41,6 +41,9 @@ STOCK_TPL = os.path.join(FRONTEND, 'stock_template.html')
 SUMMARY_TPL = os.path.join(FRONTEND, 'summary_template.html')
 PO_APPROVAL_TPL = os.path.join(FRONTEND, 'po_approval_template.html')
 LOGO = os.path.join(FRONTEND, 'logo.png')
+# the look and the small helpers shared by every page (frontend/ui.css, frontend/ui.js)
+STATIC = {'/ui.css': (os.path.join(FRONTEND, 'ui.css'), 'text/css; charset=utf-8'),
+          '/ui.js': (os.path.join(FRONTEND, 'ui.js'), 'application/javascript; charset=utf-8')}
 DEFAULT_BASE = 'https://my413077-api.s4hana.cloud.sap/sap/opu/odata/sap/YY1_STORE_PENDING_PR_CDS'
 ISSUE_BASE = 'https://my413077-api.s4hana.cloud.sap/sap/opu/odata/sap/YY1_STORE_RESERVATION_CDS'
 PO_BASE = 'https://my413077-api.s4hana.cloud.sap/sap/opu/odata/sap/YY1_PO_ITEM_SUPPLIER_CDS'
@@ -446,6 +449,10 @@ def make_handler(apis):
             if u.path in PAGES:
                 html = open(PAGES[u.path], encoding='utf-8').read().replace('__DATA__', 'null').replace('__USERS__', USERS_JSON).replace('__PGS__', PGS_JSON).replace('__MGS__', MGS_JSON)
                 return self._send(200, html.encode('utf-8'), 'text/html; charset=utf-8')
+            if u.path in STATIC:
+                path, ctype = STATIC[u.path]
+                with open(path, 'rb') as f:
+                    return self._send(200, f.read(), ctype, cache='no-cache')
             if u.path == '/logo.png':
                 with open(LOGO, 'rb') as f:
                     return self._send(200, f.read(), 'image/png', cache='public, max-age=86400')
