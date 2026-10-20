@@ -74,7 +74,12 @@ tr.sel td{background:rgba(28,173,228,.14)!important}
 .pill.pend{color:var(--crit);background:rgba(208,59,59,.14)}
 .tablecard{margin-top:12px}
 .tscroll{overflow:auto;max-height:75vh}
-.tscroll table{min-width:1640px}
+.tscroll table{min-width:1900px}
+#tbl th:nth-child(1),#tbl td:nth-child(1){position:sticky;left:0;z-index:2;box-sizing:border-box;width:46px;min-width:46px;background:var(--surface)}
+#tbl th:nth-child(2),#tbl td:nth-child(2){position:sticky;left:46px;z-index:2;background:var(--surface);box-shadow:2px 0 0 var(--grid)}
+#tbl thead th:nth-child(1),#tbl thead th:nth-child(2){z-index:4}
+#tbl tbody tr:nth-child(even) td:nth-child(-n+2){background:linear-gradient(rgba(128,128,128,.04),rgba(128,128,128,.04)),var(--surface)}
+@media (max-width:700px){#tbl th:nth-child(1),#tbl td:nth-child(1),#tbl th:nth-child(2),#tbl td:nth-child(2){position:static;box-shadow:none}}
 .matc{min-width:270px;max-width:340px}
 .tscroll tbody tr td.qtd{font-weight:700;background:rgba(250,178,25,.20)}
 .tscroll>table>thead th.qtd{font-weight:800;color:var(--ink);box-shadow:inset 0 -3px 0 var(--warn),0 2px 0 var(--grid)}
@@ -283,8 +288,8 @@ const qCap=(m,max)=>{const e=[...m.entries()];if(e.length<=max)return qtyTxt(m);
 // one unit per line (a PO can mix KG, PC, M2 ...); the CSV export joins the lines with " + " (class qlist)
 const qtyTxt=m=>m.size&&[...m.values()].every(v=>v===0)?'0':[...m.entries()].map(([u,v])=>v.toLocaleString('en-IN',{maximumFractionDigits:3})+' '+esc(u)).join('<br>')||'–';
 const relTxt=p=>p==='03'?'In Approval':p==='08'?'Rejected':'Released';
-const poHead=first=>`<thead><tr><th>${first}</th><th>PO</th><th>Created on</th><th>Supplier</th><th>PO type</th><th>Plant</th><th class="num">Items</th><th class="num">Items pending</th><th class="num">Net value</th><th class="num qh">Delivered value</th><th class="num qh">Value to be delivered</th><th class="num qh">Quantity to be delivered</th><th class="num qh">Delivered quantity</th><th>Release</th></tr></thead>`;
-const poRow=(x,i)=>`<tr><td>${i+1}</td><td class="nw">${esc(x.po)}</td><td class="nw">${x.day===null?'–':fmtDay(x.day)}</td><td class="supc" title="${esc('Supplier '+D.suppliers[x.sup][0])}">${esc(D.suppliers[x.sup][1]||D.suppliers[x.sup][0])}</td><td class="nw" title="${esc(typeName(x.type))}">${esc(x.type)}</td><td class="nw">${esc([...x.plants].sort().join(' / '))}</td><td class="num">${fmtN(x.n)}</td><td class="num">${fmtN(x.still)}</td><td class="num nw">${fv(x.amt,x)}</td><td class="num nw">${x.dlv?fmtINR(x.dlv):(x.fx>0&&x.amt===0?fv(0,x):'–')}</td><td class="num nw qtd">${fv(x.pend,x)}</td><td class="num nw qtd qlist">${qtyTxt(x.q)}</td><td class="num nw qlist">${qtyTxt(x.g)}</td><td class="nw">${relTxt(x.rel)}</td></tr>`;
+const poHead=first=>`<thead><tr><th>${first}</th><th>PO</th><th>Created on</th><th>Supplier</th><th>PO type</th><th>Plant</th><th class="num">Items</th><th class="num">Items pending</th><th class="num">Net value</th><th class="num qh">Delivered value</th><th class="num qh">Value to be delivered</th><th class="num qh">Delivered quantity</th><th class="num qh">Quantity to be delivered</th><th>Release</th></tr></thead>`;
+const poRow=(x,i)=>`<tr><td>${i+1}</td><td class="nw">${esc(x.po)}</td><td class="nw">${x.day===null?'–':fmtDay(x.day)}</td><td class="supc" title="${esc('Supplier '+D.suppliers[x.sup][0])}">${esc(D.suppliers[x.sup][1]||D.suppliers[x.sup][0])}</td><td class="nw" title="${esc(typeName(x.type))}">${esc(x.type)}</td><td class="nw">${esc([...x.plants].sort().join(' / '))}</td><td class="num">${fmtN(x.n)}</td><td class="num">${fmtN(x.still)}</td><td class="num nw">${fv(x.amt,x)}</td><td class="num nw">${x.dlv?fmtINR(x.dlv):(x.fx>0&&x.amt===0?fv(0,x):'–')}</td><td class="num nw qtd">${fv(x.pend,x)}</td><td class="num nw qlist">${qtyTxt(x.g)}</td><td class="num nw qtd qlist">${qtyTxt(x.q)}</td><td class="nw">${relTxt(x.rel)}</td></tr>`;
 const TILE_INFO={
   val:['Total order value','The full order value (INR) of the PO items of the current filters, the part already delivered included: by PO type, by plant, and the 10 purchase orders with the most value.'],
   delivered:['Delivered value','Value (INR) of the goods already received (delivered quantity x price) for the current filters, most delivered value first.'],
@@ -316,7 +321,7 @@ function renderTile(){
     const sm=new Map();for(const r of rows){let x=sm.get(r.st);if(!x)sm.set(r.st,x=agg());x.n++;x.pos.add(r.po);addQ(x.q,r);if(r.cur==='INR'){x.amt+=r.amt;x.pend+=r.pendAmt;}else x.fx++;}
     html='<h3 class="subh">By delivery status</h3>'+aggTable([...sm.entries()].sort((a,b)=>b[1].amt-a[1].amt),'Delivery',x=>esc(ST_TXT[x]||x))+'<h3 class="subh">Items with the most value (first 25)</h3>';
     const top=rows.filter(r=>r.cur==='INR').sort((a,b)=>b.amt-a.amt).slice(0,25);
-    html+=top.length?`<table><thead><tr><th>#</th><th>PO</th><th>Item</th><th>Supplier</th><th>Material</th><th class="num">Order quantity</th><th class="num">Quantity to be delivered</th><th class="num">Value to be delivered</th><th class="num">Net value</th></tr></thead><tbody>${top.map((r,i)=>`<tr><td>${i+1}</td><td class="nw">${esc(r.po)}</td><td>${r.item}</td><td class="supc">${esc(D.suppliers[r.sup][1]||D.suppliers[r.sup][0])}</td><td class="matc">${r.mat?`<span class="matno">${esc(r.mat)}</span><br>`:''}${esc(r.text)}</td><td class="num nw">${r.qty.toLocaleString('en-IN',{maximumFractionDigits:3})} ${esc(r.unit)}</td><td class="num nw">${r.still===null?'–':r.still.toLocaleString('en-IN',{maximumFractionDigits:3})+' '+esc(r.unit)}</td><td class="num nw">${r.pendAmt?fmtINR(r.pendAmt):'–'}</td><td class="num nw">${fmtINR(r.amt)}</td></tr>`).join('')}</tbody></table>`:none;
+    html+=top.length?`<table><thead><tr><th>#</th><th>PO</th><th>Item</th><th>Supplier</th><th>Material</th><th class="num">Order quantity</th><th class="num">Quantity to be delivered</th><th class="num">Net value</th><th class="num">Value to be delivered</th></tr></thead><tbody>${top.map((r,i)=>`<tr><td>${i+1}</td><td class="nw">${esc(r.po)}</td><td>${r.item}</td><td class="supc">${esc(D.suppliers[r.sup][1]||D.suppliers[r.sup][0])}</td><td class="matc">${r.mat?`<span class="matno">${esc(r.mat)}</span><br>`:''}${esc(r.text)}</td><td class="num nw">${r.qty.toLocaleString('en-IN',{maximumFractionDigits:3})} ${esc(r.unit)}</td><td class="num nw">${r.still===null?'–':r.still.toLocaleString('en-IN',{maximumFractionDigits:3})+' '+esc(r.unit)}</td><td class="num nw">${fmtINR(r.amt)}</td><td class="num nw">${r.pendAmt?fmtINR(r.pendAmt):'–'}</td></tr>`).join('')}</tbody></table>`:none;
   }else if(k==='sups'){
     const m=new Map();for(const r of rows)add(m,r.sup,r);
     list=byValue(m);unit='suppliers';
@@ -336,6 +341,10 @@ function renderTile(){
   $('tileAll').hidden=!list||n<=25;$('tileAll').textContent=S.tileAll?'Show first 25':'See all '+fmtN(n);
 }
 const reveal=id=>{const el=$(id);if(el&&!el.hidden)el.scrollIntoView({behavior:'smooth',block:'start'});};
+
+// the columns of the PO items list, in this order (the row cells in rowHtml and these headers share the keys)
+const COLS=['n','po','item','pday','cday','user','type','sup','mat','plant','sloc','pg','qty','gr','still','price','amt','dlv','pend','del','rel'];
+const HEAD={n:'<th class="num">#</th>',po:'<th>PO</th>',item:'<th>Item</th>',pday:'<th>PO date</th>',cday:'<th>Created on</th>',user:'<th>Created by</th>',type:'<th>PO type</th>',sup:'<th>Supplier</th>',mat:'<th>Material</th>',plant:'<th>Plant</th>',sloc:'<th>S.Loc</th>',pg:'<th>Purch. group</th>',qty:'<th class="num">Order quantity</th>',gr:'<th class="num">Delivered quantity</th>',still:'<th class="num qtd">Quantity to be delivered</th>',price:'<th class="num">Price</th>',amt:'<th class="num">Net value</th>',dlv:'<th class="num">Delivered value</th>',pend:'<th class="num qtd">Value to be delivered</th>',del:'<th>Delivery</th>',rel:'<th>Release</th>'};
 
 function render(){
   if(!D)return;  // the data is still loading
@@ -389,10 +398,33 @@ function render(){
   const slice=S.all?rows:rows.slice(0,PAGE);
   const qf=(v,u)=>v===null?'<span title="No status data">–</span>':v.toLocaleString('en-IN',{maximumFractionDigits:3})+' '+esc(u);
   const ST={open:['open','Not delivered','Nothing received yet'],partly:['part','Partly','Part of the quantity is received'],done:['ok','Delivered','Fully received'],nogr:['none','No GR','Nothing is left to deliver and no goods receipt is booked. SAP does not list these items in Purchase Order Items (they are deleted or closed items)'],nodata:['none','–','The status view has no row for this item']};
-  const rowHtml=(r,i)=>{const st=ST[r.st];return `<tr><td class="num">${i+1}</td><td class="nw">${r.pday===null?'–':fmtDay(r.pday)}</td><td class="nw">${r.cday===null?'–':fmtDay(r.cday)}</td><td class="nw">${esc(r.po)}</td><td>${r.item}</td><td class="nw" title="${esc(typeName(r.type))}">${esc(r.type)}</td><td class="supc" title="${esc(r.gst?'Supplier '+D.suppliers[r.sup][0]+' · GSTIN '+r.gst:'Supplier '+D.suppliers[r.sup][0])}">${esc(D.suppliers[r.sup][1]||D.suppliers[r.sup][0])}</td><td class="matc" title="${esc((r.grp?'Material group '+mgName(r.grp)+(MG_NAMES[r.grp]?' ('+r.grp+')':''):'')+(r.mtype?' · type '+r.mtype:''))}">${r.mat?`<span class="matno">${esc(r.mat)}</span><br>`:''}${esc(r.text)}</td><td>${esc(r.plant)}</td><td class="nw" title="${esc(pgTip(r.pg))}">${esc(pgName(r.pg))}</td><td>${r.sloc?esc(r.sloc):'–'}</td><td class="num nw">${qf(r.qty,r.unit)}</td><td class="num nw qtd">${qf(r.still,r.unit)}</td><td class="num nw qtd">${r.pendAmt?fmtAmt(r.pendAmt,r.cur):(r.type==='ZAST'&&r.still>0?'<span title="Asset PO: SAP shows no value to be delivered">–</span>':'–')}</td><td class="num nw">${qf(r.gr,r.unit)}</td><td class="num nw">${r.dlvAmt?fmtAmt(r.dlvAmt,r.cur):'–'}</td><td class="num nw">${fmtAmt(r.price,r.cur)}</td><td class="num nw">${fmtAmt(r.amt,r.cur)}</td><td title="${esc(st[2])}"><span class="pill ${st[0]}">${st[1]}</span></td><td title="Proc. state ${esc(r.proc)}"><span class="pill ${r.proc==='03'||r.proc==='08'?'pend':'ok'}">${r.proc==='03'?'In Approval':r.proc==='08'?'Rejected':'Released'}</span></td><td class="nw" title="${esc(uTip(r.user))}">${esc(uName(r.user))}</td></tr>`;};
+  // columns in reading order: who/when, what, quantities (order -> delivered -> pending), values (price -> total -> delivered -> pending), status
+  const rowHtml=(r,i)=>{const st=ST[r.st];const c={
+    n:`<td class="num">${i+1}</td>`,
+    po:`<td class="nw">${esc(r.po)}</td>`,
+    item:`<td>${r.item}</td>`,
+    pday:`<td class="nw">${r.pday===null?'–':fmtDay(r.pday)}</td>`,
+    cday:`<td class="nw">${r.cday===null?'–':fmtDay(r.cday)}</td>`,
+    user:`<td class="nw" title="${esc(uTip(r.user))}">${esc(uName(r.user))}</td>`,
+    type:`<td class="nw" title="${esc(typeName(r.type))}">${esc(r.type)}</td>`,
+    sup:`<td class="supc" title="${esc(r.gst?'Supplier '+D.suppliers[r.sup][0]+' · GSTIN '+r.gst:'Supplier '+D.suppliers[r.sup][0])}">${esc(D.suppliers[r.sup][1]||D.suppliers[r.sup][0])}</td>`,
+    mat:`<td class="matc" title="${esc((r.grp?'Material group '+mgName(r.grp)+(MG_NAMES[r.grp]?' ('+r.grp+')':''):'')+(r.mtype?' · type '+r.mtype:''))}">${r.mat?`<span class="matno">${esc(r.mat)}</span><br>`:''}${esc(r.text)}</td>`,
+    plant:`<td>${esc(r.plant)}</td>`,
+    sloc:`<td>${r.sloc?esc(r.sloc):'–'}</td>`,
+    pg:`<td class="nw" title="${esc(pgTip(r.pg))}">${esc(pgName(r.pg))}</td>`,
+    qty:`<td class="num nw">${qf(r.qty,r.unit)}</td>`,
+    gr:`<td class="num nw">${qf(r.gr,r.unit)}</td>`,
+    still:`<td class="num nw qtd">${qf(r.still,r.unit)}</td>`,
+    price:`<td class="num nw">${fmtAmt(r.price,r.cur)}</td>`,
+    amt:`<td class="num nw">${fmtAmt(r.amt,r.cur)}</td>`,
+    dlv:`<td class="num nw">${r.dlvAmt?fmtAmt(r.dlvAmt,r.cur):'–'}</td>`,
+    pend:`<td class="num nw qtd">${r.pendAmt?fmtAmt(r.pendAmt,r.cur):(r.type==='ZAST'&&r.still>0?'<span title="Asset PO: SAP shows no value to be delivered">–</span>':'–')}</td>`,
+    del:`<td title="${esc(st[2])}"><span class="pill ${st[0]}">${st[1]}</span></td>`,
+    rel:`<td title="Proc. state ${esc(r.proc)}"><span class="pill ${r.proc==='03'||r.proc==='08'?'pend':'ok'}">${r.proc==='03'?'In Approval':r.proc==='08'?'Rejected':'Released'}</span></td>`};
+    return '<tr>'+COLS.map(k=>c[k]).join('')+'</tr>';};
   // See all can mean thousands of rows: the first rows appear at once and the rest are added in small batches, so the page stays responsive
   const first=S.all?slice.slice(0,400):slice;
-  $('tbl').innerHTML='<thead><tr><th class="num">#</th><th>PO date</th><th>Created on</th><th>PO</th><th>Item</th><th>PO type</th><th>Supplier</th><th>Material</th><th>Plant</th><th>Purch. group</th><th>S.Loc</th><th class="num">Order quantity</th><th class="num qtd">Quantity to be delivered</th><th class="num qtd">Value to be delivered</th><th class="num">Delivered quantity</th><th class="num">Delivered value</th><th class="num">Price</th><th class="num">Net value</th><th>Delivery</th><th>Release</th><th>Created by</th></tr></thead><tbody>'+(first.length?first.map((r,i)=>rowHtml(r,i)).join(''):'<tr><td colspan="21" class="empty">Nothing matches the filters.</td></tr>')+'</tbody>';
+  $('tbl').innerHTML='<thead><tr>'+COLS.map(k=>HEAD[k]).join('')+'</tr></thead><tbody>'+(first.length?first.map((r,i)=>rowHtml(r,i)).join(''):'<tr><td colspan="'+COLS.length+'" class="empty">Nothing matches the filters.</td></tr>')+'</tbody>';
   const token=++renderToken;let done=first.length;
   const more=()=>{if(token!==renderToken||done>=slice.length)return;document.querySelector('#tbl tbody').insertAdjacentHTML('beforeend',slice.slice(done,done+600).map((r,i)=>rowHtml(r,done+i)).join(''));done+=600;setTimeout(more,0);};
   setTimeout(more,0);
