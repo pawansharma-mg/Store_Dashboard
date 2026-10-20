@@ -270,6 +270,7 @@
   }
   function field(v) { v = String(v); return /[",\r\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
   function csvCell(td) { // "₹1.21 Cr" and "₹39.27 L" become whole rupees, so Excel can add them up; everything else stays as shown
+    if (td.getAttribute('data-full') !== null) return td.getAttribute('data-full') || '–'; // a cell that shows only the first lines of a list keeps the whole list here
     var c = td;
     if (td.querySelector('br')) { // a line break must not glue the words together: " + " in a list of quantities (class qlist), else a space
       c = td.cloneNode(true);
