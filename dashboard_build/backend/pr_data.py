@@ -790,7 +790,8 @@ def stock_compact(rows, asof_day, allowed=None, last=None):
 def issue_compact(rows, asof_day):
     """Rows: [day, costCenter, plant, sloc, material, qty, unit, value, movementType, postedBy, reservation, matDoc, reservationBy,
     department, basis]. Basis: 1 machine list, 2 department code of the cost center, 3 plant-common function, 4 reservation creator
-    is in the user's list, 5 creator's usual department (inferred from the creator's other issues), 6 not assigned.
+    is in the user's list, 5 creator's usual department (inferred from the creator's other issues), 6 not assigned, 7 the department the user gave for the
+    reservation creator (ISSUE_USER_DEPT), which replaces the department of the cost center (it is checked first).
     Quantity and value are positive for an issue (stock out, H) and negative for its reversal (S)."""
     dicts = {k: {} for k in ('ccs', 'plants', 'slocs', 'mats', 'units', 'mvts', 'users', 'depts')}
 
@@ -823,6 +824,8 @@ def issue_compact(rows, asof_day):
 
     out = []
     for r, cc, dept, basis, ccname, res_user in prep:
+        if ISSUE_USER_DEPT.get(res_user):
+            dept, basis = ISSUE_USER_DEPT[res_user], 7  # the user's department replaces the cost center's
         if not dept and USER_DEPT.get(res_user):
             dept, basis = USER_DEPT[res_user], 4
         if not dept and usual.get(res_user):
@@ -1092,6 +1095,43 @@ DEPT_USERS = {
     'Coil Quality': ['CB9980000091'],               # COILQC
 }
 USER_DEPT = {u: dept for dept, users in DEPT_USERS.items() for u in users}
+
+# Department of the user who raised the reservation, as given by the user on 20-Oct-2026 ("Store Issue me department kaise lena hai: user ke hisaab se").
+# This is the first layer of the Store Issue department: it replaces the department the cost center would give. A line without a reservation, or a
+# reservation creator who is not listed here, is placed by the cost center layers below. Not given yet: Omprakash Sahu (CB9980000035, CCP in DEPT_USERS),
+# Surya Karma (CB9980000038, Coil in DEPT_USERS) and Nipendra Jha (CB9980000093, posts only).
+ISSUE_USER_DEPT = {
+    'CB9980000048': 'Cup Quality & FG',                 # Nikhilesh Pindoliya
+    'CB9980000088': 'Cup Quality & FG',                 # Cup QC
+    'CB9980000025': 'Maintenance Case, Cup, Coin',      # Pushpendra Singh Chouhan
+    'CB9980000027': 'Maintenance CCP, Coil',            # Head Mech Maint
+    'CB9980000020': 'Electrical Maintenance',           # GS Pathak
+    'CB9980000023': 'Electrical Maintenance',           # Piyush Barve
+    'CB9980000034': 'RM',                               # Raj Babu Dangi
+    'CB9980000726': 'Coin, Cup Tool Room',              # Arvind Kumar Sharma
+    'CB9980000041': 'Cup Production',                   # Suresh Kot
+    'CB9980000045': 'Case Production',                  # Case Production
+    'CB9980000044': 'Case Production',                  # Neeraj Sharma
+    'CB9980000080': 'Machine Development',              # Anil Puttala
+    'CB9980000070': 'Admin & Security',                 # Vineeth Krishna
+    'CB9980000089': 'Coin Quality',                     # Gyanendra Mishra
+    'CB9980000065': 'NPD',                              # Mukesh Satankar
+    'CB9980000087': 'HR',                               # Head HR
+    'CB9980000522': 'Project',                          # Virendra Lodhi
+    'CB9980000067': 'Medal',                            # Rafiq Khan
+    'CB9980000049': 'Case QC',                          # Case QC
+    'CB9980000091': 'Coil Quality',                     # Coil Quality
+    'CB9980000046': 'Coil Quality',                     # Kamal Soianki
+    'CB9980000037': 'Coil Production',                  # Narendra Birle
+    'CB9980000043': 'Case Toolroom',                    # Case Toolroom MG
+    'CB9980000031': 'Planning',                         # Deepak Mulewa
+    'CB9980000052': 'Commercial',                       # Sunil Sharma
+    'CB9980000068': 'Store',                            # Sunil Patel
+    'CB9980000082': 'PMO',                              # PMO MG
+    'CB9980000039': 'Coin Production',                  # Haresh Mayekar
+    'CB9980000040': 'Coin Production',                  # Pratosh Yadav
+    'CB9980000000': 'Admin MG',                         # Admin MG
+}
 
 
 def cc_info(cc):

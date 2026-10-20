@@ -120,9 +120,11 @@ Project level:
 
 ### Store Issue (`/issue`)
 * Goods movements 201 (issue to a cost center) and 202 (reversal) since 1 Jan 2026. Quantity and value are positive for an issue and negative for a reversal.
-* **Department** of a line is decided in six layers, first match wins: machine list (cost center base in `RAW`/`EXTRA`/`UNLISTED`),
-  department code of an old-style cost center (`CODE_DEPT`), plant-common function (`PLT_FUNC`), the reservation creator's listed department (`DEPT_USERS`),
-  the creator's usual department (at least 20 lines and 75% in one department), else "Unassigned". The basis is kept per line.
+* **Department** of a line is the department of **the user who raised the reservation** ("Reservation by"), as the user gave it on 20-Oct-2026 (`ISSUE_USER_DEPT`, 30 users, basis 7). This layer is checked first and replaces the department the cost center would give.
+  Only a line without a reservation (direct issue) or a creator who is not in that list falls back to the older layers, first match wins: machine list (cost center base in `RAW`/`EXTRA`/`UNLISTED`),
+  department code of an old-style cost center (`CODE_DEPT`), plant-common function (`PLT_FUNC`), the creator's older listed department (`DEPT_USERS`),
+  the creator's usual department (at least 20 lines and 75% in one department), else "Unassigned". The basis is kept per line and shown as a tooltip on the Department column.
+  Not given yet: Omprakash Sahu (stays CCP), Surya Karma (stays Coil) and Nipendra Jha (posts only). To change a user's department edit `ISSUE_USER_DEPT` in `backend/pr_data.py` and restart.
 * User IDs are shown by name from `USER_NAMES`; IDs without a name show as the ID.
 * **Every tile opens its details** when clicked (click again to hide; the page scrolls to them), and the details follow the filters: Net issue value (issues 201 and reversals 202, and by plant), Issue lines (newest first), Cost centers (department, lines, net value, share), Materials (net quantity, net value, price per unit, last issued). Long lists show the first 25 with "See all".
 * **Top 5 most expensive items issued (quantity 1)** is a tile and a card (open by default; click the tile to hide or show). It looks only at issue lines with quantity exactly 1 (reversals are left out), one row per material with its most expensive single-piece issue (value, date, document, cost center, department) and how many times it was issued as one piece. The current filters apply. The tile shows the most expensive piece and the sum of the five.
