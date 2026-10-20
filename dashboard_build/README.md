@@ -99,8 +99,8 @@ Frontend (`frontend/`): what the browser shows. The server serves these files; i
 | `frontend/po_approval_template.html` | PO Approval Pending page |
 | `frontend/stock_template.html` | Store Stock page |
 | `frontend/summary_template.html` | Summary page: reads `/api/pr`, `/api/issue`, `/api/po`, `/api/stock` and `/api/po-approvers` in the browser |
-| `frontend/ui.css` | The look shared by all pages (menu with icons, header, filter card, tiles, cards, tables with bars, loading shimmer, phone layout, print). Loaded after each page's own styles; colours come from the page variables, so Normal and Dark both follow. Generated once from a script, but it is a plain file: edit it directly |
-| `frontend/ui.js` | Small helpers shared by all pages: bars behind the value column of the summary tables, shadow under the header once scrolled, back-to-top button, `/` jumps to the search box. It changes no figure |
+| `frontend/ui.css` | The look shared by all pages: soft colour in the background, header with status pill, menu with icons, filter card, tiles with an icon bubble, cards that rise in, tables with value bars, charts, loading shimmer, phone layout, print. Loaded after each page's own styles; colours come from the page variables, so Normal and Dark both follow. Made once by a script, but it is a plain file: edit it directly |
+| `frontend/ui.js` | Helpers shared by all pages. It changes no figure, it only draws: bars behind the value column of the summary tables, an icon on every tile, numbers that count up (and move from the old to the new number when a filter changes), bar and donut charts above the month / day / ageing / plant / category tables, a shadow under the header once scrolled, a back-to-top button and `/` for the search box |
 | `frontend/logo.png` | Logo |
 
 Project level:
@@ -180,6 +180,7 @@ Run it after changing `pr_data.py` or the CSV files, and before a deployment.
 
 * The date range opens as the whole current month and moves with the calendar; edit the dates to look at older data.
 * "See all" shows every row (drawn in batches); the heading bar and table headings stay while scrolling; Normal | Dark switch (remembered in the browser).
+* **Charts** are drawn by `ui.js` from the summary tables on the page, above the table (the table stays below with its bars): month-wise and day-wise columns (Store Issue, Pending Purchase Orders), department / plant / PO type donuts, ageing columns and approver / plant donuts (PO Approval Pending), category / stock type / plant donuts (Store Stock). A click on a bar, a slice or a legend line does what a click on the table row does (the same filter). They are listed in `CHARTS` at the top of the chart section of `ui.js`: add a line there (page, table id, `cols` or `donut`, which column) to chart another table. Pending PR has its own charts. A donut shows the six biggest slices and "Others"; month labels are thinned out when the chart is narrow.
 * The summary tables show a bar behind their value column (the longest bar is the biggest value of that table). The menu tabs have icons and scroll sideways on a phone; on a phone the filters sit in a two column card.
 * Keyboard: `/` jumps to the search box; a button at the bottom right brings you back to the top of a long page.
 * Dropdown options show no counts; codes are shown with descriptions where a list exists.
