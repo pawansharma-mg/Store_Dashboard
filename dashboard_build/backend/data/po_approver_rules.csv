@@ -1,4 +1,4 @@
-Purchasing org,Purchasing group,Min value (INR),Max value (INR),Approver,Basis
+﻿Purchasing org,Purchasing group,Min value (INR),Max value (INR),Approver,Basis
 1020,105,,,Pawan Sharma,Strong: your approver list shows 11 POs pending with Pawan Sharma and CASE Division (105) has exactly 11 pending POs; his PO types (ZDNB ZSER ZAST NB) fit.
 1020,101,,,Raj Babu Dangi,Strong: 2 pending with Raj Babu Dangi = the 2 RM Charging (101) POs; his PO types (ZSER ZDNB) fit; he is the RM head.
 2020,101,,,Raj Babu Dangi,Strong: 2 pending with Raj Babu Dangi = the 2 RM Charging (101) POs; his PO types (ZSER ZDNB) fit; he is the RM head.
@@ -13,7 +13,7 @@ Purchasing org,Purchasing group,Min value (INR),Max value (INR),Approver,Basis
 2020,123,,,Quaid Johar,Weak: left over after the counts of the other approvers are filled.
 1020,116,,,Quaid Johar,Weak: left over after the counts of the other approvers are filled.
 2020,010,,,Quaid Johar,Weak: left over after the counts of the other approvers are filled.
-1020,104,,,Haresh Mayekar,"Weak (added 20-Oct-2026): COIN Division had no PO in approval when your approver list was taken on 18-Oct, so the counts say nothing. Haresh Mayekar approves CCP Division (PO 4500012466 was with him in SAP) and the COIN maintenance group, and you listed him as Coin Production; ZDNB is among his PO types. Check one PO in SAP."
-2020,104,,,Haresh Mayekar,Weak (added 20-Oct-2026): same reasoning as COIN Division of org 1020 (Haresh Mayekar is the Coin person who also approves CCP Division of org 2020); ZSER is among his PO types. Check in SAP.
-1020,120,,,Haresh Mayekar,"Weak (added 20-Oct-2026): COIN TOOL ROOM is a Coin group, so the same reasoning as COIN Division: Haresh Mayekar, Coin Production, also approves CCP Division; ZDNB is among his PO types. Check in SAP."
-1010,020,,,Raj Babu Dangi,"Weak guess (added 20-Oct-2026): PO 4200000672 is a ZDRM (domestic raw material) PO of 1.38 Cr and the only ZDRM PO that is in approval (218 others were released without this step), so it needs a senior approver. Raj Babu Dangi is the RM (raw material) head and an approver, but ZDRM is not among the PO types he had on 18-Oct, so this is a domain guess. Check in SAP."
+1020,104,,,Haresh Mayekar,"Weak (matched with your user list, 20-Oct-2026): the group COIN Division is the Coin department; your list has Coin Production = Haresh Mayekar and Pratosh Yadav. Haresh Mayekar is also in your approver report (6 pending on 18-Oct) and approves CCP Division, so he is chosen. ZDNB is among his PO types. Check one PO in SAP."
+2020,104,,,Haresh Mayekar,"Weak (matched with your user list, 20-Oct-2026): same as COIN Division of org 1020: Coin Production = Haresh Mayekar; ZSER is among his PO types. Check in SAP."
+1020,120,,,Arvind Kumar Sharma,"Weak (matched with your user list, 20-Oct-2026): the group COIN TOOL ROOM matches the department ""Coin, Cup Tool Room"" in your user list = Arvind Kumar Sharma. He was not in your approver report of 18-Oct (0 pending then), which fits: PO 4500012329 came into approval after that. If the Coin head approves it instead, it is Haresh Mayekar. Check in SAP."
+1010,020,,,Raj Babu Dangi,"Weak guess (your user list, 20-Oct-2026): VP Purchase has no department of its own in your list; PO 4200000672 is a ZDRM (raw material) PO of 1.38 Cr, the only ZDRM PO in approval (218 others were released without this step), and the raw material department (RM) = Raj Babu Dangi, who is also in your approver report. If it is the Commercial department, it is Sunil Sharma. Check in SAP."
