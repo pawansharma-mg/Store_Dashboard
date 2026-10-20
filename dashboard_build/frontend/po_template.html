@@ -264,19 +264,20 @@ function poList(rows){
   const m=new Map();
   for(const r of rows){
     let x=m.get(r.po);
-    if(!x)m.set(r.po,x={po:r.po,day:r.day,sup:r.sup,type:r.type,pg:r.pg,plants:new Set(),n:0,still:0,amt:0,pend:0,fx:0,rel:r.proc});
-    x.n++;x.plants.add(r.plant);if(r.still>0)x.still++;
+    if(!x)m.set(r.po,x={po:r.po,day:r.day,sup:r.sup,type:r.type,pg:r.pg,plants:new Set(),n:0,still:0,q:new Map(),amt:0,pend:0,fx:0,rel:r.proc});
+    x.n++;x.plants.add(r.plant);if(r.still>0){x.still++;x.q.set(r.unit,(x.q.get(r.unit)||0)+r.still);}
     if(r.cur==='INR'){x.amt+=r.amt;x.pend+=r.pendAmt;}else x.fx++;
   }
   return [...m.values()];
 }
 const shareOf=(v,t)=>t?(v/t*100).toFixed(1)+'%':'–';
+const qtyTxt=x=>[...x.q.entries()].map(([u,v])=>v.toLocaleString('en-IN',{maximumFractionDigits:3})+' '+esc(u)).join(' + ')||'–';
 const relTxt=p=>p==='03'?'In Approval':p==='08'?'Rejected':'Released';
-const poHead=first=>`<thead><tr><th>${first}</th><th>PO</th><th>Created on</th><th>Supplier</th><th>PO type</th><th>Plant</th><th class="num">Items</th><th class="num">Still to deliver</th><th class="num">Net value</th><th class="num">To deliver</th><th>Release</th></tr></thead>`;
-const poRow=(x,i)=>`<tr><td>${i+1}</td><td class="nw">${esc(x.po)}</td><td class="nw">${x.day===null?'–':fmtDay(x.day)}</td><td class="supc" title="${esc('Supplier '+D.suppliers[x.sup][0])}">${esc(D.suppliers[x.sup][1]||D.suppliers[x.sup][0])}</td><td class="nw" title="${esc(typeName(x.type))}">${esc(x.type)}</td><td class="nw">${esc([...x.plants].sort().join(' / '))}</td><td class="num">${fmtN(x.n)}</td><td class="num">${fmtN(x.still)}</td><td class="num nw">${fv(x.amt,x)}</td><td class="num nw">${fv(x.pend,x)}</td><td class="nw">${relTxt(x.rel)}</td></tr>`;
+const poHead=first=>`<thead><tr><th>${first}</th><th>PO</th><th>Created on</th><th>Supplier</th><th>PO type</th><th>Plant</th><th class="num">Items</th><th class="num">Items pending</th><th class="num">Quantity to be delivered</th><th class="num">Net value</th><th class="num">To deliver</th><th>Release</th></tr></thead>`;
+const poRow=(x,i)=>`<tr><td>${i+1}</td><td class="nw">${esc(x.po)}</td><td class="nw">${x.day===null?'–':fmtDay(x.day)}</td><td class="supc" title="${esc('Supplier '+D.suppliers[x.sup][0])}">${esc(D.suppliers[x.sup][1]||D.suppliers[x.sup][0])}</td><td class="nw" title="${esc(typeName(x.type))}">${esc(x.type)}</td><td class="nw">${esc([...x.plants].sort().join(' / '))}</td><td class="num">${fmtN(x.n)}</td><td class="num">${fmtN(x.still)}</td><td class="num nw qtd">${qtyTxt(x)}</td><td class="num nw">${fv(x.amt,x)}</td><td class="num nw">${fv(x.pend,x)}</td><td class="nw">${relTxt(x.rel)}</td></tr>`;
 const TILE_INFO={
   val:['Net PO value','Net order value (INR) of the PO items of the current filters: by PO type, by plant, and the 10 purchase orders with the most value.'],
-  open:['Value still to be delivered','Purchase orders with a value still to be delivered (INR) for the current filters, most value to deliver first.'],
+  open:['Value still to be delivered','Purchase orders with a value still to be delivered (INR) for the current filters, most value to deliver first, with the quantity still to be delivered (per unit when the items of a PO have different units).'],
   pos:['Purchase orders','Every purchase order of the current filters, newest first.'],
   items:['PO items','PO items of the current filters by delivery status, and the items with the most value first.'],
   sups:['Suppliers','Suppliers of the current filters, most net value first.']
