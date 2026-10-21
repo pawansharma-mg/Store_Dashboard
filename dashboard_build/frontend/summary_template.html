@@ -148,7 +148,7 @@ html{scroll-behavior:smooth}
     <label class="fld"><span>To</span><input id="dTo" type="date"></label>
     <button type="button" class="btn alt" id="monthBtn">Current month</button>
   </section>
-  <p class="hint rangenote" id="rangeNote">The dates apply to Pending PR (PR creation date), Store Issue (posting date), Pending Purchase Orders and PO Approval Pending (PO creation date). Store Stock is the stock of today. "All dates" under a figure ignores the dates.</p>
+  <p class="hint rangenote" id="rangeNote">The dates apply to Pending PR (PR creation date), Store Issue and Purchase (posting date), Pending Purchase Orders and PO Approval Pending (PO creation date). Store Stock is the stock of today. "All dates" under a figure ignores the dates.</p>
 
   <div class="printhead" id="printHead"></div>
   <h2 class="hl-title" id="hlTitle" hidden>Needs a look</h2>
@@ -177,6 +177,11 @@ html{scroll-behavior:smooth}
       <p class="hint">Purchase orders In Approval in SAP. The approver is the confirmed one where the list has it, otherwise the likely one from the rules.</p>
       <div id="body-appr"></div>
     </article>
+    <article class="card sumcard" id="sec-purchase">
+      <h2>Purchase<a class="opn" href="/purchase">Open page &rarr;</a></h2>
+      <p class="hint">Goods receipts against purchase orders (101) less their reversals (102) in the listed store locations. The department is the purchasing group of the PO.</p>
+      <div id="body-purchase"></div>
+    </article>
     <article class="card sumcard" id="sec-stock">
       <h2>Store Stock<a class="opn" href="/stock">Open page &rarr;</a></h2>
       <p class="hint">Stock value of the listed store locations today. Top 5 and Not used cover the Store locations only (Internal Plant material is left out).</p>
@@ -184,8 +189,9 @@ html{scroll-behavior:smooth}
     </article>
   </section>
 </div>
-<footer class="footer">Mittal Group · Summary of Pending PR, Store Issue, Pending Purchase Orders, PO Approval Pending and Store Stock · Source: SAP S/4HANA Cloud</footer>
+<footer class="footer">Mittal Group · Summary of Pending PR, Store Issue, Pending Purchase Orders, PO Approval Pending, Purchase and Store Stock · Source: SAP S/4HANA Cloud</footer>
 
+<script id="pgs" type="application/json">__PGS__</script>
 <script>
 (function(){
 const $=id=>document.getElementById(id);
@@ -281,6 +287,19 @@ function calcAppr(){
   for(const p of P){if(S.plant&&!p.plants.has(S.plant))continue;if(!inR(p.day))continue;let x=ap.get(p.key);if(!x)ap.set(p.key,x={n:0,amt:0});x.n++;x.amt+=p.amt;}
   return {sel:agg(true),all:agg(false),top:[...ap.entries()].sort((a,b)=>b[1].n-a[1].n||b[1].amt-a[1].amt).slice(0,5)};
 }
+function prepPurchase(d){return d.rows.map(a=>({day:a[0],plant:d.plants[a[5]],rev:d.mvts[a[1]]==='102',val:a[11],po:a[2],item:a[3]}));}
+const PG_NAMES=(()=>{try{return JSON.parse(document.getElementById('pgs').textContent);}catch(e){return {};}})();
+// PO number + item -> purchasing group of the PO (the /api/po data); a receipt for a PO older than that data has no department
+function poMap(){const d=RAW.po;if(!d)return null;if(PREP.poMap&&PREP.poMap.src===d)return PREP.poMap;const a=new Map(),b=new Map();for(const r of d.rows){const pg=d.pgs[r[19]];a.set(r[2]+'|'+r[3],pg);if(!b.has(r[2]))b.set(r[2],pg);}PREP.poMap={src:d,a,b};return PREP.poMap;}
+function calcPurchase(){
+  const R=PREP.purchase;if(!R)return null;const pm=poMap();
+  const agg=date=>{let v1=0,v2=0,n1=0,n2=0;const pos=new Set();
+    for(const r of R){if(!plantOk(r.plant)||(date&&!inR(r.day)))continue;if(r.rev){v2+=r.val;n2++;}else{v1+=r.val;n1++;}pos.add(r.po);}
+    return {v1,v2,n1,n2,net:v1-v2,pos:pos.size};};
+  const dp=new Map();
+  for(const r of R){if(!plantOk(r.plant)||!inR(r.day))continue;const pg=pm?(pm.a.get(r.po+'|'+r.item)||pm.b.get(r.po)):null;const k=pg?(PG_NAMES[pg]||pg):(pm?'PO not in the 2026 PO data':'(PO data loading)');let x=dp.get(k);if(!x)dp.set(k,x={v1:0,v2:0});if(r.rev)x.v2+=r.val;else x.v1+=r.val;}
+  return {sel:agg(true),all:agg(false),top:[...dp.entries()].sort((a,b)=>(b[1].v1-b[1].v2)-(a[1].v1-a[1].v2)).slice(0,5)};
+}
 function calcStock(){
   const d=RAW.stock;if(!d)return null;
   const cut=cutoffDay(d.asofDay),used=!!d.issuesRead;
@@ -360,17 +379,18 @@ function renderAll(){
   if(RAW.po&&APTRIED&&PREP.apprFor!==RAW.po)buildApprovals();
   // plant list from the data loaded so far
   const pl=new Set();
-  for(const [k,f] of [['pr',d=>d.plants],['issue',d=>d.plants],['po',d=>d.plants],['stock',d=>d.plants]])if(RAW[k])for(const p of f(RAW[k]))pl.add(p);
+  for(const [k,f] of [['pr',d=>d.plants],['issue',d=>d.plants],['po',d=>d.plants],['stock',d=>d.plants],['purchase',d=>d.plants]])if(RAW[k])for(const p of f(RAW[k]))pl.add(p);
   const cur=S.plant;$('plantSel').innerHTML='<option value="">All plants</option>'+[...pl].sort().map(p=>`<option value="${esc(p)}">${esc(p)}</option>`).join('');
   if(cur&&!pl.has(cur)&&pl.size)S.plant='';$('plantSel').value=S.plant;
 
-  const pr=calcPR(),is=calcIssue(),po=calcPO(),ap=calcAppr(),st=calcStock();
+  const pr=calcPR(),is=calcIssue(),po=calcPO(),ap=calcAppr(),st=calcStock(),pu=calcPurchase();
   const heads=[];
   const loadHead=(href,label,key)=>`<a class="tile tilebtn" href="${href}"><div class="tv">${ERR[key]?'–':'…'}</div><div class="tl">${label}</div><div class="ts">${ERR[key]?esc(ERR[key]):'loading'}</div></a>`;
   heads.push(pr?head(go('/','items','sel'),fmtN(pr.sel.n),'Pending PR items',`${fmtN(pr.sel.prs)} PRs · ${fmtINR(pr.sel.amt)} net value`):loadHead('#sec-pr','Pending PR items','pr'));
   heads.push(is?head(go('/issue','val','sel'),fmtINR(is.sel.amt),'Store issue value',`${fmtN(is.sel.n)} lines in the dates`):loadHead('#sec-issue','Store issue value','issue'));
   heads.push(po?head(go('/po','open','sel'),fmtINR(po.sel.open),'PO value still to deliver',`${fmtN(po.sel.pos)} POs · ${fmtN(po.sel.items)} items`):loadHead('#sec-po','PO value still to deliver','po'));
   heads.push(ap?head(go('/po-approval','pos','sel'),fmtN(ap.sel.n),'POs waiting for approval',`${fmtINR(ap.sel.amt)} · oldest ${ap.sel.oldest?fmtN(ap.sel.oldest.age)+' days':'–'}`):loadHead('#sec-appr','POs waiting for approval','po'));
+  heads.push(pu?head(go('/purchase','net','sel'),fmtINR(pu.sel.net),'Net purchase value',`${fmtN(pu.sel.n1)} receipts · ${fmtN(pu.sel.n2)} reversals`):loadHead('#sec-purchase','Net purchase value','purchase'));
   heads.push(st?head(go('/stock','val',null),fmtINR(st.tot),'Store stock value',st.split?`Store ${fmtINR(st.store)} · ${IPM} ${fmtINR(st.ipm)}`:'today'):loadHead('#sec-stock','Store stock value','stock'));
   $('heads').innerHTML=heads.join('');
   const hl=highlights(pr,is,po,ap,st);
@@ -401,6 +421,12 @@ function renderAll(){
     tile(ap.sel.oldest?fmtN(ap.sel.oldest.age)+' days':'–','Oldest waiting',ap.sel.oldest?`PO ${esc(ap.sel.oldest.po)} (${fmtDay(ap.sel.oldest.day)})`:'',go('/po-approval','oldest','sel')),
     tile(fmtN(ap.sel.over),'Waiting more than 30 days',`all dates: ${fmtN(ap.all.over)}`,go('/po-approval','oldest','sel'))],
     table([['Top 5 approvers',''],['POs','num'],['Net value','num']],ap.top.map(([k,x])=>[esc(k),fmtN(x.n),fmtINR(x.amt)]))));
+  $('body-purchase').innerHTML=status('purchase',pu&&section('purchase',[
+    tile(fmtINR(pu.sel.v1),'Purchase value (101)',`${fmtN(pu.sel.n1)} lines · all dates: ${fmtINR(pu.all.v1)}`,go('/purchase','buy','sel')),
+    tile(fmtINR(pu.sel.v2),'Reversal value (102)',`${fmtN(pu.sel.n2)} lines · all dates: ${fmtINR(pu.all.v2)}`,go('/purchase','rev','sel')),
+    tile(fmtINR(pu.sel.net),'Net purchase value (101 − 102)',`all dates: ${fmtINR(pu.all.net)}`,go('/purchase','net','sel')),
+    tile(fmtN(pu.sel.pos),'Purchase orders',`all dates: ${fmtN(pu.all.pos)}`,go('/purchase','pos','sel'))],
+    table([['Top 5 departments (purchasing group)',''],['Purchases','num'],['Reversals','num'],['Net value','num']],pu.top.map(([k,x])=>[esc(k),fmtINR(x.v1),fmtINR(x.v2),fmtINR(x.v1-x.v2)]))));
   $('body-stock').innerHTML=status('stock',st&&section('stock',[
     tile(fmtINR(st.tot),'Total stock value',st.split?`Store ${fmtINR(st.store)} · ${IPM} ${fmtINR(st.ipm)}`:'',go('/stock','val',null)),
     tile(fmtINR(st.topVal),'Top 5 materials (Store)',st.store?`${(st.topVal/st.store*100).toFixed(1)}% of the Store stock`:'',go('/stock','top',null)),
@@ -412,7 +438,7 @@ function renderAll(){
 
 function setLive(kind,text){$('liveDot').style.background=kind==='ok'?'var(--good)':kind==='err'?'var(--crit)':'var(--warn)';$('liveTxt').textContent=text;$('refresh').disabled=kind==='busy';}
 function updateLive(){
-  const keys=['pr','issue','po','stock'],got=keys.filter(k=>RAW[k]),bad=keys.filter(k=>ERR[k]);
+  const keys=['pr','issue','po','stock','purchase'],got=keys.filter(k=>RAW[k]),bad=keys.filter(k=>ERR[k]);
   if(LOADING>0){setLive('busy',`Loading from SAP… ${got.length} of ${keys.length} ready (the first load can take a minute)`);return;}
   if(bad.length&&!got.length){setLive('err',ERR[bad[0]]);return;}
   const t=got.length?Math.min(...got.map(k=>RAW[k].fetchedAt||Date.now())):Date.now();
@@ -421,7 +447,7 @@ function updateLive(){
 async function fetchJSON(url){const r=await fetch(url,{cache:'no-store'});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||('HTTP '+r.status));return j;}
 function load(force){
   const q=force?'?refresh=1':'';
-  const jobs=[['pr','/api/pr',prepPR],['issue','/api/issue',prepIssue],['po','/api/po',prepPO],['stock','/api/stock',()=>null]];
+  const jobs=[['pr','/api/pr',prepPR],['issue','/api/issue',prepIssue],['po','/api/po',prepPO],['stock','/api/stock',()=>null],['purchase','/api/purchase',prepPurchase]];
   LOADING=jobs.length;updateLive();
   for(const [key,url,prep] of jobs){
     fetchJSON(url+q).then(j=>{RAW[key]=j;PREP[key]=prep(j);delete ERR[key];}).catch(e=>{ERR[key]=e.message==='Failed to fetch'?'The dashboard server is not running. Start it again with Start_Live_Dashboard.bat.':e.message;}).finally(()=>{LOADING--;renderAll();});
