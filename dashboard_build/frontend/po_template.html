@@ -437,6 +437,7 @@ function render(){
   $('supHint').textContent='Net order value (INR) of the PO items. Click a supplier to filter everything.'+(sl.length>SUP_LIMIT?` Top ${SUP_LIMIT} of ${fmtN(sl.length)} suppliers by value shown; the total covers all. Use the Supplier filter or Search for the others.`:'');
   $('bySup').innerHTML=aggTable(sl,'Supplier',k=>`<button type="button" class="lnk" data-sup="${k}" title="${esc(D.suppliers[k][2]?'GSTIN '+D.suppliers[k][2]:'')}">${esc(supLabel(k))}</button>`,S.sup,SUP_LIMIT);
   const stx=mts.get('STORE');if(stx)stx.sub=true;
+  for(const c of STORE_MT)if(!mtm.has(c))mtm.set(c,agg());
   const mtl=byValue(mtm),mtStoreRows=mtl.filter(e=>STORE_MT.includes(e[0])),mtOtherRows=mtl.filter(e=>!STORE_MT.includes(e[0]));
   for(const e of mtStoreRows)e[1].child=true;
   $('byMt').innerHTML=aggTable([...(stx?[['STORE',stx]]:[]),...mtStoreRows,...mtOtherRows],'Material type',k=>k==='STORE'?`<button type="button" class="lnk" data-mt="STORE">Store material types</button> <span title="${esc(STORE_MT.map(c=>mtLabel(c)).join(', '))}">(${STORE_MT.join(', ')})</span>`:`<button type="button" class="lnk" data-mt="${esc(k)}" title="${esc(mtTip(k))}">${STORE_MT.includes(k)?'↳ ':''}${esc(mtLabel(k))}</button>`,S.mt);
@@ -584,9 +585,9 @@ function setData(d){
   $('typeSel').value=S.type===null?'':S.type;
   // material types: "Store material types" first, then every type of the data, most items first
   const mc=new Map();for(const r of R){const k=r.mtype||'(blank)';mc.set(k,(mc.get(k)||0)+1);}
-  const mo=e=>`<option value="${esc(e[0])}">${esc(mtLabel(e[0]))}</option>`,mcs=[...mc.entries()].sort((a,b)=>b[1]-a[1]);
+  const mo=e=>`<option value="${esc(e[0])}">${esc(mtLabel(e[0]))}</option>`,mcs=[...new Set([...Object.keys(MT_NAMES),...mc.keys()])].map(k=>[k,mc.get(k)||0]).sort((a,b)=>b[1]-a[1]);
   $('mtSel').innerHTML='<option value="">All material types</option><optgroup label="Store material types"><option value="STORE" title="'+STORE_MT.join(', ')+'">All Store types</option>'+mcs.filter(e=>STORE_MT.includes(e[0])).map(mo).join('')+'</optgroup><optgroup label="Other material types">'+mcs.filter(e=>!STORE_MT.includes(e[0])).map(mo).join('')+'</optgroup>';
-  if(S.mt!==null&&S.mt!=='STORE'&&!mc.has(S.mt))S.mt=null;
+  if(S.mt!==null&&S.mt!=='STORE'&&!mc.has(S.mt)&&!MT_NAMES[S.mt])S.mt=null;
   $('mtSel').value=S.mt===null?'':S.mt;
   // supplier list for the Supplier box: 'Name (number)', suppliers with the most items first
   const sc=new Map();for(const r of R)sc.set(r.sup,(sc.get(r.sup)||0)+1);
