@@ -200,7 +200,7 @@ const pgName=c=>PG_NAMES[c]||c;
 const pgTip=c=>'Purchasing group '+c+(PG_NAMES[c]?'':' (no description yet)');
 const pgDisp=key=>{const i=key.indexOf(' / ');return i<0?key:key.slice(0,i)+' / '+pgName(key.slice(i+3));};
 const uTip=id=>USER_NAMES[id]?id+(USER_NAMES[id][1]?' ('+USER_NAMES[id][1]+')':''):id;
-const PO_TYPES={NB:'Standard PO',NB2:'Enh.Ret.to Supplier',UB:'Stock Transp. Order',UD:'StockTranspOrderDel',ZAST:'Asset PO',ZBNG:'Prepaid Bank Guarant',ZDNB:'Domestic-Others',ZDRM:'Domestic PO - Raw (RM from inside India)',ZIMP:'Import PO - Others',ZIRM:'Import PO - Raw (RM from outside India)',ZPRE:'Prepaid Expenses',ZPRI:'Prepaid Insurance',ZSER:'Service PO',ZSTO:'STO PO (internal transfer between departments)',ZSUB:'Sub Contracting PO (internal scrap to RM)',ZTRD:'Trading PO'};
+const PO_TYPES={NB:'Standard PO',NB2:'Enh.Ret.to Supplier',UB:'Stock Transp. Order',UD:'StockTranspOrderDel',ZAST:'Asset PO',ZBNG:'Prepaid Bank Guarant',ZDNB:'Domestic-Others',ZDRM:'Domestic PO - Raw',ZIMP:'Import PO - Others',ZIRM:'Import PO - Raw',ZPRE:'Prepaid Expenses',ZPRI:'Prepaid Insurance',ZSER:'Service PO',ZSTO:'STO PO',ZSUB:'Sub Contracting PO',ZTRD:'Trading PO'};
 const typeName=t=>PO_TYPES[t]?t+' · '+PO_TYPES[t]:t;
 const typeShort=t=>PO_TYPES[t]?t+' · '+PO_TYPES[t].replace(/\s*\(.*$/,''):t;  // the dropdown shows the SAP name only, the tables show the meaning too
 const AGES=['0–2 days','3–7 days','8–15 days','16–30 days','31–90 days','Over 90 days'];
