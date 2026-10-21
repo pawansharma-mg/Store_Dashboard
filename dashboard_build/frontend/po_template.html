@@ -135,6 +135,7 @@ tr.sel td{background:rgba(28,173,228,.14)!important}
   <section class="bar" aria-label="Filters">
     <label class="fld"><span>Plant</span><select id="plantSel"></select></label>
     <label class="fld"><span>PO type</span><select id="typeSel"></select></label>
+    <label class="fld"><span>PO group</span><select id="pogSel"><option value="">All PO groups</option><option value="RM">RM (all: ZDRM, ZIRM, ZSTO, ZSUB)</option><option value="RMBUY">RM bought (ZDRM, ZIRM)</option><option value="RMINT">RM internal transfer (ZSTO, ZSUB)</option><option value="OTHER">Other PO types</option></select></label>
     <label class="fld"><span>Material type</span><select id="mtSel"></select></label>
     <label class="fld"><span>Purch. group</span><select id="pgSel"></select></label>
     <label class="fld"><span>Supplier</span><input id="supIn" list="supList" placeholder="All suppliers" autocomplete="off" style="width:230px"><datalist id="supList"></datalist></label>
@@ -167,39 +168,44 @@ tr.sel td{background:rgba(28,173,228,.14)!important}
       <div class="tbox" id="byType"></div>
     </article>
     <article class="card">
-      <h2><span class="sec-badge">3</span>Material type wise<span class="badge-live">LIVE</span></h2>
+      <h2><span class="sec-badge">3</span>PO group wise<span class="badge-live">LIVE</span></h2>
+      <p class="hint">RM bought: ZDRM (raw material from inside India) and ZIRM (imported from outside India). RM internal transfer: ZSTO (material moved between departments such as Coil, Cup, Coin, Case) and ZSUB (internal scrap given to RM by every department). Click a line to filter everything; the filter "PO group" also has RM as a whole.</p>
+      <div class="tbox" id="byPog"></div>
+    </article>
+    <article class="card">
+      <h2><span class="sec-badge">4</span>Material type wise<span class="badge-live">LIVE</span></h2>
       <p class="hint">PO items by material type. The yellow line adds up the Store material types (ZCON, ZHMI, ZSPR, ZSRM, ZVRP); they are listed under it (↳), then the other types. Click the yellow line to see only the Store POs. The total at the bottom counts every type once. Items without a material (services, asset text items) have no type.</p>
       <div class="tbox" id="byMt"></div>
     </article>
     <article class="card">
-      <h2><span class="sec-badge">4</span>Plant wise<span class="badge-live">LIVE</span></h2>
+      <h2><span class="sec-badge">5</span>Plant wise<span class="badge-live">LIVE</span></h2>
       <p class="hint">Click a plant to filter everything.</p>
       <div class="tbox" id="byPlant"></div>
     </article>
     <article class="card">
-      <h2><span class="sec-badge">5</span>Material group wise<span class="badge-live">LIVE</span></h2>
+      <h2><span class="sec-badge">6</span>Material group wise<span class="badge-live">LIVE</span></h2>
       <p class="hint">Click a material group to filter everything.</p>
       <div class="tbox" id="byGrp"></div>
     </article>
     <article class="card">
-      <h2><span class="sec-badge">6</span>Purchasing group wise<span class="badge-live">LIVE</span></h2>
+      <h2><span class="sec-badge">7</span>Purchasing group wise<span class="badge-live">LIVE</span></h2>
       <p class="hint">Click a purchasing group to filter everything.</p>
       <div class="tbox" id="byPg"></div>
     </article>
     <article class="card">
-      <h2><span class="sec-badge">7</span>Month-wise POs<span class="badge-live">LIVE</span></h2>
+      <h2><span class="sec-badge">8</span>Month-wise POs<span class="badge-live">LIVE</span></h2>
       <p class="hint">By the date chosen above (PO date or Created on). Click a month to see it day by day.</p>
       <div class="tbox" id="byMonth"></div>
     </article>
     <article class="card">
-      <h2><span class="sec-badge">8</span><span id="dayTitle">Day-wise POs</span><span class="badge-live">LIVE</span></h2>
+      <h2><span class="sec-badge">9</span><span id="dayTitle">Day-wise POs</span><span class="badge-live">LIVE</span></h2>
       <p class="hint">Click a date to filter everything to that day.</p>
       <div class="tbox" id="byDay"></div>
     </article>
   </section>
 
   <section class="card tablecard">
-    <h2><span class="sec-badge">9</span>PO items<span class="badge-live">LIVE</span></h2>
+    <h2><span class="sec-badge">10</span>PO items<span class="badge-live">LIVE</span></h2>
     <p class="hint" id="tcount"></p>
     <div class="tscroll"><table id="tbl"></table></div>
     <div class="pager"><span id="pinfo"></span><div><button class="btn" id="seeAll" type="button">See all</button></div></div>
@@ -224,12 +230,19 @@ const MG_NAMES=(()=>{try{return JSON.parse(document.getElementById('mgs').textCo
 const mgName=c=>MG_NAMES[c]||c;
 const mgTip=c=>'Material group '+c+(MG_NAMES[c]?'':' (no description yet)');
 // PO document types (the list sent on 16-Oct-2026).
-const PO_TYPES={NB:'Standard PO',NB2:'Enh.Ret.to Supplier',UB:'Stock Transp. Order',UD:'StockTranspOrderDel',ZAST:'Asset PO',ZBNG:'Prepaid Bank Guarant',ZDNB:'Domestic-Others',ZDRM:'Domestic PO - Raw',ZIMP:'Import PO - Others',ZIRM:'Import PO - Raw',ZPRE:'Prepaid Expenses',ZPRI:'Prepaid Insurance',ZSER:'Service PO',ZSTO:'STO PO',ZSUB:'Sub Contracting PO',ZTRD:'Trading PO'};
+const PO_TYPES={NB:'Standard PO',NB2:'Enh.Ret.to Supplier',UB:'Stock Transp. Order',UD:'StockTranspOrderDel',ZAST:'Asset PO',ZBNG:'Prepaid Bank Guarant',ZDNB:'Domestic-Others',ZDRM:'Domestic PO - Raw (RM from inside India)',ZIMP:'Import PO - Others',ZIRM:'Import PO - Raw (RM from outside India)',ZPRE:'Prepaid Expenses',ZPRI:'Prepaid Insurance',ZSER:'Service PO',ZSTO:'STO PO (internal transfer between departments)',ZSUB:'Sub Contracting PO (internal scrap to RM)',ZTRD:'Trading PO'};
 const DEL_TXT={pending:'Pending delivery',every:'All'};
 const REL_TXT={ok:'Released',appr:'In Approval',rej:'Rejected'};
 const typeName=t=>PO_TYPES[t]?t+' · '+PO_TYPES[t]:t;
 // Material types (the user's list of 21-Oct-2026). STORE_MT are the Store material types (marked yellow in that list): a view of only the
 // Store POs shows just these. A PO item without a material (services, asset text items) has no material type: '(blank)'.
+// PO groups (the user's explanation of 21-Oct-2026). RM: ZDRM raw material bought inside India, ZIRM raw material imported from outside India,
+// ZSTO transfer of material between departments (Coil, Cup, Coin, Case), ZSUB internal scrap given to RM by every department. RMBUY and RMINT
+// split RM into what is bought and what is moved inside the company; RM is both. A PO type in no group is in OTHER.
+const PO_GROUPS={RMBUY:{name:'RM bought',types:['ZDRM','ZIRM'],note:'ZDRM inside India, ZIRM from outside India'},RMINT:{name:'RM internal transfer',types:['ZSTO','ZSUB'],note:'ZSTO between departments, ZSUB internal scrap to RM'}};
+const RM_TYPES=[...PO_GROUPS.RMBUY.types,...PO_GROUPS.RMINT.types];
+const groupOf=ty=>PO_GROUPS.RMBUY.types.includes(ty)?'RMBUY':PO_GROUPS.RMINT.types.includes(ty)?'RMINT':'OTHER';
+const pogLabel=k=>k==='RM'?'RM (all: '+RM_TYPES.join(', ')+')':k==='OTHER'?'Other PO types':PO_GROUPS[k]?PO_GROUPS[k].name+' ('+PO_GROUPS[k].types.join(', ')+')':k;
 const MT_NAMES={ZCON:'Consumable items',ZFGS:'Finished goods',ZHMI:'PRD tools',ZPRS:'Processed scrap',ZRMA:'Raw materials',ZSCP:'Scrap materials',ZSFG:'Semi finished goods',ZSPR:'Spare parts',ZSRM:'Raw materials stores',ZTOL:'Tool room',ZTRG:'Trading goods',ZUNB:'Non valuated material',ZVRP:'Packaging material'};
 const STORE_MT=['ZCON','ZHMI','ZSPR','ZSRM','ZVRP'];
 const mtLabel=c=>c==='(blank)'?'(no material)':MT_NAMES[c]?c+' · '+MT_NAMES[c]:c;
@@ -247,12 +260,13 @@ const mName=k=>MON[k%12]+' '+Math.floor(k/12);
 const dayOf=v=>v?Math.floor(Date.parse(v)/864e5):null;
 
 let D=null,R=[],renderToken=0,CUR=null,tileToken=0;
-const S={tile:null,tileAll:false,all:false,plant:'',type:null,mt:null,sup:null,del:'pending',rel:'',dt:'cr',grp:null,pg:null,from:null,to:null,q:'',mon:null,page:0};
+const S={tile:null,tileAll:false,all:false,plant:'',type:null,pog:null,mt:null,sup:null,del:'pending',rel:'',dt:'cr',grp:null,pg:null,from:null,to:null,q:'',mon:null,page:0};
 
 function pass(r,skip){
   skip=skip||[];
   if(!skip.includes('plant')&&S.plant&&r.plant!==S.plant)return false;
   if(!skip.includes('type')&&S.type!==null&&r.type!==S.type)return false;
+  if(!skip.includes('pog')&&S.pog!==null&&(S.pog==='RM'?!RM_TYPES.includes(r.type):groupOf(r.type)!==S.pog))return false;
   if(!skip.includes('mt')&&S.mt!==null){const c=r.mtype||'(blank)';if(S.mt==='STORE'?!STORE_MT.includes(c):c!==S.mt)return false;}
   if(!skip.includes('sup')&&S.sup!==null&&r.sup!==S.sup)return false;
   if(!skip.includes('grp')&&S.grp!==null&&r.grp!==S.grp)return false;
@@ -407,6 +421,7 @@ function render(){
   const c=[];
   if(S.plant)c.push(['plant','Plant '+S.plant]);
   if(S.type!==null)c.push(['type','PO type: '+typeName(S.type)]);
+  if(S.pog!==null)c.push(['pog','PO group: '+pogLabel(S.pog)]);
   if(S.mt!==null)c.push(['mt','Material type: '+(S.mt==='STORE'?'Store material types ('+STORE_MT.join(', ')+')':mtLabel(S.mt))]);
   if(S.sup!==null)c.push(['sup','Supplier: '+supLabel(S.sup)]);
   if(S.grp!==null)c.push(['grp','Material group: '+mgName(S.grp)]);
@@ -417,10 +432,11 @@ function render(){
   if(S.q)c.push(['q','Search: '+S.q]);
   $('chips').innerHTML=c.map(x=>`<button type="button" class="chip" data-clr="${x[0]}">${esc(x[1])} ×</button>`).join('')+(c.length?'<button type="button" class="chip" data-clr="all">Reset filters</button>':'');
   // each table ignores its own filter, so the list stays when you pick a row
-  const sp=new Map(),ty=new Map(),pl=new Map(),gr=new Map(),pgm=new Map(),mtm=new Map(),mts=new Map();
+  const sp=new Map(),ty=new Map(),pl=new Map(),gr=new Map(),pgm=new Map(),mtm=new Map(),mts=new Map(),pgp=new Map();
   for(const r of R){
     if(pass(r,['sup']))add(sp,r.sup,r);
     if(pass(r,['type']))add(ty,r.type,r);
+    if(pass(r,['pog']))add(pgp,groupOf(r.type),r);
     if(pass(r,['mt'])){add(mtm,r.mtype||'(blank)',r);if(STORE_MT.includes(r.mtype))add(mts,'STORE',r);}
     if(pass(r,['plant']))add(pl,r.plant,r);
     if(pass(r,['grp']))add(gr,r.grp,r);
@@ -429,6 +445,8 @@ function render(){
   const sl=byValue(sp);
   $('supHint').textContent='Net order value (INR) of the PO items. Click a supplier to filter everything.'+(sl.length>SUP_LIMIT?` Top ${SUP_LIMIT} of ${fmtN(sl.length)} suppliers by value shown; the total covers all. Use the Supplier filter or Search for the others.`:'');
   $('bySup').innerHTML=aggTable(sl,'Supplier',k=>`<button type="button" class="lnk" data-sup="${k}" title="${esc(D.suppliers[k][2]?'GSTIN '+D.suppliers[k][2]:'')}">${esc(supLabel(k))}</button>`,S.sup,SUP_LIMIT);
+  // the PO group card; a click on RM bought / RM internal transfer filters to that group, and a second click removes the filter
+  $('byPog').innerHTML=aggTable(['RMBUY','RMINT','OTHER'].filter(k=>pgp.has(k)).map(k=>[k,pgp.get(k)]),'PO group',k=>`<button type="button" class="lnk" data-pog="${k}" title="${esc(k==='OTHER'?'Every PO type that is not an RM type':PO_GROUPS[k].note)}">${esc(pogLabel(k))}</button>`,S.pog);
   const stx=mts.get('STORE');if(stx)stx.sub=true;
   const mtl=byValue(mtm),mtStoreRows=mtl.filter(e=>STORE_MT.includes(e[0])),mtOtherRows=mtl.filter(e=>!STORE_MT.includes(e[0]));
   for(const e of mtStoreRows)e[1].child=true;
@@ -493,6 +511,7 @@ document.addEventListener('click',e=>{
   const t=e.target.closest('button');if(!t)return;
   if(t.dataset.sup!==undefined){const v=+t.dataset.sup;S.sup=S.sup===v?null:v;setSupInput();}
   else if(t.dataset.type!==undefined){S.type=S.type===t.dataset.type?null:t.dataset.type;$('typeSel').value=S.type===null?'':S.type;}
+  else if(t.dataset.pog!==undefined){S.pog=S.pog===t.dataset.pog?null:t.dataset.pog;$('pogSel').value=S.pog===null?'':S.pog;}
   else if(t.dataset.mt!==undefined){S.mt=S.mt===t.dataset.mt?null:t.dataset.mt;$('mtSel').value=S.mt===null?'':S.mt;}
   else if(t.dataset.plant!==undefined){S.plant=S.plant===t.dataset.plant?'':t.dataset.plant;$('plantSel').value=S.plant;}
   else if(t.dataset.grp!==undefined){S.grp=S.grp===t.dataset.grp?null:t.dataset.grp;}
@@ -502,6 +521,7 @@ document.addEventListener('click',e=>{
   else if(t.dataset.clr){const c=t.dataset.clr;
     if(c==='plant'||c==='all'){S.plant='';$('plantSel').value='';}
     if(c==='type'||c==='all'){S.type=null;$('typeSel').value='';}
+    if(c==='pog'||c==='all'){S.pog=null;$('pogSel').value='';}
     if(c==='mt'||c==='all'){S.mt=null;$('mtSel').value='';}
     if(c==='sup'||c==='all'){S.sup=null;setSupInput();}
     if(c==='grp'||c==='all')S.grp=null;
@@ -520,6 +540,7 @@ document.addEventListener('click',e=>{
 });
 $('plantSel').addEventListener('change',e=>{S.plant=e.target.value;S.page=0;render();});
 $('typeSel').addEventListener('change',e=>{S.type=e.target.value===''?null:e.target.value;S.page=0;render();});
+$('pogSel').addEventListener('change',e=>{S.pog=e.target.value===''?null:e.target.value;S.page=0;render();});
 $('mtSel').addEventListener('change',e=>{S.mt=e.target.value===''?null:e.target.value;S.page=0;render();});
 $('pgSel').addEventListener('change',e=>{S.pg=e.target.value===''?null:e.target.value;S.page=0;render();});
 $('delSel').addEventListener('change',e=>{S.del=e.target.value;S.page=0;render();});
@@ -595,6 +616,7 @@ let LINK=(()=>{try{const q=new URLSearchParams(location.search);return q.has('ti
 function applyLink(){
   if(!LINK)return;const q=LINK;LINK=null;
   if(q.has('plant')){S.plant=q.get('plant')||'';if(![...$('plantSel').options].some(o=>o.value===S.plant))S.plant='';$('plantSel').value=S.plant;}
+  if(q.has('pog')){const v=q.get('pog');S.pog=v&&[...$('pogSel').options].some(o=>o.value===v)?v:null;$('pogSel').value=S.pog===null?'':S.pog;}
   if(q.has('mt')){const v=q.get('mt');S.mt=v&&[...$('mtSel').options].some(o=>o.value===v)?v:null;$('mtSel').value=S.mt===null?'':S.mt;}
   if(q.get('dates')==='all'){S.from=S.to=null;$('dFrom').value=$('dTo').value='';}
   else if(q.has('from')||q.has('to')){S.from=dayOf(q.get('from'));S.to=dayOf(q.get('to'));$('dFrom').value=S.from===null?'':iso(S.from);$('dTo').value=S.to===null?'':iso(S.to);}
