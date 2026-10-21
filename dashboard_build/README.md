@@ -13,7 +13,7 @@ dashboard_build/
 
 | Page | Menu tab | CDS view(s) | What it shows |
 |---|---|---|---|
-| `/summary` | Summary | the four views below (no extra SAP call) | One page with the headline figures of the five pages below, filtered by plant and date |
+| `/summary` | Summary | the views of the other pages (no extra SAP call) | One long scrolling page with every part of the dashboard, one section under the other, Store Issue first; filtered by plant, each section has its own period |
 | `/` | Pending PR | `YY1_STORE_PENDING_PR_CDS` | Purchase requisitions still to be ordered: ageing, plant and PO status, purchasing group, user, month and day wise, item list |
 | `/issue` | Store Issue | `YY1_STORE_RESERVATION_CDS` | Goods issued to cost centers since 1 Jan 2026, by department, cost center, material, month and day |
 | `/po` | Pending Purchase Orders | `YY1_PO_ITEM_SUPPLIER_CDS` + `YY1_PO_ITEM_STATUS_CDS` | PO items since 1 Jan 2026 with supplier; by default only items still to be delivered (fully or in part) |
@@ -100,7 +100,7 @@ Frontend (`frontend/`): what the browser shows. The server serves these files; i
 | `frontend/po_approval_template.html` | PO Approval Pending page |
 | `frontend/purchase_template.html` | Purchase page |
 | `frontend/stock_template.html` | Store Stock page |
-| `frontend/summary_template.html` | Summary page: reads `/api/pr`, `/api/issue`, `/api/po`, `/api/stock` and `/api/po-approvers` in the browser |
+| `frontend/summary_template.html` | Summary page (self-contained look, it does not load `ui.css` / `ui.js`): reads `/api/issue`, `/api/stock`, `/api/purchase`, `/api/po`, `/api/pr` and `/api/po-approvers` in the browser |
 | `frontend/ui.css` | The look shared by all pages: soft colour in the background, header with status pill, menu with icons, filter card, tiles with an icon bubble, cards that rise in, tables with value bars, charts, loading shimmer, highlight cards, CSV button, phone layout, print (A4 landscape). Loaded after each page's own styles; colours come from the page variables, so Normal and Dark both follow. Made once by a script, but it is a plain file: edit it directly |
 | `frontend/ui.js` | Helpers shared by all pages. It changes no figure, it only draws: bars behind the value column of the summary tables, an icon on every tile, numbers that count up (and move from the old to the new number when a filter changes), bar and donut charts above the month / day / ageing / plant / category tables, a CSV button in the heading of every table card, a shadow under the header once scrolled, a back-to-top button and `/` for the search box |
 | `frontend/logo.png` | Logo |
@@ -125,14 +125,19 @@ Run it after changing `pr_data.py` or the CSV files, and before a deployment.
 ## Page rules
 
 ### Summary (`/summary`)
-* The first tab of the menu. It adds no SAP call of its own: the browser reads the same `/api/*` data as the other pages and works the figures out with the **same rules as those pages** (copied from them), so a figure here equals the figure on the page with the same filters.
-* Top row: one headline tile per page (Pending PR items, Store issue value, PO value still to deliver, POs waiting for approval, Store stock value); click a tile to open its details on its page. Below, one card per page with four tiles, a small table (by plant, top 5 departments, top 5 suppliers, top 5 approvers, top 5 materials) and an "Open page" link.
-* Filters: Plant and a date range (the whole current month at first; "Current month" resets it). The dates apply to Pending PR (PR creation date), Store Issue (posting date), Pending Purchase Orders and PO Approval Pending (PO creation date). Store Stock is the stock of today and takes only the plant. Under each figure "all dates" shows the same figure without the dates.
-* Definitions used: Pending PR = quantity still not ordered, not closed, status "No PO yet"; PO = still to be delivered > 0 (value to deliver as on the PO page); approval = POs In Approval (state 03) or on the approver list, approver = confirmed or likely; stock = Store locations for Top 5 and Not used for 5 months. If the rules of a page change, change this page too (`prepPR`, `prepIssue`, `prepPO`, `buildApprovals`, `calcStock`).
-* Each card fills as its data arrives; a view that fails shows its error in its card.
-* **Every tile (the five headline tiles, the tiles of the cards and the alert cards) is a link** that opens the details of the same tile on its page, with the plant and the dates chosen here carried over (see "Links between pages" below). The tiles show a small arrow after the label.
-* **Needs a look** (highlights) sits above the tiles. These are alerts worked out from the same figures and the same filters, worst first (red, orange, blue, green); a card is a link to the page with the details. Rules (`highlights()` in the template): Pending PR items older than 1 year; Pending PR items past their delivery date; a Store Issue month at least 4 times the median month (all dates of the chosen plant); POs older than 90 days still waiting for delivery; POs waiting for approval more than 30 days (or a green card when none); Store materials not used for 5 months (orange when they are 25% or more of the Store stock value). A rule with nothing to report shows no card.
-* **Print** (button at the top right) prints the page, or saves it as a PDF, in A4 landscape. The menu, filters and buttons are left out and a heading shows the print time, plant, dates and the age of the SAP data.
+* **One long page, scroll down and everything is there** (user, 21-Oct-2026: "Dashboard ko aisa banao ki scroll karte karte sab data dikhe", in the style of the report screenshot the user sent; "Store Issue sabse pehle"). It adds no SAP call of its own: the browser reads the same `/api/*` data as the other pages and uses the **same rules**, so a figure here equals the figure of its page with the same filters (checked on 21-Oct-2026: Store Issue ₹1.36 Cr and 3,134 lines, Purchase net ₹9.86 Cr, 748 Store POs pending ₹29.76 Cr, 33 POs In Approval, 596 pending PR items, stock ₹7.46 Cr).
+* Top: three cards (Total inventory, PO pending for the Store material types, Non-moving 5 months), and in the header the live status, the **Plant filter that applies to every section**, Refresh, Print and the Normal | Dark switch (the same choice as the other pages).
+* Sections, in this order, each with an "Open ... page" link that carries the plant and the period:
+  1. **Department Wise Store Issue** (first): Department and Period dropdowns, issued amount (201 minus 202), quantity per unit, issue lines, materials, the top 8 materials issued and the departments of the period (click one to choose it).
+  2. **Top 10 Highest Inventory Amount Materials** (Store locations, one line per material and location).
+  3. **Purchase**: Period dropdown, net purchase amount (101 minus 102), receipts, reversals, POs, materials purchased and the department wise table (purchasing group of the PO, as on the Purchase page).
+  4. **PO Pending Status**: Store material types (ZCON, ZHMI, ZSPR, ZSRM, ZVRP) or all, number of POs, pending quantity per unit, pending value and the 8 POs that have waited longest ("Waiting" = days since the PO was created; the PO view has no delivery date).
+  5. **PO Approval Pending**: POs In Approval, value, oldest and more than 30 days, the 6 longest waiting with the confirmed or likely approver.
+  6. **Pending PR**: items, PRs, value, delivery date passed, older than 1 year, manual PRs against MRP PRs, and the top 8 purchasing groups.
+  7. **5-Month Non-Moving Items** (Store locations): the top 5 by value.
+  8. **Needs a look**: alerts worked out from all dates for the chosen plant (PR items over 1 year or past their delivery date, a Store Issue month at least 4 times the median month, POs older than 90 days still waiting for delivery, POs waiting more than 30 days for approval, Store materials not used for 5 months); each opens the details of its page.
+* Periods: Today, This week, This month (the default), This year, All dates; PO pending and Non-moving have none. Print (A4) leaves out the controls. The look (header, cards, tables) is in the page itself.
+* The older tile based Summary (headline tiles that jump to a card, date range for all pages) was replaced by this page; it is in git history.
 
 ### Pending PR (`/`)
 * Dates and counts follow the **PR creation (requisition) date**, never the release date.
