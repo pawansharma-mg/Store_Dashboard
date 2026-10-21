@@ -93,6 +93,7 @@ tr.sel td{background:rgba(28,173,228,.14)!important}
 .tscroll th.qh{white-space:normal;line-height:1.25;min-width:84px}
 .tbox th.qh,.tbox td.qlist{padding-left:6px}
 .storerow td{font-weight:700;background:rgba(250,178,25,.18)!important}
+.storechild td:first-child{padding-left:24px}
 .qmore{font-size:.72rem;font-weight:600;color:var(--muted);cursor:help}
 .tilebtn{text-align:left;font:inherit;color:inherit;cursor:pointer;width:100%}
 .tilebtn:hover{box-shadow:0 0 0 2px rgba(28,173,228,.35)}
@@ -167,7 +168,7 @@ tr.sel td{background:rgba(28,173,228,.14)!important}
     </article>
     <article class="card">
       <h2><span class="sec-badge">3</span>Material type wise<span class="badge-live">LIVE</span></h2>
-      <p class="hint">PO items by material type. The yellow line adds up the Store material types (ZCON, ZHMI, ZSPR, ZSRM, ZVRP): click it to see only the Store POs. Items without a material (services, asset text items) have no type.</p>
+      <p class="hint">PO items by material type. The yellow line adds up the Store material types (ZCON, ZHMI, ZSPR, ZSRM, ZVRP); they are listed under it (↳), then the other types. Click the yellow line to see only the Store POs. The total at the bottom counts every type once. Items without a material (services, asset text items) have no type.</p>
       <div class="tbox" id="byMt"></div>
     </article>
     <article class="card">
@@ -280,7 +281,7 @@ function aggTable(list,head,cell,sel,limit){
   const nums=(x,max)=>`<td class="num">${fmtN(x.pos.size)}</td><td class="num">${fmtN(x.n)}</td><td class="num nw">${fv(x.amt,x)}</td><td class="num nw">${fv(x.pend,x)}</td><td class="num nw qlist" data-full="${esc(qFull(x.q))}">${qCap(x.q,max)}</td>`;
   const shown=limit?list.slice(0,limit):list;
   return `<table><thead><tr><th>${head}</th><th class="num">POs</th><th class="num">Items</th><th class="num">Net value</th><th class="num qh">Value to be delivered</th><th class="num qh">Quantity to be delivered</th></tr></thead><tbody>`+
-    shown.map(([k,x])=>`<tr class="${k===sel?'sel ':''}${x.sub?'storerow':''}"><td>${cell(k)}</td>${nums(x,4)}</tr>`).join('')+
+    shown.map(([k,x])=>`<tr class="${k===sel?'sel ':''}${x.sub?'storerow ':''}${x.child?'storechild':''}"><td>${cell(k)}</td>${nums(x,4)}</tr>`).join('')+
     `</tbody><tfoot><tr><td>Total (${fmtN(list.filter(e=>!e[1].sub).length)})</td>${nums(tot,2)}</tr></tfoot></table>`;
 }
 const byValue=m=>[...m.entries()].sort((a,b)=>b[1].amt-a[1].amt||b[1].n-a[1].n);
@@ -429,7 +430,9 @@ function render(){
   $('supHint').textContent='Net order value (INR) of the PO items. Click a supplier to filter everything.'+(sl.length>SUP_LIMIT?` Top ${SUP_LIMIT} of ${fmtN(sl.length)} suppliers by value shown; the total covers all. Use the Supplier filter or Search for the others.`:'');
   $('bySup').innerHTML=aggTable(sl,'Supplier',k=>`<button type="button" class="lnk" data-sup="${k}" title="${esc(D.suppliers[k][2]?'GSTIN '+D.suppliers[k][2]:'')}">${esc(supLabel(k))}</button>`,S.sup,SUP_LIMIT);
   const stx=mts.get('STORE');if(stx)stx.sub=true;
-  $('byMt').innerHTML=aggTable([...(stx?[['STORE',stx]]:[]),...byValue(mtm)],'Material type',k=>k==='STORE'?`<button type="button" class="lnk" data-mt="STORE">Store material types</button> <span title="${esc(STORE_MT.map(c=>mtLabel(c)).join(', '))}">(${STORE_MT.join(', ')})</span>`:`<button type="button" class="lnk" data-mt="${esc(k)}" title="${esc(mtTip(k))}">${esc(mtLabel(k))}${STORE_MT.includes(k)?' ★':''}</button>`,S.mt);
+  const mtl=byValue(mtm),mtStoreRows=mtl.filter(e=>STORE_MT.includes(e[0])),mtOtherRows=mtl.filter(e=>!STORE_MT.includes(e[0]));
+  for(const e of mtStoreRows)e[1].child=true;
+  $('byMt').innerHTML=aggTable([...(stx?[['STORE',stx]]:[]),...mtStoreRows,...mtOtherRows],'Material type',k=>k==='STORE'?`<button type="button" class="lnk" data-mt="STORE">Store material types</button> <span title="${esc(STORE_MT.map(c=>mtLabel(c)).join(', '))}">(${STORE_MT.join(', ')})</span>`:`<button type="button" class="lnk" data-mt="${esc(k)}" title="${esc(mtTip(k))}">${STORE_MT.includes(k)?'↳ ':''}${esc(mtLabel(k))}</button>`,S.mt);
   $('byType').innerHTML=aggTable(byValue(ty),'PO type',k=>`<button type="button" class="lnk" data-type="${esc(k)}">${esc(typeName(k))}</button>`,S.type);
   $('byPlant').innerHTML=aggTable(byValue(pl),'Plant',k=>`<button type="button" class="lnk" data-plant="${esc(k)}">${esc(k)}</button>`,S.plant||null);
   $('byPg').innerHTML=aggTable(byValue(pgm),'Purchasing group',k=>`<button type="button" class="lnk" data-pg="${esc(k)}" title="${esc(pgTip(k))}">${esc(pgName(k))}</button>`,S.pg);
@@ -574,7 +577,8 @@ function setData(d){
   $('typeSel').value=S.type===null?'':S.type;
   // material types: "Store material types" first, then every type of the data, most items first
   const mc=new Map();for(const r of R){const k=r.mtype||'(blank)';mc.set(k,(mc.get(k)||0)+1);}
-  $('mtSel').innerHTML='<option value="">All material types</option><option value="STORE">Store material types ('+STORE_MT.join(', ')+')</option>'+[...mc.entries()].sort((a,b)=>b[1]-a[1]).map(e=>`<option value="${esc(e[0])}">${esc(mtOpt(e[0]))}</option>`).join('');
+  const mo=e=>`<option value="${esc(e[0])}">${esc(mtLabel(e[0]))}</option>`,mcs=[...mc.entries()].sort((a,b)=>b[1]-a[1]);
+  $('mtSel').innerHTML='<option value="">All material types</option><optgroup label="Store material types"><option value="STORE">All Store material types ('+STORE_MT.join(', ')+')</option>'+mcs.filter(e=>STORE_MT.includes(e[0])).map(mo).join('')+'</optgroup><optgroup label="Other material types">'+mcs.filter(e=>!STORE_MT.includes(e[0])).map(mo).join('')+'</optgroup>';
   if(S.mt!==null&&S.mt!=='STORE'&&!mc.has(S.mt))S.mt=null;
   $('mtSel').value=S.mt===null?'':S.mt;
   // supplier list for the Supplier box: 'Name (number)', suppliers with the most items first
