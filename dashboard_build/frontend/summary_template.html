@@ -6,356 +6,227 @@
 <title>Summary</title>
 <link rel="icon" type="image/png" href="/logo.png">
 <style>
-/* One long page: scroll down and every part of the dashboard is there. Store Issue comes first. */
+/* Same look as the Pending PR and Store Issue pages (Case Department Dashboard style). */
 :root{
   color-scheme:light;
-  --bg:#f3f5f9;--card:#fff;--ink:#0f172a;--ink2:#475569;--muted:#8a94a6;--line:#e6eaf0;--line2:#eef1f6;--th:#f6f8fb;--hover:#fafcff;
-  --navy1:#0a2540;--navy2:#14416f;--accent:#8db6e0;--blue:#1b5e9b;--red:#c62828;--green:#0f8a3c;--brand:#1CADE4;
-  --pill-red-bg:#fde9e9;--pill-red:#b42318;--pill-amber-bg:#fdf1d0;--pill-amber:#9a5b04;--pill-gray-bg:#eef1f5;--pill-gray:#4b5563;--pill-green-bg:#e3f6ea;--pill-green:#0f6b31;
-  --mono:ui-monospace,"JetBrains Mono","SF Mono",Consolas,"Liberation Mono",monospace;
-  --sans:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  --plane:#f4f6f5;--surface:#fff;--ink:#0b0b0b;--ink2:#52514e;--muted:#898781;--grid:#e1e0d9;--border:rgba(11,11,11,.10);
+  --s1:#2a78d6;--good:#0ca30c;--warn:#fab219;--serious:#ec835a;--crit:#d03b3b;
+  --brand:#1CADE4;--brand-dark:#0E7FAE;--brand-red:#E42227;
 }
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#0d1117;--card:#161b22;--ink:#e6edf3;--ink2:#aab4c2;--muted:#7f8a99;--line:#262d37;--line2:#1f262f;--th:#1b222c;--hover:#1a212b;--navy1:#061629;--navy2:#0c2c4d;--blue:#6db3f2;--red:#ff7b72;--green:#4ac26b;--pill-red-bg:#3b1a1c;--pill-red:#ff9b94;--pill-amber-bg:#3a2e12;--pill-amber:#f0c25a;--pill-gray-bg:#232a34;--pill-gray:#aab4c2;--pill-green-bg:#13301f;--pill-green:#6fd48b}}
-:root[data-theme="dark"]{color-scheme:dark;--bg:#0d1117;--card:#161b22;--ink:#e6edf3;--ink2:#aab4c2;--muted:#7f8a99;--line:#262d37;--line2:#1f262f;--th:#1b222c;--hover:#1a212b;--navy1:#061629;--navy2:#0c2c4d;--blue:#6db3f2;--red:#ff7b72;--green:#4ac26b;--pill-red-bg:#3b1a1c;--pill-red:#ff9b94;--pill-amber-bg:#3a2e12;--pill-amber:#f0c25a;--pill-gray-bg:#232a34;--pill-gray:#aab4c2;--pill-green-bg:#13301f;--pill-green:#6fd48b}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--plane:#101110;--surface:#1a1b1a;--ink:#fff;--ink2:#c3c2b7;--grid:#2c2c2a;--border:rgba(255,255,255,.10);--s1:#3987e5}}
+:root[data-theme="dark"]{color-scheme:dark;--plane:#101110;--surface:#1a1b1a;--ink:#fff;--ink2:#c3c2b7;--grid:#2c2c2a;--border:rgba(255,255,255,.10);--s1:#3987e5}
 *{box-sizing:border-box}
-html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
-body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 var(--sans)}
+body{margin:0;background:var(--plane);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.top{position:sticky;top:0;z-index:20;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;background:var(--surface);border-bottom:3px solid var(--brand-red);padding:12px 20px}
+.brand{display:flex;align-items:center;gap:12px;min-width:0}
+.logo{width:42px;height:42px;object-fit:contain;flex:none}
+h1{margin:0;font-size:1.1rem;font-weight:700;color:var(--brand-dark)}
+.sub{margin:2px 0 0;font-size:.8rem;color:var(--muted)}
+.tools{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.live{display:flex;align-items:center;gap:8px;font-size:.8rem;color:var(--muted)}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;flex:none}
+.btn{height:34px;padding:0 14px;border:0;border-radius:7px;background:var(--brand);color:#fff;font-size:.83rem;font-weight:600;text-decoration:none;display:inline-flex;align-items:center}
+.btn:hover{background:var(--brand-dark)}
+.btn:disabled{opacity:.5;cursor:default}
+.nav{display:flex;flex-wrap:wrap;gap:6px;padding:8px 20px;background:var(--surface);border-bottom:1px solid var(--border)}
+.nav a{font-size:.78rem;font-weight:600;color:var(--ink2);text-decoration:none;padding:6px 12px;border-radius:999px;background:var(--plane)}
+.nav a.on{background:var(--brand);color:#fff}
+.wrap{max-width:1240px;margin:0 auto;padding:20px 16px 48px}
+.bar{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
+.fld{display:flex;flex-direction:column;gap:4px;min-width:0}
+.fld>span{font-size:.78rem;color:var(--ink2)}
+.fld select,.fld input{height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface);padding:0 10px;min-width:0}
+.grow{flex:1 1 240px}.grow input{width:100%}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{border:1px solid var(--border);border-radius:999px;background:var(--surface);padding:3px 11px;font-size:12.5px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-top:16px}
+.tile{background:var(--surface);border:1px solid var(--border);border-top:3px solid var(--s1);border-radius:12px;padding:14px 16px;box-shadow:0 1px 2px rgba(11,11,11,.04),0 1px 8px rgba(11,11,11,.04)}
+.tile:nth-child(2){border-top-color:var(--serious)}.tile:nth-child(3){border-top-color:var(--good)}.tile:nth-child(4){border-top-color:var(--warn)}
+.tv{font-size:1.5rem;font-weight:700;font-variant-numeric:tabular-nums}
+.tl{font-size:.76rem;color:var(--muted)}
+.grid{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;margin-top:12px}
+@media (min-width:900px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;min-width:0;box-shadow:0 1px 2px rgba(11,11,11,.04),0 1px 8px rgba(11,11,11,.04)}
+.card h2{margin:0;font-size:1.02rem;font-weight:700;display:flex;align-items:center;flex-wrap:wrap;gap:9px}
+.sec-badge{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:26px;padding:0 6px;border-radius:8px;background:var(--brand-dark);color:#fff;font-size:.72rem;font-weight:700}
+.badge-live{margin-left:auto;padding:3px 8px;border-radius:999px;font-size:.62rem;font-weight:700;letter-spacing:.04em;color:var(--good);background:rgba(12,163,12,.16)}
+.hint{margin:4px 0 12px;font-size:12.5px;color:var(--ink2)}
+.tbox{max-height:440px;overflow:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--grid);vertical-align:top}
+th{font-size:.7rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);border-bottom:2px solid var(--grid);white-space:nowrap}
+.tbox thead th{position:sticky;top:0;background:var(--surface);z-index:1}
+.tbox tfoot td{position:sticky;bottom:0;background:var(--surface);font-weight:700;border-top:2px solid var(--grid)}
+tbody tr:nth-child(even) td{background:rgba(128,128,128,.04)}
+tbody tr:hover td{background:rgba(28,173,228,.07)}
+tr.sel td{background:rgba(28,173,228,.14)!important}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.nw{white-space:nowrap}
+.lnk{border:0;background:none;padding:0;color:var(--brand-dark);font-weight:600;text-decoration:underline;text-align:left}
+.pill{display:inline-block;padding:1px 8px;border-radius:999px;font-size:.72rem;font-weight:600;white-space:nowrap}
+.pill.ok{color:var(--good);background:rgba(12,163,12,.14)}
+.pill.open{color:#c2410c;background:rgba(236,131,90,.2)}
+.pill.part{color:#b87b00;background:rgba(250,178,25,.22)}
+.pill.none{color:var(--muted);background:rgba(128,128,128,.16)}
+.pill.pend{color:var(--crit);background:rgba(208,59,59,.14)}
+.tablecard{margin-top:12px}
+.tscroll{overflow:auto;max-height:75vh}
+.tscroll table{min-width:1450px}
+.ipm{font-weight:700}
+.topcard{margin-top:16px;border-top:3px solid var(--brand-red);scroll-margin-top:150px}
+.subh{margin:16px 0 6px;font-size:.85rem;font-weight:700;color:var(--ink2)}
+.deadbar{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.btn.alt{background:transparent;color:var(--brand-dark);border:1px solid var(--brand);height:36px}
+.btn.alt:hover{background:rgba(28,173,228,.12)}
+.btn.alt[aria-expanded="true"]{background:var(--brand);color:#fff}
+.deadbox{margin-top:12px}
+.tile .ts{font-size:.72rem;font-weight:600;color:var(--brand-dark);margin-top:6px}
+.tilebtn{text-align:left;font:inherit;color:inherit;cursor:pointer;width:100%}
+.tilebtn:hover{box-shadow:0 0 0 2px rgba(28,173,228,.35)}
+.tilebtn[aria-expanded="true"]{box-shadow:0 0 0 2px var(--brand)}
+.tile.opt1{border-top-color:var(--brand-red)}.tile.opt2{border-top-color:var(--crit)}
+.matc{min-width:270px;max-width:340px}
+.tscroll tbody tr td.qtd{font-weight:700;background:rgba(250,178,25,.20)}
+.tscroll>table>thead th.qtd{font-weight:800;color:var(--ink);box-shadow:inset 0 -3px 0 var(--warn),0 2px 0 var(--grid)}
+.matno{font-weight:600;font-variant-numeric:tabular-nums;color:var(--ink2);font-size:12px}
+.supc{min-width:170px}
+.pager{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;margin-top:12px;color:var(--ink2)}
+.empty{padding:28px 0;color:var(--ink2);text-align:center}
+.note{margin-top:16px;color:var(--ink2);font-size:12.5px;max-width:110ch}
+.footer{text-align:center;font-size:.72rem;color:var(--muted);padding:0 20px 24px}
+@media (max-width:700px){.top{position:static}}
+@media (max-width:480px){.sub{display:none}.card{padding:16px}}
+.seg{display:inline-flex;border-radius:8px;overflow:hidden;border:1px solid var(--brand);flex:none}
+.seg button{border:0;border-radius:0;background:transparent;color:var(--brand-dark);font-size:.83rem;font-weight:600;height:32px;padding:0 13px;cursor:pointer}
+.seg button.on{background:var(--brand);color:#fff}
+.seg button:not(.on):hover{background:rgba(28,173,228,.15)}
+/* frozen headings: the title bar and the menu are one block that stays at the top, and the column headings of the item list stay while it scrolls */
 [hidden]{display:none!important}
-.hero{background:linear-gradient(120deg,var(--navy1),var(--navy2));color:#fff;padding:20px 0 70px}
-.in{max-width:1000px;margin:0 auto;padding:0 20px}
-.hero .top{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
-.eyebrow{font:600 10.5px/1 var(--mono);letter-spacing:.22em;color:var(--accent);text-transform:uppercase;margin-bottom:8px}
-h1{margin:0;font-size:30px;line-height:1.1;font-weight:700;letter-spacing:-.01em}
-.tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.live{display:flex;align-items:center;gap:7px;font-size:12px;color:#b8cbe2}
-.dot{width:8px;height:8px;border-radius:50%;background:#fab219;flex:none}
-.hsel{display:flex;align-items:center;gap:7px;font-size:12px;color:#b8cbe2}
-.hsel select{appearance:none;-webkit-appearance:none;font:500 13px var(--sans);color:#fff;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:8px;padding:6px 26px 6px 10px;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center}
-.hsel select option{color:#0f172a}
-.hbtn{font:600 12.5px var(--sans);color:#fff;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.28);border-radius:8px;padding:6px 12px;cursor:pointer}
-.hbtn:hover{background:rgba(255,255,255,.24)}.hbtn:disabled{opacity:.5;cursor:default}
-.seg{display:inline-flex;border-radius:8px;overflow:hidden;border:1px solid rgba(255,255,255,.3)}
-.seg button{border:0;background:transparent;color:#d6e4f5;font:600 12px var(--sans);padding:6px 11px;cursor:pointer}
-.seg button.on{background:#fff;color:#0a2540}
-.hnav{display:flex;flex-wrap:wrap;gap:6px;margin-top:16px;padding-top:0}
-.hnav a{font:600 12px var(--sans);color:#d6e4f5;text-decoration:none;padding:6px 12px;border-radius:999px;background:rgba(255,255,255,.1)}
-.hnav a:hover{background:rgba(255,255,255,.2)}
-.hnav a.on{background:#fff;color:#0a2540}
-.wrap{max-width:1000px;margin:0 auto;padding:0 20px 56px}
-.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:-46px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:0 1px 2px rgba(15,23,42,.04),0 6px 18px rgba(15,23,42,.05)}
-.stat{padding:16px 20px 15px}
-.lab{font:600 10.5px/1.2 var(--sans);letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
-.big{font:700 26px/1.15 var(--mono);margin:9px 0 6px;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
-.big.red{color:var(--red)}.big.blue{color:var(--blue)}
-.sm{font-size:11.5px;color:var(--muted)}
-section{margin-top:34px;scroll-margin-top:12px}
-.sh{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
-h2{margin:0 0 3px;font-size:18px;font-weight:700;letter-spacing:-.005em}
-.opn{font-size:12.5px;font-weight:600;color:var(--blue);text-decoration:none;white-space:nowrap}
+.stick{position:sticky;top:0;z-index:20}
+.stick .top{position:static}
+@media (max-width:700px){.stick{position:static}}
+.tscroll>table>thead th{position:sticky;top:0;z-index:3;background:var(--surface);box-shadow:0 2px 0 var(--grid)}
+
+.opn{margin-left:auto;font-size:.78rem;font-weight:600;color:var(--brand-dark);text-decoration:none;white-space:nowrap}
 .opn:hover{text-decoration:underline}
-.subtle{margin:0 0 12px;font-size:12.5px;color:var(--muted)}
-.panel{padding:18px;margin-top:12px}
-.ctl{display:flex;gap:14px;flex-wrap:wrap;padding-bottom:16px;margin-bottom:16px;border-bottom:1px solid var(--line2)}
-.ctl label{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:500;color:var(--ink2)}
-.ctl select{appearance:none;-webkit-appearance:none;font:500 14px var(--sans);color:var(--ink);background-color:var(--card);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23667085' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 11px center;border:1px solid var(--line);border-radius:9px;padding:9px 32px 9px 12px;min-width:140px;max-width:100%;cursor:pointer}
-.ctl select:hover{border-color:var(--muted)}.ctl select:focus{outline:2px solid #9cc4ee;outline-offset:1px}
-.kvs{display:flex;gap:30px;flex-wrap:wrap}
-.kv .lab2{font-size:12px;color:var(--muted)}
-.kv .v{font:700 26px/1.2 var(--mono);margin-top:4px;font-variant-numeric:tabular-nums}
-.kv .v.blue{color:var(--blue)}.kv .v.red{color:var(--red)}
-.kv .v small{font:500 13px var(--sans);color:var(--muted);margin-left:4px}
-.cap{margin:18px 0 0;font-size:12px;color:var(--muted);font-weight:600;letter-spacing:.02em}
-.tw{overflow-x:auto;border:1px solid var(--line);border-radius:10px;margin-top:10px;background:var(--card)}
-table{width:100%;border-collapse:collapse;min-width:520px}
-table.wide{min-width:820px}
-th{background:var(--th);font:600 10.5px/1.2 var(--sans);letter-spacing:.07em;text-transform:uppercase;color:var(--muted);text-align:left;padding:11px;white-space:nowrap;border-bottom:1px solid var(--line)}
-td{padding:10px 11px;font-size:13px;border-bottom:1px solid var(--line2);vertical-align:middle}
-tr:last-child td{border-bottom:0}
-tbody tr:hover td{background:var(--hover)}
-th.n,td.n{text-align:right}
-td.n{font:500 12.5px var(--mono);white-space:nowrap;font-variant-numeric:tabular-nums}
-td.w{white-space:nowrap}td.dim{color:var(--ink2)}td.nm{min-width:180px;max-width:280px}
-tr.sel td{background:rgba(28,173,228,.12)}
-.lnk{border:0;background:none;padding:0;font:inherit;color:var(--blue);font-weight:600;cursor:pointer;text-align:left}
-.lnk:hover{text-decoration:underline}
-.pill{display:inline-block;font:600 11px/1 var(--sans);padding:5px 10px;border-radius:999px;white-space:nowrap}
-.pill.red{background:var(--pill-red-bg);color:var(--pill-red)}.pill.amber{background:var(--pill-amber-bg);color:var(--pill-amber)}.pill.gray{background:var(--pill-gray-bg);color:var(--pill-gray)}.pill.green{background:var(--pill-green-bg);color:var(--pill-green)}
-.empty{padding:22px;text-align:center;color:var(--muted)}
-.loading{padding:22px;text-align:center;color:var(--muted)}.loading.err{color:var(--red)}
-.split{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
-.split table{min-width:0}.split td.nm{min-width:0;max-width:none}.split td,.split th{padding-left:9px;padding-right:9px}
-.hl-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-top:12px}
-.hl{display:block;text-decoration:none;color:inherit;padding:13px 16px;border-radius:12px;background:var(--card);border:1px solid var(--line);border-left:4px solid var(--blue)}
-.hl.crit{border-left-color:var(--red)}.hl.warn{border-left-color:#ec835a}.hl.ok{border-left-color:var(--green)}
-.hl b{display:block;font-size:13.5px;line-height:1.3}.hl span{display:block;margin-top:3px;font-size:12.5px;color:var(--ink2)}
-.hl:hover{box-shadow:0 4px 14px rgba(15,23,42,.1)}
-.note{margin-top:30px;font-size:12px;color:var(--muted);line-height:1.6}
-.printhead{display:none}
-@media (max-width:760px){
-  h1{font-size:24px}
-  .stats{grid-template-columns:1fr;gap:12px;margin-top:-40px}
-  .big{font-size:23px}
-  .kvs{gap:22px}.split{grid-template-columns:minmax(0,1fr)}.split>div{min-width:0}
-  .ctl label{flex:1 1 140px}.ctl select{width:100%}
-  .live{display:none}
-}
-@media print{
-  body{background:#fff}
-  .hero{-webkit-print-color-adjust:exact;print-color-adjust:exact;padding-bottom:40px}
-  .tools,.hnav,.ctl,.opn{display:none!important}
-  .card{box-shadow:none;break-inside:avoid}
-  section{break-inside:avoid}
-  .printhead{display:block;margin:10px 0;font-size:12px;color:#333}
-}
+a.tile{display:block;text-decoration:none;color:inherit}
+a.tile .tl::after{content:" \203A";color:var(--brand-dark);font-weight:700}
+a.tilebtn:hover{box-shadow:0 0 0 2px rgba(28,173,228,.35)}
+.sumgrid{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;margin-top:12px}
+@media (min-width:1000px){.sumgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.sumcard{scroll-margin-top:150px}
+.sumcard .kpis{margin-top:10px;grid-template-columns:repeat(2,minmax(0,1fr))}
+.sumtable{margin-top:12px;max-height:none}
+.rangenote{margin-top:10px}
+.loading{padding:18px 0;color:var(--ink2)}
+.err{color:var(--crit)}
+html{scroll-behavior:smooth}
 </style>
+<link rel="stylesheet" href="/ui.css">
 </head>
 <body>
-<header class="hero"><div class="in">
-  <div class="top">
-    <div><div class="eyebrow">Mittal Group</div><h1>Store Dashboard</h1></div>
-    <div class="tools">
-      <div class="live"><span class="dot" id="liveDot"></span><span id="liveTxt">Connecting to SAP…</span></div>
-      <label class="hsel"><span>Plant</span><select id="plantSel"><option value="">All plants</option></select></label>
-      <button id="refresh" class="hbtn" type="button">Refresh</button>
-      <button id="printBtn" class="hbtn" type="button" title="Print this page or save it as a PDF">Print</button>
-      <div class="seg" id="themeSeg" role="group" aria-label="Colour mode"><button type="button" data-th="light">Normal</button><button type="button" data-th="dark">Dark</button></div>
-    </div>
+<div class="stick"><header class="top">
+  <div class="brand"><img class="logo" src="/logo.png" alt="Mittal Group"><div>
+    <h1>Mittal Group</h1>
+    <p class="sub">Summary · one view of Pending PR, Store Issue, Pending Purchase Orders, PO Approval Pending and Store Stock. Source: SAP S/4HANA Cloud.</p>
+  </div></div>
+  <div class="tools">
+    <div class="live"><span class="dot" id="liveDot" style="background:var(--warn)"></span><span id="liveTxt">Connecting to SAP…</span></div>
+    <button id="refresh" class="btn" type="button">Refresh</button>
+    <button id="printBtn" class="btn alt printbtn" type="button" title="Print this page or save it as a PDF">Print</button>
+    <div class="seg" id="themeSeg" role="group" aria-label="Colour mode"><button type="button" data-th="light" title="Normal (light) mode">Normal</button><button type="button" data-th="dark" title="Dark mode">Dark</button></div>
   </div>
-  <nav class="hnav"><a href="/summary" class="on">Summary</a><a href="/">Pending PR</a><a href="/issue">Store Issue</a><a href="/po">Pending Purchase Orders</a><a href="/po-approval">PO Approval Pending</a><a href="/purchase">Purchase</a><a href="/stock">Store Stock</a></nav>
-</div></header>
-
+</header>
+<nav class="nav"><a href="/summary" class="on">Summary</a><a href="/">Pending PR</a><a href="/issue">Store Issue</a><a href="/po">Pending Purchase Orders</a><a href="/po-approval">PO Approval Pending</a><a href="/purchase">Purchase</a><a href="/stock">Store Stock</a></nav></div>
 <div class="wrap">
-  <div class="stats">
-    <div class="card stat"><div class="lab">Total inventory (in amount)</div><div class="big" id="invTotal">…</div><div class="sm" id="invSub"></div></div>
-    <div class="card stat"><div class="lab">PO pending · Store</div><div class="big" id="poCount">…</div><div class="sm" id="poSub">Open purchase orders</div></div>
-    <div class="card stat"><div class="lab">Non-moving (5 mo.)</div><div class="big red" id="nmValue">…</div><div class="sm" id="nmSub"></div></div>
-  </div>
+  <section class="bar" aria-label="Filters">
+    <label class="fld"><span>Plant</span><select id="plantSel"><option value="">All plants</option></select></label>
+    <label class="fld"><span>Date from</span><input id="dFrom" type="date"></label>
+    <label class="fld"><span>To</span><input id="dTo" type="date"></label>
+    <button type="button" class="btn alt" id="monthBtn">Current month</button>
+  </section>
+  <p class="hint rangenote" id="rangeNote">The dates apply to Pending PR (PR creation date), Store Issue (posting date), Pending Purchase Orders and PO Approval Pending (PO creation date). Store Stock is the stock of today. "All dates" under a figure ignores the dates.</p>
+
   <div class="printhead" id="printHead"></div>
+  <h2 class="hl-title" id="hlTitle" hidden>Needs a look</h2>
+  <section class="hl-grid" id="highlights" aria-label="Highlights"></section>
 
-  <section id="sec-issue">
-    <div class="sh"><h2>Department Wise Store Issue</h2><a class="opn" id="lnkIssue" href="/issue">Open Store Issue &rarr;</a></div>
-    <p class="subtle">Goods issued to cost centers (movement 201, reversals 202 taken off). The department is the one of the user who raised the reservation.</p>
-    <div class="card panel" id="body-issue"></div>
+  <section class="kpis" id="heads"></section>
+
+  <section class="sumgrid">
+    <article class="card sumcard" id="sec-pr">
+      <h2>Pending PR<a class="opn" href="/">Open page &rarr;</a></h2>
+      <p class="hint">Items with no PO or RFQ yet and some quantity still not ordered.</p>
+      <div id="body-pr"></div>
+    </article>
+    <article class="card sumcard" id="sec-issue">
+      <h2>Store Issue<a class="opn" href="/issue">Open page &rarr;</a></h2>
+      <p class="hint">Goods issued to cost centers (movement 201, reversals taken off).</p>
+      <div id="body-issue"></div>
+    </article>
+    <article class="card sumcard" id="sec-po">
+      <h2>Pending Purchase Orders<a class="opn" href="/po">Open page &rarr;</a></h2>
+      <p class="hint">PO items still to be delivered, fully or in part. Values are INR items only.</p>
+      <div id="body-po"></div>
+    </article>
+    <article class="card sumcard" id="sec-appr">
+      <h2>PO Approval Pending<a class="opn" href="/po-approval">Open page &rarr;</a></h2>
+      <p class="hint">Purchase orders In Approval in SAP. The approver is the confirmed one where the list has it, otherwise the likely one from the rules.</p>
+      <div id="body-appr"></div>
+    </article>
+    <article class="card sumcard" id="sec-stock">
+      <h2>Store Stock<a class="opn" href="/stock">Open page &rarr;</a></h2>
+      <p class="hint">Stock value of the listed store locations today. Top 5 and Not used cover the Store locations only (Internal Plant material is left out).</p>
+      <div id="body-stock"></div>
+    </article>
   </section>
-
-  <section id="sec-top">
-    <div class="sh"><h2>Top 10 Highest Inventory Amount Materials</h2><a class="opn" id="lnkTop" href="/stock">Open Store Stock &rarr;</a></div>
-    <p class="subtle">Store locations only, one line per material and storage location.</p>
-    <div class="card panel" id="body-top"></div>
-  </section>
-
-  <section id="sec-buy">
-    <div class="sh"><h2>Purchase</h2><a class="opn" id="lnkBuy" href="/purchase">Open Purchase &rarr;</a></div>
-    <p class="subtle">Goods receipts against purchase orders (101) less their reversals (102) in the store locations. The department is the purchasing group of the PO.</p>
-    <div class="card panel" id="body-buy"></div>
-  </section>
-
-  <section id="sec-po">
-    <div class="sh"><h2>PO Pending Status</h2><a class="opn" id="lnkPo" href="/po">Open Pending Purchase Orders &rarr;</a></div>
-    <p class="subtle">PO items still to be delivered, fully or in part. "Waiting" counts the days since the PO was created.</p>
-    <div class="card panel" id="body-po"></div>
-  </section>
-
-  <section id="sec-appr">
-    <div class="sh"><h2>PO Approval Pending</h2><a class="opn" id="lnkAppr" href="/po-approval">Open PO Approval Pending &rarr;</a></div>
-    <p class="subtle">Purchase orders In Approval in SAP. The approver is the confirmed one where the list has it; "~" marks a likely approver.</p>
-    <div class="card panel" id="body-appr"></div>
-  </section>
-
-  <section id="sec-pr">
-    <div class="sh"><h2>Pending PR</h2><a class="opn" id="lnkPr" href="/">Open Pending PR &rarr;</a></div>
-    <p class="subtle">Purchase requisition items with no PO or RFQ yet and some quantity still not ordered. MRP PRs are the ones created by the MRP run.</p>
-    <div class="card panel" id="body-pr"></div>
-  </section>
-
-  <section id="sec-dead">
-    <div class="sh"><h2>5-Month Non-Moving Items</h2><a class="opn" id="lnkDead" href="/stock?tile=dead">Open the full list &rarr;</a></div>
-    <p class="subtle" id="nmCap">Materials with no goods issue in the last 5 months, ranked by value tied up. Store locations only.</p>
-    <div class="card panel" id="body-dead"></div>
-  </section>
-
-  <section id="sec-hl">
-    <div class="sh"><h2>Needs a look</h2></div>
-    <p class="subtle">Alerts worked out from the data above (all dates, for the chosen plant). Each one opens the details.</p>
-    <div class="hl-grid" id="highlights"></div>
-  </section>
-
-  <p class="note">Every figure is read live from SAP S/4HANA Cloud through the same views as the other pages, so a figure here equals the figure of its page with the same filters. The Plant filter at the top applies to every section; each section has its own period. Quantities of different units are shown per unit.</p>
 </div>
+<footer class="footer">Mittal Group · Summary of Pending PR, Store Issue, Pending Purchase Orders, PO Approval Pending and Store Stock · Source: SAP S/4HANA Cloud</footer>
 
-<script id="pgs" type="application/json">__PGS__</script>
 <script>
 (function(){
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const num=v=>Number(v).toLocaleString('en-IN',{maximumFractionDigits:3});
 const fmtN=n=>Math.round(n).toLocaleString('en-IN');
-const money=v=>'₹ '+Number(v).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
-function inr(v){const a=Math.abs(v);if(a>=1e7)return '₹'+(v/1e7).toFixed(2)+' Cr';if(a>=1e5)return '₹'+(v/1e5).toFixed(2)+' L';return '₹'+Math.round(v).toLocaleString('en-IN');}
+function fmtINR(v){const a=Math.abs(v);if(a>=1e7)return '₹'+(v/1e7).toFixed(2)+' Cr';if(a>=1e5)return '₹'+(v/1e5).toFixed(2)+' L';return '₹'+Math.round(v).toLocaleString('en-IN');}
 const DAYMS=864e5;
 const fmtDay=d=>new Date(d*DAYMS).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric',timeZone:'UTC'});
-const PG_NAMES=(()=>{try{return JSON.parse($('pgs').textContent);}catch(e){return {};}})();
-const pgName=c=>PG_NAMES[c]||c;
-const COMPANY={'1010':'MITTAL APPLIANCES LTD','1040':'MITTAL APPLIANCES LTD-MEDALS','2010':'MITTAL COIN PVT LTD'};
-const STORE_MT=['ZCON','ZHMI','ZSPR','ZSRM','ZVRP'];
-const UNKNOWN='(not on the approver list)';
+const iso=d=>new Date(d*DAYMS).toISOString().slice(0,10);
+const dayOf=v=>v?Math.floor(Date.parse(v)/DAYMS):null;
+const hhmm=ms=>new Date(ms).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
 const IPM='Internal Plant material';
-const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-
-/* ---------- periods ---------- */
-const todayDay=()=>Math.floor((Date.now()+5.5*3600e3)/DAYMS);
-const PERS=[['today','Today'],['week','This week'],['month','This month'],['year','This year'],['all','All dates']];
-function periodRange(k){
-  const t=todayDay(),dt=new Date(t*DAYMS),y=dt.getUTCFullYear(),m=dt.getUTCMonth();
-  if(k==='today')return [t,t];
-  if(k==='week'){const wd=(dt.getUTCDay()+6)%7;return [t-wd,t-wd+6];}
-  if(k==='month')return [Date.UTC(y,m,1)/DAYMS,Date.UTC(y,m+1,0)/DAYMS];
-  if(k==='year')return [Date.UTC(y,0,1)/DAYMS,Date.UTC(y,11,31)/DAYMS];
-  return [null,null];
-}
-const inP=(d,r)=>r[0]===null||(d!==null&&d!==undefined&&d>=r[0]&&d<=r[1]);
-const perOpts=sel=>PERS.map(p=>`<option value="${p[0]}"${p[0]===sel?' selected':''}>${p[1]}</option>`).join('');
-
-/* ---------- state ---------- */
-const S={plant:'',dept:'All departments',perIssue:'month',perBuy:'month',poScope:'store',perAppr:'month',perPr:'month'};
-const RAW={},ERR={},CACHE={};let LOADING=0,AP={},RULES=[],APTRIED=false;
+const UNKNOWN='(not on the approver list)';
+const S={plant:'',from:null,to:null};
+const RAW={},ERR={},PREP={};let AP={},RULES=[],APTRIED=false,LOADING=0;
+const inR=d=>d!==null&&d!==undefined&&(S.from===null||d>=S.from)&&(S.to===null||d<=S.to);
 const plantOk=p=>!S.plant||p===S.plant;
-const status=(key,drawn)=>ERR[key]?`<div class="loading err">${esc(ERR[key])}</div>`:drawn||'<div class="loading">Loading from SAP…</div>';
-const th=cols=>'<thead><tr>'+cols.map(c=>`<th${c[1]?' class="n"':''}>${c[0]}</th>`).join('')+'</tr></thead>';
-const tw=(cols,rows,empty,cls)=>`<div class="tw"><table${cls?' class="'+cls+'"':''}>${th(cols)}${rows.length?'<tbody>'+rows.join('')+'</tbody>':`<tbody><tr><td colspan="${cols.length}" class="empty">${empty||'Nothing in this period.'}</td></tr></tbody>`}</table></div>`;
-const qtys=a=>a&&a.length?a.map(x=>num(x[1])+' <small>'+esc(x[0])+'</small>').join(' · '):'0';
-const topUnits=(m,n)=>[...m.entries()].filter(e=>e[1]!==0).sort((a,b)=>Math.abs(b[1])-Math.abs(a[1])).slice(0,n);
-function go(page,params){const a=[];if(S.plant)a.push('plant='+encodeURIComponent(S.plant));for(const [k,v] of Object.entries(params||{}))a.push(k+'='+encodeURIComponent(v));return page+(a.length?'?'+a.join('&'):'');}
+const todayDay=()=>Math.floor((Date.now()+5.5*3600e3)/DAYMS);
+function setMonthDates(){const t=new Date(todayDay()*DAYMS);const y=t.getUTCFullYear(),m=t.getUTCMonth();const a=Date.UTC(y,m,1)/DAYMS,b=Date.UTC(y,m+1,0)/DAYMS;S.from=a;S.to=b;$('dFrom').value=iso(a);$('dTo').value=iso(b);}
 
-/* ---------- Store Issue ---------- */
-function issueDepts(){
-  const d=RAW.issue;if(CACHE.depts&&CACHE.depts.src===d)return CACHE.depts.list;
-  const m=new Map();for(const a of d.rows){const k=d.depts[a[13]];m.set(k,(m.get(k)||0)+a[7]);}
-  const list=[...m.entries()].sort((x,y)=>y[1]-x[1]).map(e=>e[0]);CACHE.depts={src:d,list};return list;
-}
-function calcIssue(){
-  const d=RAW.issue,r=periodRange(S.perIssue);
-  let amt=0,n=0;const mats=new Map(),units=new Map(),byDept=new Map();
-  for(const a of d.rows){
-    if(!plantOk(d.plants[a[2]])||!inP(a[0],r))continue;
-    const dept=d.depts[a[13]];
-    let x=byDept.get(dept);if(!x)byDept.set(dept,x={amt:0,n:0});x.amt+=a[7];x.n++;
-    if(S.dept!=='All departments'&&dept!==S.dept)continue;
-    amt+=a[7];n++;units.set(d.units[a[6]],(units.get(d.units[a[6]])||0)+a[5]);
-    let m=mats.get(a[4]);if(!m)mats.set(a[4],m={name:d.mats[a[4]],unit:d.units[a[6]],qty:0,amt:0});m.qty+=a[5];m.amt+=a[7];
+/* ---------- the same rules as the pages ---------- */
+// Pending PR page: some quantity not ordered, item not closed, status "No PO yet"
+function prepPR(d){const out=[];for(const a of d.rows){if(!(a[9]>0)||a[15]||a[14]!==0)continue;out.push({plant:d.plants[a[2]],pr:a[0],qty:a[8],amt:a[11],day:a[12],del:a[13]});}return out;}
+function prepIssue(d){return d.rows.map(a=>({day:a[0],plant:d.plants[a[2]],amt:a[7],cc:a[1],mat:a[4],dept:a[13]===undefined?'':d.depts[a[13]]}));}
+// Purchase order page: pending delivery = still to be delivered > 0; value to deliver as on that page (asset POs have none)
+// values in rupees: other currencies are converted at the PO's exchange rate (a[24]; 1 for INR, 0 when SAP gives none)
+function prepPO(d){return d.rows.map(a=>{const type=d.types[a[4]],qty=a[15],cur=d.curs[a[14]],rate=cur==='INR'?1:(a[24]>0?a[24]:0),amt=a[17]*rate,still=a[23];return {day:a[0],po:a[2],sup:a[5],plant:d.plants[a[6]],cur,amt,still,pendAmt:still>0&&qty>0?a[17]*Math.min(still,qty)/qty*rate:0};});}
+// PO approval page: one entry per PO that is In Approval (state 03) or on the approver list
+function ruleFor(p){
+  for(const r of RULES){
+    if(r.org!==p.org||r.pg!==p.pg)continue;
+    const banded=r.min!==null||r.max!==null;
+    if(banded&&p.fx.size)continue;
+    if(r.min!==null&&!(p.amt>=r.min))continue;
+    if(r.max!==null&&!(p.amt<r.max))continue;
+    return r;
   }
-  return {amt,n,mats:mats.size,units:topUnits(units,2),top:[...mats.values()].sort((p,q)=>q.amt-p.amt).slice(0,8),byDept:[...byDept.entries()].sort((p,q)=>q[1].amt-p[1].amt).slice(0,10)};
+  return null;
 }
-function renderIssue(){
-  $('body-issue').innerHTML=status('issue',RAW.issue&&(()=>{
-    if(S.dept!=='All departments'&&!issueDepts().includes(S.dept))S.dept='All departments';
-    const x=calcIssue(),tot=x.byDept.reduce((s,e)=>s+e[1].amt,0);
-    return `<div class="ctl"><label>Department<select id="selDept">${['All departments',...issueDepts()].map(dn=>`<option value="${esc(dn)}"${dn===S.dept?' selected':''}>${esc(dn)}</option>`).join('')}</select></label><label>Period<select id="selIssue">${perOpts(S.perIssue)}</select></label></div>`+
-    `<div class="kvs"><div class="kv"><div class="lab2">Issued amount — ${esc(S.dept)}</div><div class="v blue">${money(x.amt)}</div></div><div class="kv"><div class="lab2">Quantity issued</div><div class="v">${qtys(x.units.map(u=>u))}</div></div><div class="kv"><div class="lab2">Issue lines</div><div class="v">${fmtN(x.n)}</div></div><div class="kv"><div class="lab2">Materials issued</div><div class="v">${fmtN(x.mats)}</div></div></div>`+
-    `<div class="split"><div><p class="cap">Top materials issued</p>${tw([['Material'],['Qty',1],['Amount',1]],x.top.map(m=>`<tr><td class="nm">${esc(m.name)}</td><td class="n">${num(m.qty)} ${esc(m.unit)}</td><td class="n">${money(m.amt)}</td></tr>`),'Nothing issued in this period.')}</div>`+
-    `<div><p class="cap">Department wise, ${esc(PERS.find(p=>p[0]===S.perIssue)[1].toLowerCase())}</p>${tw([['Department'],['Lines',1],['Amount',1],['Share',1]],x.byDept.map(e=>`<tr${e[0]===S.dept?' class="sel"':''}><td><button type="button" class="lnk" data-dept="${esc(e[0])}">${esc(e[0])}</button></td><td class="n">${fmtN(e[1].n)}</td><td class="n">${money(e[1].amt)}</td><td class="n">${tot?(e[1].amt/tot*100).toFixed(1)+'%':'–'}</td></tr>`),'Nothing issued in this period.')}</div></div>`;
-  })());
-  const dp=$('selDept'),pi=$('selIssue');
-  if(dp)dp.onchange=e=>{S.dept=e.target.value;renderIssue();};
-  if(pi)pi.onchange=e=>{S.perIssue=e.target.value;renderIssue();};
-  for(const b of document.querySelectorAll('#body-issue [data-dept]'))b.onclick=()=>{S.dept=S.dept===b.dataset.dept?'All departments':b.dataset.dept;renderIssue();};
-  $('lnkIssue').href=go('/issue');
-}
-
-/* ---------- Store Stock: totals, top 10, non-moving ---------- */
-function cutoffDay(asof){const t=new Date(asof*DAYMS);let y=t.getUTCFullYear(),m=t.getUTCMonth()-5;const d=t.getUTCDate();if(m<0){m+=12;y--;}const dim=new Date(Date.UTC(y,m+1,0)).getUTCDate();return Math.floor(Date.UTC(y,m,Math.min(d,dim))/DAYMS);}
-function calcStock(){
-  const d=RAW.stock;if(!d)return null;
-  const sk=d.kinds?d.kinds.indexOf('Store'):0;
-  let tot=0,store=0;const items=new Map(),lines=[];
-  for(const a of d.rows){
-    const plant=d.plants[a[1]];if(!plantOk(plant))continue;
-    tot+=a[9];
-    if(!d.kinds||a[10]===sk){
-      store+=a[9];lines.push(a);
-      const k=a[1]+'|'+a[0];let x=items.get(k);if(!x)items.set(k,x={plant,name:d.prods[a[0]][1],unit:d.units[a[7]],qty:0,amt:0,last:a[11]||0});x.qty+=a[8];x.amt+=a[9];
-    }
-  }
-  lines.sort((p,q)=>q[9]-p[9]);
-  const cut=cutoffDay(d.asofDay),used=!!d.issuesRead;
-  const dead=used?[...items.values()].filter(x=>!x.last||x.last<cut).sort((p,q)=>q.amt-p.amt):[];
-  return {tot,store,ipm:tot-store,lines:lines.slice(0,10),dead,deadVal:dead.reduce((s,x)=>s+x.amt,0),cut,used,from:d.issuesFrom,d};
-}
-function renderTop(st){
-  $('body-top').innerHTML=status('stock',st&&tw([['Material name'],['Plant'],['Company'],['Loc. code'],['Storage location'],['Qty',1],['Amount',1]],st.lines.map(a=>{const d=st.d,pl=d.plants[a[1]];return `<tr><td class="nm">${esc(d.prods[a[0]][1])}</td><td class="dim w">${esc(pl)}</td><td class="dim w">${esc(COMPANY[pl]||'–')}</td><td class="dim w">${esc(d.slocs[a[2]][0])}</td><td class="dim w">${esc(d.slocs[a[2]][1])}</td><td class="n">${num(a[8])} ${esc(d.units[a[7]])}</td><td class="n">${money(a[9])}</td></tr>`;}),'No stock for this plant.','wide'));
-  $('lnkTop').href=go('/stock',{tile:'top'});
-}
-function renderDead(st){
-  $('body-dead').innerHTML=status('stock',st&&(!st.used?'<div class="empty">The goods issue data is not loaded, so non-moving items cannot be worked out.</div>':tw([['Material name'],['Plant'],['Qty',1],['Amount',1],['Last movement']],st.dead.slice(0,5).map(x=>`<tr><td class="nm">${esc(x.name)}</td><td class="dim w">${esc(x.plant)}</td><td class="n">${num(x.qty)} ${esc(x.unit)}</td><td class="n">${money(x.amt)}</td><td class="w dim">${x.last?fmtDay(x.last):'No issue since '+fmtDay(st.from)}</td></tr>`),'No non-moving item.')));
-  if(st&&st.used)$('nmCap').textContent='Materials with no goods issue since '+fmtDay(st.cut)+' (5 months), ranked by value tied up. Store locations only. Material received in the last 5 months and not used yet is also listed.';
-  $('lnkDead').href=go('/stock',{tile:'dead'});
-}
-
-/* ---------- Purchase (101 / 102) ---------- */
-function poMap(){
-  const d=RAW.po;if(!d)return null;if(CACHE.pomap&&CACHE.pomap.src===d)return CACHE.pomap;
-  const a=new Map(),b=new Map();for(const r of d.rows){const pg=d.pgs[r[19]];a.set(r[2]+'|'+r[3],pg);if(!b.has(r[2]))b.set(r[2],pg);}
-  CACHE.pomap={src:d,a,b};return CACHE.pomap;
-}
-function calcBuy(){
-  const d=RAW.purchase,r=periodRange(S.perBuy),pm=poMap();
-  let amt=0,n1=0,n2=0;const pos=new Set(),mats=new Map(),dp=new Map();
-  for(const a of d.rows){
-    if(!plantOk(d.plants[a[5]])||!inP(a[0],r))continue;
-    const rev=d.mvts[a[1]]==='102',s=rev?-1:1;
-    amt+=s*a[11];if(rev)n2++;else n1++;pos.add(a[2]);
-    let m=mats.get(a[7]);if(!m)mats.set(a[7],m={name:d.mats[a[7]][1]||d.mats[a[7]][0],unit:d.units[a[9]],qty:0,amt:0});m.qty+=s*a[10];m.amt+=s*a[11];
-    const pg=pm?(pm.a.get(a[2]+'|'+a[3])||pm.b.get(a[2])):null;
-    const dn=pg?pgName(pg):(pm?'PO not in the 2026 PO data':'(PO data loading)');
-    let x=dp.get(dn);if(!x)dp.set(dn,x={n1:0,v1:0,n2:0,v2:0});if(rev){x.n2++;x.v2+=a[11];}else{x.n1++;x.v1+=a[11];}
-  }
-  return {amt,n1,n2,pos:pos.size,top:[...mats.values()].sort((p,q)=>q.amt-p.amt).slice(0,10),dept:[...dp.entries()].sort((p,q)=>(q[1].v1-q[1].v2)-(p[1].v1-p[1].v2)).slice(0,8)};
-}
-function renderBuy(){
-  $('body-buy').innerHTML=status('purchase',RAW.purchase&&(()=>{
-    const x=calcBuy();
-    return `<div class="ctl"><label>Period<select id="selBuy">${perOpts(S.perBuy)}</select></label></div>`+
-    `<div class="kvs"><div class="kv"><div class="lab2">Purchase amount (net of reversals)</div><div class="v blue">${money(x.amt)}</div></div><div class="kv"><div class="lab2">Receipts (101)</div><div class="v">${fmtN(x.n1)}</div></div><div class="kv"><div class="lab2">Reversals (102)</div><div class="v">${fmtN(x.n2)}</div></div><div class="kv"><div class="lab2">Purchase orders</div><div class="v">${fmtN(x.pos)}</div></div></div>`+
-    `<div class="split"><div><p class="cap">Materials purchased</p>${tw([['Material'],['Qty',1],['Amount',1]],x.top.map(m=>`<tr><td class="nm">${esc(m.name)}</td><td class="n">${num(m.qty)} ${esc(m.unit)}</td><td class="n">${money(m.amt)}</td></tr>`),'No purchase in this period.')}</div>`+
-    `<div><p class="cap">Department wise (purchasing group of the PO)</p>${tw([['Department'],['101',1],['102',1],['Net',1]],x.dept.map(e=>`<tr><td>${esc(e[0])}</td><td class="n">${inr(e[1].v1)}</td><td class="n">${inr(e[1].v2)}</td><td class="n">${inr(e[1].v1-e[1].v2)}</td></tr>`),'No purchase in this period.')}</div></div>`;
-  })());
-  const p=$('selBuy');if(p)p.onchange=e=>{S.perBuy=e.target.value;renderBuy();};
-  const r=periodRange(S.perBuy);
-  $('lnkBuy').href=go('/purchase',r[0]===null?{dates:'all'}:{from:new Date(r[0]*DAYMS).toISOString().slice(0,10),to:new Date(r[1]*DAYMS).toISOString().slice(0,10)});
-}
-
-/* ---------- PO Pending Status ---------- */
-function calcPo(scope){
-  const d=RAW.po;if(!d)return null;
-  let items=0,val=0;const pos=new Set(),units=new Map(),rows=[];
-  for(const a of d.rows){
-    if(!(a[23]>0)||!plantOk(d.plants[a[6]]))continue;
-    if(scope==='store'&&!STORE_MT.includes(d.mtypes[a[11]]))continue;
-    const qty=a[15],rate=d.curs[a[14]]==='INR'?1:(a[24]>0?a[24]:0);
-    items++;pos.add(a[2]);units.set(d.units[a[13]],(units.get(d.units[a[13]])||0)+a[23]);
-    val+=qty>0?a[17]*Math.min(a[23],qty)/qty*rate:0;
-    rows.push(a);
-  }
-  rows.sort((p,q)=>p[0]-q[0]||(p[2]<q[2]?-1:1));
-  return {items,pos:pos.size,val,units:topUnits(units,2),rows:rows.slice(0,8),d};
-}
-const waitPill=a=>a>90?['red','Over 90 days']:a>30?['amber','31–90 days']:['gray','Up to 30 days'];
-function renderPo(){
-  $('body-po').innerHTML=status('po',RAW.po&&(()=>{
-    const x=calcPo(S.poScope);
-    return `<div class="ctl"><label>Material types<select id="selPo"><option value="store"${S.poScope==='store'?' selected':''}>Store material types (ZCON, ZHMI, ZSPR, ZSRM, ZVRP)</option><option value="all"${S.poScope==='all'?' selected':''}>All material types</option></select></label></div>`+
-    `<div class="kvs"><div class="kv"><div class="lab2">Number of PO pending</div><div class="v">${fmtN(x.pos)}</div></div><div class="kv"><div class="lab2">Pending quantity</div><div class="v">${qtys(x.units)}</div></div><div class="kv"><div class="lab2">Pending value</div><div class="v blue">${money(x.val)}</div></div></div>`+
-    `<p class="cap">Waiting the longest</p>`+tw([['PO number'],['Material'],['Vendor'],['Qty pending',1],['PO date'],['Waiting']],x.rows.map(a=>{const d=x.d,age=d.asofDay-a[0],s=waitPill(age),sup=d.suppliers[a[5]];return `<tr><td class="w">${esc(a[2])}</td><td class="nm">${esc(d.texts[a[9]]||d.mats[a[8]])}</td><td class="dim">${esc(sup[1]||sup[0])}</td><td class="n">${num(a[23])} ${esc(d.units[a[13]])}</td><td class="n">${fmtDay(a[0])}</td><td><span class="pill ${s[0]}">${s[1]}</span></td></tr>`;}),'No pending PO.','wide');
-  })());
-  const s=$('selPo');if(s)s.onchange=e=>{S.poScope=e.target.value;renderPo();renderStats();};
-  $('lnkPo').href=go('/po',Object.assign({dates:'all'},S.poScope==='store'?{mt:'STORE'}:{}));
-}
-
-/* ---------- PO Approval Pending ---------- */
-function ruleFor(p){for(const r of RULES){if(r.org!==p.org||r.pg!==p.pg)continue;const banded=r.min!==null||r.max!==null;if(banded&&p.fx.size)continue;if(r.min!==null&&!(p.amt>=r.min))continue;if(r.max!==null&&!(p.amt<r.max))continue;return r;}return null;}
 function buildApprovals(){
-  const d=RAW.po;if(!d)return;if(CACHE.appr&&CACHE.appr.src===d&&CACHE.appr.ap===AP)return;
+  const d=RAW.po;if(!d)return;
   const m=new Map();
   for(const a of d.rows){
     const po=a[2];if(!(a[18]&1)&&AP[po]===undefined)continue;
@@ -364,133 +235,218 @@ function buildApprovals(){
     p.items++;p.plants.add(d.plants[a[6]]);
     if(d.curs[a[14]]==='INR')p.amt+=a[17];else p.fx.add(d.curs[a[14]]);
   }
-  const list=[...m.values()].filter(p=>p.proc==='03'||AP[p.po]!==undefined).map(p=>{p.age=Math.max(0,d.asofDay-p.day);p.approver=AP[p.po]||'';p.likely=p.approver?null:ruleFor(p);p.key=p.approver||(p.likely?p.likely.approver:UNKNOWN);return p;});
-  CACHE.appr={src:d,ap:AP,list};
+  PREP.appr=[...m.values()].filter(p=>p.proc==='03'||AP[p.po]!==undefined).map(p=>{
+    p.age=Math.max(0,d.asofDay-p.day);p.approver=AP[p.po]||'';p.likely=p.approver?null:ruleFor(p);
+    p.key=p.approver||(p.likely?p.likely.approver:UNKNOWN);return p;});
+  PREP.apprFor=d;
 }
-function calcAppr(per){
-  if(!CACHE.appr)return null;const d=RAW.po,r=periodRange(per);
-  const rows=CACHE.appr.list.filter(p=>(!S.plant||p.plants.has(S.plant))&&inP(p.day,r));
-  let amt=0,over=0,oldest=null;for(const p of rows){amt+=p.amt;if(p.age>30)over++;if(oldest===null||p.age>oldest.age)oldest=p;}
-  return {n:rows.length,amt,over,oldest,rows:rows.slice().sort((a,b)=>b.age-a.age||(a.po<b.po?-1:1)).slice(0,6),d};
-}
-function renderAppr(){
-  $('body-appr').innerHTML=status('po',RAW.po&&APTRIED&&CACHE.appr&&(()=>{
-    const x=calcAppr(S.perAppr);
-    return `<div class="ctl"><label>PO creation date<select id="selAppr">${perOpts(S.perAppr)}</select></label></div>`+
-    `<div class="kvs"><div class="kv"><div class="lab2">POs In Approval</div><div class="v">${fmtN(x.n)}</div></div><div class="kv"><div class="lab2">Net value (INR)</div><div class="v blue">${money(x.amt)}</div></div><div class="kv"><div class="lab2">Oldest waiting</div><div class="v">${x.oldest?fmtN(x.oldest.age)+' <small>days</small>':'–'}</div></div><div class="kv"><div class="lab2">Waiting more than 30 days</div><div class="v ${x.over?'red':''}">${fmtN(x.over)}</div></div></div>`+
-    `<p class="cap">Waiting the longest</p>`+tw([['PO number'],['Vendor'],['Value',1],['Approver'],['Waiting']],x.rows.map(p=>{const s=waitPill(p.age),sup=x.d.suppliers[p.sup];return `<tr><td class="w">${esc(p.po)}</td><td class="dim">${esc(sup[1]||sup[0])}</td><td class="n">${p.amt||!p.fx.size?inr(p.amt):'other cur.'}</td><td class="w">${p.approver?`<b>${esc(p.approver)}</b>`:p.likely?`<i title="Likely, not confirmed">~ ${esc(p.likely.approver)}</i>`:'–'}</td><td><span class="pill ${s[0]}">${fmtN(p.age)} days</span></td></tr>`;}),'No PO waiting for approval.');
-  })());
-  const s=$('selAppr');if(s)s.onchange=e=>{S.perAppr=e.target.value;renderAppr();};
-  const r=periodRange(S.perAppr);
-  $('lnkAppr').href=go('/po-approval',r[0]===null?{dates:'all'}:{from:new Date(r[0]*DAYMS).toISOString().slice(0,10),to:new Date(r[1]*DAYMS).toISOString().slice(0,10)});
-}
+// Store stock page: 5 months back from the data date
+function cutoffDay(asof){const t=new Date(asof*DAYMS);let y=t.getUTCFullYear(),m=t.getUTCMonth()-5;const d=t.getUTCDate();if(m<0){m+=12;y--;}const dim=new Date(Date.UTC(y,m+1,0)).getUTCDate();return Math.floor(Date.UTC(y,m,Math.min(d,dim))/DAYMS);}
 
-/* ---------- Pending PR ---------- */
-function calcPr(per){
-  const d=RAW.pr;if(!d)return null;const r=periodRange(per),asof=d.asofDay;
-  let n=0,amt=0,od=0,old=0,mrp=0,mrpAmt=0;const prs=new Set(),pg=new Map();
+/* ---------- figures ---------- */
+function calcPR(){
+  const R=PREP.pr;if(!R)return null;const asof=RAW.pr.asofDay;
+  const agg=date=>{let n=0,amt=0,od=0,old=0;const prs=new Set();
+    for(const r of R){if(!plantOk(r.plant)||(date&&!inR(r.day)))continue;n++;prs.add(r.pr);if(!(r.qty>1e6))amt+=r.amt;if(r.del!==null&&r.del<asof)od++;if(asof-r.day>365)old++;}
+    return {n,amt,od,old,prs:prs.size};};
+  const bp=new Map();
+  for(const r of R){if(!inR(r.day))continue;let x=bp.get(r.plant);if(!x)bp.set(r.plant,x={n:0,amt:0});x.n++;if(!(r.qty>1e6))x.amt+=r.amt;}
+  return {sel:agg(true),all:agg(false),byPlant:[...bp.entries()].sort((a,b)=>b[1].n-a[1].n)};
+}
+function calcIssue(){
+  const R=PREP.issue;if(!R)return null;
+  const agg=date=>{let amt=0,n=0;const ccs=new Set(),mats=new Set();
+    for(const r of R){if(!plantOk(r.plant)||(date&&!inR(r.day)))continue;amt+=r.amt;n++;ccs.add(r.cc);mats.add(r.mat);}
+    return {amt,n,ccs:ccs.size,mats:mats.size};};
+  const dp=new Map();
+  for(const r of R){if(!plantOk(r.plant)||!inR(r.day))continue;let x=dp.get(r.dept);if(!x)dp.set(r.dept,x={n:0,amt:0});x.n++;x.amt+=r.amt;}
+  return {sel:agg(true),all:agg(false),topDept:[...dp.entries()].sort((a,b)=>b[1].amt-a[1].amt).slice(0,5)};
+}
+function calcPO(){
+  const R=PREP.po;if(!R)return null;const d=RAW.po;
+  const agg=date=>{let amt=0,open=0,fx=0,items=0;const pos=new Set(),sups=new Set();
+    for(const r of R){if(!(r.still>0)||!plantOk(r.plant)||(date&&!inR(r.day)))continue;items++;pos.add(r.po);sups.add(r.sup);amt+=r.amt;open+=r.pendAmt;if(r.cur!=='INR')fx++;}
+    return {amt,open,fx,items,pos:pos.size,sups:sups.size};};
+  const sp=new Map();
+  for(const r of R){if(!(r.still>0)||!plantOk(r.plant)||!inR(r.day))continue;let x=sp.get(r.sup);if(!x)sp.set(r.sup,x={pos:new Set(),open:0});x.pos.add(r.po);x.open+=r.pendAmt;}
+  const top=[...sp.entries()].sort((a,b)=>b[1].open-a[1].open).slice(0,5).map(([k,x])=>{const s=d.suppliers[k];return [(s[1]||'(no name)')+' ('+s[0]+')',x];});
+  return {sel:agg(true),all:agg(false),top};
+}
+function calcAppr(){
+  const P=PREP.appr;if(!P)return null;
+  const agg=date=>{let amt=0,items=0,over=0,oldest=null,n=0;
+    for(const p of P){if(S.plant&&!p.plants.has(S.plant))continue;if(date&&!inR(p.day))continue;n++;amt+=p.amt;items+=p.items;if(p.age>30)over++;if(oldest===null||p.age>oldest.age)oldest=p;}
+    return {n,amt,items,over,oldest};};
+  const ap=new Map();
+  for(const p of P){if(S.plant&&!p.plants.has(S.plant))continue;if(!inR(p.day))continue;let x=ap.get(p.key);if(!x)ap.set(p.key,x={n:0,amt:0});x.n++;x.amt+=p.amt;}
+  return {sel:agg(true),all:agg(false),top:[...ap.entries()].sort((a,b)=>b[1].n-a[1].n||b[1].amt-a[1].amt).slice(0,5)};
+}
+function calcStock(){
+  const d=RAW.stock;if(!d)return null;
+  const cut=cutoffDay(d.asofDay),used=!!d.issuesRead;
+  let tot=0,store=0,ipm=0,qi=0;const items=new Map();
   for(const a of d.rows){
-    if(!(a[9]>0)||a[15]||a[14]!==0)continue;
-    if(!plantOk(d.plants[a[2]])||!inP(a[12],r))continue;
-    const sus=a[8]>1e6,isM=/^MRP/i.test(d.users[a[16]]||'');
-    n++;prs.add(a[0]);amt+=a[11]*(sus?0:1);if(a[13]!==null&&a[13]<asof)od++;if(asof-a[12]>365)old++;
-    if(isM){mrp++;mrpAmt+=sus?0:a[11];}
-    const key=d.pgs[a[4]];let x=pg.get(key);if(!x)pg.set(key,x={n:0,amt:0,prs:new Set()});x.n++;x.amt+=sus?0:a[11];x.prs.add(a[0]);
+    const plant=d.plants[a[1]];if(!plantOk(plant))continue;
+    const kind=d.kinds?d.kinds[a[10]]:'',val=a[9];
+    tot+=val;if(kind===IPM)ipm+=val;else store+=val;
+    if(d.stypes[a[5]]==='02')qi+=val;
+    if(kind!==IPM){const k=plant+'|'+a[0];let x=items.get(k);if(!x)items.set(k,x={plant,id:d.prods[a[0]][0],name:d.prods[a[0]][1],val:0,last:a[11]||0});x.val+=val;}
   }
-  return {n,prs:prs.size,amt,od,old,mrp,mrpAmt,pg:[...pg.entries()].sort((p,q)=>q[1].n-p[1].n).slice(0,8)};
-}
-function renderPr(){
-  $('body-pr').innerHTML=status('pr',RAW.pr&&(()=>{
-    const x=calcPr(S.perPr);
-    return `<div class="ctl"><label>PR creation date<select id="selPr">${perOpts(S.perPr)}</select></label></div>`+
-    `<div class="kvs"><div class="kv"><div class="lab2">Pending PR items</div><div class="v">${fmtN(x.n)}</div></div><div class="kv"><div class="lab2">Pending PRs</div><div class="v">${fmtN(x.prs)}</div></div><div class="kv"><div class="lab2">Net value</div><div class="v blue">${money(x.amt)}</div></div><div class="kv"><div class="lab2">Delivery date passed</div><div class="v ${x.od?'red':''}">${fmtN(x.od)}</div></div><div class="kv"><div class="lab2">Older than 1 year</div><div class="v ${x.old?'red':''}">${fmtN(x.old)}</div></div></div>`+
-    `<div class="split"><div><p class="cap">Manual PRs and MRP PRs</p>${tw([['PR source'],['Items',1],['Value',1]],[`<tr><td>Manual PRs (departments)</td><td class="n">${fmtN(x.n-x.mrp)}</td><td class="n">${money(x.amt-x.mrpAmt)}</td></tr>`,`<tr><td>MRP PRs (MRP run)</td><td class="n">${fmtN(x.mrp)}</td><td class="n">${money(x.mrpAmt)}</td></tr>`],'')}</div>`+
-    `<div><p class="cap">By purchasing group (top 8)</p>${tw([['Purchasing group'],['PRs',1],['Items',1],['Value',1]],x.pg.map(e=>`<tr><td>${esc(pgName(e[0]))}</td><td class="n">${fmtN(e[1].prs.size)}</td><td class="n">${fmtN(e[1].n)}</td><td class="n">${inr(e[1].amt)}</td></tr>`),'No pending PR in this period.')}</div></div>`;
-  })());
-  const s=$('selPr');if(s)s.onchange=e=>{S.perPr=e.target.value;renderPr();renderHl();};
-  const r=periodRange(S.perPr);
-  $('lnkPr').href=go('/',Object.assign({tile:'items'},r[0]===null?{dates:'all'}:{from:new Date(r[0]*DAYMS).toISOString().slice(0,10),to:new Date(r[1]*DAYMS).toISOString().slice(0,10)}));
+  const its=[...items.values()],top=its.slice().sort((a,b)=>b.val-a.val).slice(0,5);
+  const dead=used?its.filter(x=>!x.last||x.last<cut):[];
+  return {tot,store,ipm,qi,top,topVal:top.reduce((s,x)=>s+x.val,0),deadN:dead.length,deadVal:dead.reduce((s,x)=>s+x.val,0),used,cut,from:d.issuesFrom,split:!!d.kinds&&d.kinds.length>1};
 }
 
-/* ---------- the three cards at the top ---------- */
-function renderStats(){
-  const st=calcStock(),po=RAW.po?calcPo('store'):null;
-  if(st){$('invTotal').textContent=money(st.tot);$('invSub').textContent='INR · Store '+inr(st.store)+' + '+IPM+' '+inr(st.ipm);$('nmValue').textContent=st.used?money(st.deadVal):'–';$('nmSub').textContent=st.used?fmtN(st.dead.length)+' materials idle':'goods issue data not loaded';}
-  if(po){$('poCount').textContent=fmtN(po.pos);$('poSub').textContent='Open purchase orders · '+inr(po.val)+' to come';}
-  return st;
+/* ---------- drawing ---------- */
+// a tile opens the details of the same tile on its page, with the plant and dates chosen here: /po?tile=open&plant=1010&from=..&to=..
+// dates: 'sel' = the dates chosen here, 'all' = no dates, null = the page has no dates (Store Stock)
+function go(page,key,dates){
+  const a=['tile='+key];
+  if(S.plant)a.push('plant='+encodeURIComponent(S.plant));
+  if(dates==='all')a.push('dates=all');
+  else if(dates==='sel'){if(S.from===null&&S.to===null)a.push('dates=all');else{if(S.from!==null)a.push('from='+iso(S.from));if(S.to!==null)a.push('to='+iso(S.to));}}
+  return page+'?'+a.join('&');
+}
+const tile=(big,label,sub,href)=>href?`<a class="tile tilebtn" href="${href}" title="Open the details"><div class="tv">${big}</div><div class="tl">${label}</div>${sub?`<div class="ts">${sub}</div>`:''}</a>`:`<div class="tile"><div class="tv">${big}</div><div class="tl">${label}</div>${sub?`<div class="ts">${sub}</div>`:''}</div>`;
+const table=(cols,rows,empty)=>rows.length?`<table><thead><tr>${cols.map(c=>`<th${c[1]?` class="${c[1]}"`:''}>${c[0]}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map((v,i)=>`<td${cols[i][1]?` class="${cols[i][1]} nw"`:''}>${v}</td>`).join('')}</tr>`).join('')}</tbody></table>`:`<div class="empty">${empty||'Nothing in this range.'}</div>`;
+const status=(key,drawn)=>ERR[key]?`<div class="loading err">${esc(ERR[key])}</div>`:drawn||'<div class="loading">Loading from SAP…</div>';
+const section=(id,tiles,tbl)=>`<div class="kpis">${tiles.join('')}</div><div class="tbox sumtable">${tbl}</div>`;
+const head=(href,big,label,sub)=>`<a class="tile tilebtn" href="${href}"><div class="tv">${big}</div><div class="tl">${label}</div><div class="ts">${sub}</div></a>`;
+
+/* ---------- highlights: what needs a look ---------- */
+const pct=(a,b)=>b?Math.round(a/b*100):0;
+const MONN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+// a month of Store Issue far above the usual month (4 times the median), over all the data of the chosen plant
+function issueOutlier(){
+  const R=PREP.issue;if(!R)return null;
+  const m=new Map();
+  for(const r of R){if(!plantOk(r.plant)||r.day===null||r.day===undefined)continue;const d=new Date(r.day*DAYMS),k=d.getUTCFullYear()*12+d.getUTCMonth();m.set(k,(m.get(k)||0)+r.amt);}
+  const v=[...m.values()].filter(x=>x>0).sort((a,b)=>a-b);if(v.length<4)return null;
+  const median=v[Math.floor(v.length/2)];let best=null;
+  for(const [k,x] of m)if(median>0&&x>=4*median&&(!best||x>best.x))best={k,x};
+  return best?{label:MONN[best.k%12]+' '+Math.floor(best.k/12),x:best.x,median}:null;
+}
+// PO items still to be delivered although the PO is older than 90 days (all dates of the chosen plant)
+function poOld(){
+  const R=PREP.po;if(!R||!RAW.po)return null;const asof=RAW.po.asofDay,pos=new Set();let amt=0,oldest=null;
+  for(const r of R){if(!(r.still>0)||!plantOk(r.plant)||asof-r.day<=90)continue;pos.add(r.po);amt+=r.pendAmt;if(oldest===null||r.day<oldest)oldest=r.day;}
+  return pos.size?{n:pos.size,amt,oldest}:null;
+}
+function highlights(pr,is,po,ap,st){
+  const L=[],add=(sev,ico,href,t,s)=>L.push({sev,ico,href,t,s});
+  if(pr){
+    if(pr.sel.old>0)add('crit','alert',go('/','old','sel'),`${fmtN(pr.sel.old)} pending PR items are older than 1 year`,'Created more than 365 days ago and still not ordered.');
+    else if(pr.all.old>0)add('warn','alert',go('/','old','all'),`${fmtN(pr.all.old)} pending PR items are older than 1 year`,'They were created before the chosen dates. Open Pending PR and clear the dates to see them.');
+    if(pr.sel.od>0)add('warn','clock',go('/','overdue','sel'),`${fmtN(pr.sel.od)} pending PR items passed their delivery date`,`${pct(pr.sel.od,pr.sel.n)}% of the ${fmtN(pr.sel.n)} pending items in these dates (${fmtN(pr.all.od)} on all dates).`);
+  }
+  const o=issueOutlier();
+  if(o)add('warn','alert','/issue',`Store issue in ${o.label} was ${fmtINR(o.x)}`,`${Math.round(o.x/o.median)} times a usual month (about ${fmtINR(o.median)}). Worth a look on the Store Issue page.`);
+  const old=poOld();
+  if(old)add('warn','clock',go('/po','open','all'),`${fmtN(old.n)} POs older than 90 days are still waiting for delivery`,`${fmtINR(old.amt)} still to be delivered. The oldest PO was created on ${fmtDay(old.oldest)}.`);
+  if(ap){
+    if(ap.all.over>0)add('warn','check',go('/po-approval','oldest','all'),`${fmtN(ap.all.over)} POs have waited more than 30 days for approval`,ap.all.oldest?`The oldest is PO ${esc(ap.all.oldest.po)}, waiting ${fmtN(ap.all.oldest.age)} days.`:'');
+    else if(ap.all.n>0)add('ok','check',go('/po-approval','pos','all'),'No PO has waited more than 30 days for approval',`${fmtN(ap.all.n)} POs are In Approval, the oldest for ${fmtN(ap.all.oldest?ap.all.oldest.age:0)} days.`);
+  }
+  if(st&&st.used&&st.deadN>0)add(st.store&&st.deadVal/st.store>=.25?'warn':'info','moon',go('/stock','dead',null),`${fmtN(st.deadN)} Store materials were not used for 5 months`,`${fmtINR(st.deadVal)}, ${pct(st.deadVal,st.store)}% of the Store stock value. The list is on the Store Stock page.`);
+  const rank={crit:0,warn:1,info:2,ok:3};
+  return L.sort((a,b)=>rank[a.sev]-rank[b.sev]);
+}
+function fillPrint(){
+  const t=RAW&&Object.keys(RAW).map(k=>RAW[k].fetchedAt).filter(Boolean);
+  $('printHead').innerHTML=`<b>Mittal Group · Summary</b><br>Printed ${new Date().toLocaleString('en-GB')} · Plant: ${esc(S.plant||'All')} · Dates: ${S.from!==null?fmtDay(S.from):'start'} – ${S.to!==null?fmtDay(S.to):'today'}${t&&t.length?' · SAP data updated '+hhmm(Math.min(...t)):''}`;
 }
 
-/* ---------- Needs a look ---------- */
-function renderHl(){
-  const L=[],add=(sev,href,t,s)=>L.push({sev,href,t,s});
-  if(RAW.pr){
-    const d=RAW.pr,asof=d.asofDay;let n=0,old=0,od=0;
-    for(const a of d.rows){if(!(a[9]>0)||a[15]||a[14]!==0||!plantOk(d.plants[a[2]]))continue;n++;if(asof-a[12]>365)old++;if(a[13]!==null&&a[13]<asof)od++;}
-    if(old)add('crit',go('/',{tile:'old',dates:'all'}),`${fmtN(old)} pending PR items are older than 1 year`,'Created more than 365 days ago and still not ordered.');
-    if(od)add('warn',go('/',{tile:'overdue',dates:'all'}),`${fmtN(od)} pending PR items passed their delivery date`,`${n?Math.round(od/n*100):0}% of the ${fmtN(n)} pending items (all dates).`);
-  }
-  if(RAW.issue){
-    const d=RAW.issue,m=new Map();
-    for(const a of d.rows){if(!plantOk(d.plants[a[2]])||a[0]===null)continue;const t=new Date(a[0]*DAYMS),k=t.getUTCFullYear()*12+t.getUTCMonth();m.set(k,(m.get(k)||0)+a[7]);}
-    const v=[...m.values()].filter(x=>x>0).sort((a,b)=>a-b);
-    if(v.length>=4){const med=v[Math.floor(v.length/2)];let best=null;for(const [k,x] of m)if(med>0&&x>=4*med&&(!best||x>best.x))best={k,x};if(best)add('warn',go('/issue'),`Store issue in ${MON[best.k%12]} ${Math.floor(best.k/12)} was ${inr(best.x)}`,`${Math.round(best.x/med)} times a usual month (about ${inr(med)}). Worth a look on the Store Issue page.`);}
-  }
-  if(RAW.po){
-    const x=calcPo('all'),d=RAW.po;const old=new Set();let amt=0,oldest=null;
-    for(const a of d.rows){if(!(a[23]>0)||!plantOk(d.plants[a[6]])||d.asofDay-a[0]<=90)continue;old.add(a[2]);const qty=a[15],rate=d.curs[a[14]]==='INR'?1:(a[24]>0?a[24]:0);amt+=qty>0?a[17]*Math.min(a[23],qty)/qty*rate:0;if(oldest===null||a[0]<oldest)oldest=a[0];}
-    if(old.size)add('warn',go('/po',{dates:'all'}),`${fmtN(old.size)} POs older than 90 days are still waiting for delivery`,`${inr(amt)} still to be delivered. The oldest PO was created on ${fmtDay(oldest)}.`);
-  }
-  if(CACHE.appr){const a=calcAppr('all');if(a&&a.over>0)add('warn',go('/po-approval',{dates:'all'}),`${fmtN(a.over)} POs have waited more than 30 days for approval`,a.oldest?`The oldest is PO ${esc(a.oldest.po)}, waiting ${fmtN(a.oldest.age)} days.`:'');else if(a&&a.n>0)add('ok',go('/po-approval',{dates:'all'}),'No PO has waited more than 30 days for approval',`${fmtN(a.n)} POs are In Approval.`);}
-  const st=calcStock();
-  if(st&&st.used&&st.dead.length)add(st.store&&st.deadVal/st.store>=.25?'warn':'info',go('/stock',{tile:'dead'}),`${fmtN(st.dead.length)} Store materials were not used for 5 months`,`${inr(st.deadVal)}, ${st.store?Math.round(st.deadVal/st.store*100):0}% of the Store stock value.`);
-  const rank={crit:0,warn:1,info:2,ok:3};L.sort((a,b)=>rank[a.sev]-rank[b.sev]);
-  $('highlights').innerHTML=L.length?L.map(h=>`<a class="hl ${h.sev}" href="${h.href}"><b>${h.t}</b><span>${h.s}</span></a>`).join(''):`<div class="loading">${LOADING>0?'Loading from SAP…':'Nothing needs a look.'}</div>`;
-}
-
-/* ---------- all sections ---------- */
 function renderAll(){
-  if(RAW.po&&APTRIED)buildApprovals();
-  const pl=new Set();for(const k of ['pr','issue','po','stock','purchase'])if(RAW[k])for(const p of RAW[k].plants)pl.add(p);
+  if(RAW.po&&APTRIED&&PREP.apprFor!==RAW.po)buildApprovals();
+  // plant list from the data loaded so far
+  const pl=new Set();
+  for(const [k,f] of [['pr',d=>d.plants],['issue',d=>d.plants],['po',d=>d.plants],['stock',d=>d.plants]])if(RAW[k])for(const p of f(RAW[k]))pl.add(p);
   const cur=S.plant;$('plantSel').innerHTML='<option value="">All plants</option>'+[...pl].sort().map(p=>`<option value="${esc(p)}">${esc(p)}</option>`).join('');
   if(cur&&!pl.has(cur)&&pl.size)S.plant='';$('plantSel').value=S.plant;
-  const st=calcStock();
-  renderIssue();renderTop(st);renderBuy();renderPo();renderAppr();renderPr();renderDead(st);renderStats();renderHl();
+
+  const pr=calcPR(),is=calcIssue(),po=calcPO(),ap=calcAppr(),st=calcStock();
+  const heads=[];
+  const loadHead=(href,label,key)=>`<a class="tile tilebtn" href="${href}"><div class="tv">${ERR[key]?'–':'…'}</div><div class="tl">${label}</div><div class="ts">${ERR[key]?esc(ERR[key]):'loading'}</div></a>`;
+  heads.push(pr?head(go('/','items','sel'),fmtN(pr.sel.n),'Pending PR items',`${fmtN(pr.sel.prs)} PRs · ${fmtINR(pr.sel.amt)} net value`):loadHead('#sec-pr','Pending PR items','pr'));
+  heads.push(is?head(go('/issue','val','sel'),fmtINR(is.sel.amt),'Store issue value',`${fmtN(is.sel.n)} lines in the dates`):loadHead('#sec-issue','Store issue value','issue'));
+  heads.push(po?head(go('/po','open','sel'),fmtINR(po.sel.open),'PO value still to deliver',`${fmtN(po.sel.pos)} POs · ${fmtN(po.sel.items)} items`):loadHead('#sec-po','PO value still to deliver','po'));
+  heads.push(ap?head(go('/po-approval','pos','sel'),fmtN(ap.sel.n),'POs waiting for approval',`${fmtINR(ap.sel.amt)} · oldest ${ap.sel.oldest?fmtN(ap.sel.oldest.age)+' days':'–'}`):loadHead('#sec-appr','POs waiting for approval','po'));
+  heads.push(st?head(go('/stock','val',null),fmtINR(st.tot),'Store stock value',st.split?`Store ${fmtINR(st.store)} · ${IPM} ${fmtINR(st.ipm)}`:'today'):loadHead('#sec-stock','Store stock value','stock'));
+  $('heads').innerHTML=heads.join('');
+  const hl=highlights(pr,is,po,ap,st);
+  $('highlights').innerHTML=hl.map(h=>`<a class="hlc ${h.sev}" data-ico="${h.ico}" href="${h.href}"><b>${h.t}</b><span>${h.s}</span></a>`).join('');
+  $('hlTitle').hidden=!hl.length;
+
+  $('body-pr').innerHTML=status('pr',pr&&section('pr',[
+    tile(fmtN(pr.sel.n),'Pending PR items',`${fmtN(pr.sel.prs)} PRs · all dates: ${fmtN(pr.all.n)}`,go('/','items','sel')),
+    tile(fmtINR(pr.sel.amt),'Net value',`all dates: ${fmtINR(pr.all.amt)}`,go('/','value','sel')),
+    tile(fmtN(pr.sel.od),'Delivery date passed',`all dates: ${fmtN(pr.all.od)}`,go('/','overdue','sel')),
+    tile(fmtN(pr.sel.old),'Older than 1 year',`all dates: ${fmtN(pr.all.old)}`,go('/','old','sel'))],
+    table([['Plant',''],['Items','num'],['Net value','num']],pr.byPlant.map(([p,x])=>[esc(p),fmtN(x.n),fmtINR(x.amt)]))));
+  $('body-issue').innerHTML=status('issue',is&&section('issue',[
+    tile(fmtINR(is.sel.amt),'Net issue value',`all dates: ${fmtINR(is.all.amt)}`,go('/issue','val','sel')),
+    tile(fmtN(is.sel.n),'Issue lines',`all dates: ${fmtN(is.all.n)}`,go('/issue','lines','sel')),
+    tile(fmtN(is.sel.ccs),'Cost centers',`all dates: ${fmtN(is.all.ccs)}`,go('/issue','ccs','sel')),
+    tile(fmtN(is.sel.mats),'Materials',`all dates: ${fmtN(is.all.mats)}`,go('/issue','mats','sel'))],
+    table([['Top 5 departments',''],['Lines','num'],['Net value','num']],is.topDept.map(([k,x])=>[esc(k||'(none)'),fmtN(x.n),fmtINR(x.amt)]))));
+  $('body-po').innerHTML=status('po',po&&section('po',[
+    tile(fmtINR(po.sel.open),'Value still to be delivered',`all dates: ${fmtINR(po.all.open)}`,go('/po','open','sel')),
+    tile(fmtINR(po.sel.amt),'Net PO value',`all dates: ${fmtINR(po.all.amt)}${po.sel.fx?` · includes ${fmtN(po.sel.fx)} other-currency items converted to INR`:''}`,go('/po','val','sel')),
+    tile(fmtN(po.sel.pos),'Purchase orders',`${fmtN(po.sel.items)} items · all dates: ${fmtN(po.all.pos)}`,go('/po','pos','sel')),
+    tile(fmtN(po.sel.sups),'Suppliers',`all dates: ${fmtN(po.all.sups)}`,go('/po','sups','sel'))],
+    table([['Top 5 suppliers by value to deliver',''],['POs','num'],['To deliver','num']],po.top.map(([k,x])=>[esc(k),fmtN(x.pos.size),fmtINR(x.open)]))));
+  $('body-appr').innerHTML=status('po',ap&&section('appr',[
+    tile(fmtN(ap.sel.n),'POs In Approval',`all dates: ${fmtN(ap.all.n)}`,go('/po-approval','pos','sel')),
+    tile(fmtINR(ap.sel.amt),'Net value (INR)',`all dates: ${fmtINR(ap.all.amt)}`,go('/po-approval','val','sel')),
+    tile(ap.sel.oldest?fmtN(ap.sel.oldest.age)+' days':'–','Oldest waiting',ap.sel.oldest?`PO ${esc(ap.sel.oldest.po)} (${fmtDay(ap.sel.oldest.day)})`:'',go('/po-approval','oldest','sel')),
+    tile(fmtN(ap.sel.over),'Waiting more than 30 days',`all dates: ${fmtN(ap.all.over)}`,go('/po-approval','oldest','sel'))],
+    table([['Top 5 approvers',''],['POs','num'],['Net value','num']],ap.top.map(([k,x])=>[esc(k),fmtN(x.n),fmtINR(x.amt)]))));
+  $('body-stock').innerHTML=status('stock',st&&section('stock',[
+    tile(fmtINR(st.tot),'Total stock value',st.split?`Store ${fmtINR(st.store)} · ${IPM} ${fmtINR(st.ipm)}`:'',go('/stock','val',null)),
+    tile(fmtINR(st.topVal),'Top 5 materials (Store)',st.store?`${(st.topVal/st.store*100).toFixed(1)}% of the Store stock`:'',go('/stock','top',null)),
+    tile(st.used?fmtN(st.deadN):'–','Not used for 5 months (Store)',st.used?`${fmtINR(st.deadVal)} · no goods issue since ${fmtDay(st.cut)}`:'goods issue data not loaded',go('/stock','dead',null)),
+    tile(fmtINR(st.qi),'In quality inspection','stock type 02',go('/stock','qi',null))],
+    table([['Top 5 materials (Store)',''],['Plant',''],['Stock value','num'],['Last used','']],st.top.map(x=>[esc(x.id+' '+x.name),esc(x.plant),fmtINR(x.val),!st.used?'–':x.last?fmtDay(x.last):'Not since '+fmtDay(st.from)]))));
   updateLive();
 }
-function setLive(kind,text){$('liveDot').style.background=kind==='ok'?'#4ac26b':kind==='err'?'#ff7b72':'#fab219';$('liveTxt').textContent=text;$('refresh').disabled=kind==='busy';}
-const hhmm=ms=>new Date(ms).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+
+function setLive(kind,text){$('liveDot').style.background=kind==='ok'?'var(--good)':kind==='err'?'var(--crit)':'var(--warn)';$('liveTxt').textContent=text;$('refresh').disabled=kind==='busy';}
 function updateLive(){
-  const keys=['issue','stock','purchase','po','pr'],got=keys.filter(k=>RAW[k]),bad=keys.filter(k=>ERR[k]);
+  const keys=['pr','issue','po','stock'],got=keys.filter(k=>RAW[k]),bad=keys.filter(k=>ERR[k]);
   if(LOADING>0){setLive('busy',`Loading from SAP… ${got.length} of ${keys.length} ready (the first load can take a minute)`);return;}
   if(bad.length&&!got.length){setLive('err',ERR[bad[0]]);return;}
   const t=got.length?Math.min(...got.map(k=>RAW[k].fetchedAt||Date.now())):Date.now();
-  setLive(bad.length?'err':'ok',`${bad.length?bad.length+' of '+keys.length+' failed · ':'Live from SAP · '}updated ${hhmm(t)}`);
+  setLive(bad.length?'err':'ok',`${bad.length?bad.length+' of '+keys.length+' pages failed · ':'Live from SAP · '}updated ${hhmm(t)}`);
 }
 async function fetchJSON(url){const r=await fetch(url,{cache:'no-store'});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||('HTTP '+r.status));return j;}
 function load(force){
   const q=force?'?refresh=1':'';
-  const jobs=[['issue','/api/issue'],['stock','/api/stock'],['purchase','/api/purchase'],['po','/api/po'],['pr','/api/pr']];
+  const jobs=[['pr','/api/pr',prepPR],['issue','/api/issue',prepIssue],['po','/api/po',prepPO],['stock','/api/stock',()=>null]];
   LOADING=jobs.length;updateLive();
-  for(const [key,url] of jobs){
-    fetchJSON(url+q).then(j=>{RAW[key]=j;delete ERR[key];}).catch(e=>{ERR[key]=e.message==='Failed to fetch'?'The dashboard server is not running. Start it again with Start_Live_Dashboard.bat.':e.message;}).finally(()=>{LOADING--;renderAll();});
+  for(const [key,url,prep] of jobs){
+    fetchJSON(url+q).then(j=>{RAW[key]=j;PREP[key]=prep(j);delete ERR[key];}).catch(e=>{ERR[key]=e.message==='Failed to fetch'?'The dashboard server is not running. Start it again with Start_Live_Dashboard.bat.':e.message;}).finally(()=>{LOADING--;renderAll();});
   }
-  fetchJSON('/api/po-approvers').then(j=>{AP=j.approvers||{};RULES=j.rules||[];}).catch(()=>{}).finally(()=>{APTRIED=true;CACHE.appr=null;renderAll();});
+  fetchJSON('/api/po-approvers').then(j=>{AP=j.approvers||{};RULES=j.rules||[];}).catch(()=>{}).finally(()=>{APTRIED=true;PREP.apprFor=null;renderAll();});
 }
 
 /* ---------- controls ---------- */
 $('plantSel').addEventListener('change',e=>{S.plant=e.target.value;renderAll();});
+$('dFrom').addEventListener('change',e=>{S.from=dayOf(e.target.value);renderAll();});
+$('dTo').addEventListener('change',e=>{S.to=dayOf(e.target.value);renderAll();});
+$('monthBtn').addEventListener('click',()=>{setMonthDates();renderAll();});
 $('refresh').addEventListener('click',()=>load(true));
 $('printBtn').addEventListener('click',()=>window.print());
-window.addEventListener('beforeprint',()=>{$('printHead').textContent='Printed '+new Date().toLocaleString('en-GB')+' · Plant: '+(S.plant||'All')+' · '+$('liveTxt').textContent;});
+window.addEventListener('beforeprint',fillPrint);
 const root=document.documentElement;
 function setTheme(t,save){root.dataset.theme=t;for(const b of document.querySelectorAll('#themeSeg button'))b.classList.toggle('on',b.dataset.th===t);if(save){try{localStorage.setItem('spr-theme',t);}catch(e){}}}
 let savedTheme='dark';try{savedTheme=localStorage.getItem('spr-theme')||'dark';}catch(e){}
 setTheme(savedTheme==='light'?'light':'dark',false);
 $('themeSeg').addEventListener('click',e=>{const b=e.target.closest('button[data-th]');if(b)setTheme(b.dataset.th,true);});
 
-renderAll();load(false);
+setMonthDates();renderAll();load(false);
 setInterval(()=>{if(!document.hidden)load(false);},1800000);
 })();
 </script>
+<script src="/ui.js" defer></script>
 </body>
 </html>
