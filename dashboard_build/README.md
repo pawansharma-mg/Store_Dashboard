@@ -1,12 +1,12 @@
 # Mittal Group SAP dashboard
 
 A live, multi-page dashboard on top of SAP S/4HANA Cloud OData CDS views. A small Python server (`backend/serve_dashboard.py`) calls SAP, caches the
-result and serves the six pages of `frontend/` (five data pages and one Summary page that combines them). There is no database and no build step: standard library only, Python 3.12.
+result and serves the seven pages of `frontend/` (six data pages and one Summary page that combines five of them). There is no database and no build step: standard library only, Python 3.12.
 
 ```
 dashboard_build/
   backend/    Python server, SAP access, lookup tables and the hand-edited data files (backend/data)
-  frontend/   the six pages (HTML, CSS and JavaScript in one file each) and the logo
+  frontend/   the seven pages (HTML, CSS and JavaScript in one file each) and the logo
   Dockerfile  Cloud Run image (copies backend and frontend)
   README.md
 ```
@@ -18,6 +18,7 @@ dashboard_build/
 | `/issue` | Store Issue | `YY1_STORE_RESERVATION_CDS` | Goods issued to cost centers since 1 Jan 2026, by department, cost center, material, month and day |
 | `/po` | Pending Purchase Orders | `YY1_PO_ITEM_SUPPLIER_CDS` + `YY1_PO_ITEM_STATUS_CDS` | PO items since 1 Jan 2026 with supplier; by default only items still to be delivered (fully or in part) |
 | `/po-approval` | PO Approval Pending | `YY1_PO_ITEM_SUPPLIER_CDS` | POs that are In Approval, with how long they have waited and the (likely) approver |
+| `/purchase` | Purchase | `YY1_STORE_RESERVATION_CDS` (movement types 101 / 102) + the PO data of `/api/po` for the department | Goods receipts against purchase orders (101) and their reversals (102) in the listed store locations since 1 Jan 2026, department wise (purchasing group of the PO), by plant, location, supplier, month and day, with every line |
 | `/stock` | Store Stock | `YY1_STORE_STOCK_CDS` + goods issues from `YY1_STORE_RESERVATION_CDS` | Stock value in INR for the listed store locations, Top 5 materials, materials not used for 5 months |
 
 All views are read with the SAP communication user `POWERBI_USER_PRD` (basic auth). Everything is read-only.
@@ -72,7 +73,7 @@ Browsers cannot call SAP directly (no CORS, and the password would sit in the pa
   so a page with 60,000 rows is a few MB gzipped. The row layouts are documented in the docstrings.
 * **Pages** are templates with placeholders: `__DATA__` (offline build only), `__USERS__` (user names), `__PGS__` (purchasing group names),
   `__MGS__` (material group names). The server fills them on every request, so **a template edit shows after a browser refresh; a change in a `.py` file needs a restart**.
-* **API**: `/api/pr`, `/api/issue`, `/api/po`, `/api/stock` (add `?refresh=1` to force SAP), `/api/po-approvers`, `/healthz`, `/logo.png`, and the shared look `/ui.css` and `/ui.js` (revalidated on every load, so an edit shows after a refresh).
+* **API**: `/api/pr`, `/api/issue`, `/api/po`, `/api/stock`, `/api/purchase` (add `?refresh=1` to force SAP), `/api/po-approvers`, `/healthz`, `/logo.png`, and the shared look `/ui.css` and `/ui.js` (revalidated on every load, so an edit shows after a refresh).
   All responses are `no-store`; errors come back as `{"error": "..."}` and the page shows them next to the red status dot.
 
 ## Files
@@ -97,6 +98,7 @@ Frontend (`frontend/`): what the browser shows. The server serves these files; i
 | `frontend/issue_template.html` | Store Issue page |
 | `frontend/po_template.html` | Pending Purchase Orders page |
 | `frontend/po_approval_template.html` | PO Approval Pending page |
+| `frontend/purchase_template.html` | Purchase page |
 | `frontend/stock_template.html` | Store Stock page |
 | `frontend/summary_template.html` | Summary page: reads `/api/pr`, `/api/issue`, `/api/po`, `/api/stock` and `/api/po-approvers` in the browser |
 | `frontend/ui.css` | The look shared by all pages: soft colour in the background, header with status pill, menu with icons, filter card, tiles with an icon bubble, cards that rise in, tables with value bars, charts, loading shimmer, highlight cards, CSV button, phone layout, print (A4 landscape). Loaded after each page's own styles; colours come from the page variables, so Normal and Dark both follow. Made once by a script, but it is a plain file: edit it directly |
@@ -170,6 +172,13 @@ Run it after changing `pr_data.py` or the CSV files, and before a deployment.
 * Both files are read again on every request. They are not part of the Cloud Run image.
 * **Every tile opens its details** when clicked (click again to hide; they follow the filters): POs In Approval (oldest first), Net value (by PO type, by plant, the 10 POs with the most value), PO items (most value first), Suppliers (with the longest wait), Oldest (how long POs have waited, and the 10 that waited longest), and confirmed + likely approver (one row per approver with confirmed and likely POs).
 
+### Purchase (`/purchase`)
+* Source: the Store Issue view `YY1_STORE_RESERVATION_CDS`, which also holds the goods receipts: **101** (goods receipt against a PO, stock in) and **102** (its reversal, stock out), since 1 Jan 2026. Only the store locations of `backend/data/stock_locations.csv` are kept (the same 221 locations as Store Stock, with the Category Store / Internal Plant material). On 21-Oct-2026: 8,643 lines of 101 (₹127.34 Cr) and 133 of 102 (₹15.17 Cr) in those locations, net ₹112.17 Cr; every one of them has a PO and a supplier. SAP is asked for the lines that have a PO (`PurchaseOrder ne ''`), about 39,000 of 186,000 for all locations; if it refused that filter the simpler query would read them all.
+* **Value** = `TotalGoodsMvtAmtInCCCrcy` (rupees). The 102 lines are shown as minus and the **net value is 101 minus 102**. A 101 line that SAP flags `GoodsMovementIsCancelled` is marked "reversed"; its 102 line is counted as well, so nothing is counted twice.
+* **Department** = the **purchasing group of the PO** (name from `PG_NAMES`). The view's own `Department` field is empty on these lines and receipts have no cost center or reservation, so the Store Issue department logic does not apply. The group is found through PO number + item in the `/api/po` data (any item of the PO if that item is missing); `/api/po` starts at POs created on 1 Jan 2026, so a receipt for an older PO shows "PO not in the 2026 PO data" (643 lines, ₹12.98 Cr, in the first check). The page is drawn as soon as the purchases are there and the departments appear when the PO data arrives.
+* Filters: Plant, Category, Department, Storage location, Movement (101 / 102 / both), posting date (the whole current month at first), search. **Every tile opens its details** (Purchases 101, Reversals 102, Net purchase value by department and plant, Purchase orders, Suppliers, Materials), each with a Total row. Cards: department, plant, storage location, supplier (top 50), month and day wise, and the list of purchase lines with PO, supplier, department, material, description, quantity, value, material document and user. CSV button on every table. Deep link keys: `buy rev net pos sups mats`.
+* Not on the Summary page yet.
+
 ### Store Stock (`/stock`)
 * Source `YY1_Store_Stock(P_DisplayCurrency='INR')/Results`, an analytical view with a parameter. The fields selected set the grain
   (material, plant, storage location, stock type, special stock) and the measures (quantity, value) are summed over the rest.
@@ -195,7 +204,7 @@ Run it after changing `pr_data.py` or the CSV files, and before a deployment.
 * "See all" shows every row (drawn in batches); the heading bar and table headings stay while scrolling; Normal | Dark switch (remembered in the browser).
 * **Charts** are drawn by `ui.js` from the summary tables on the page, above the table (the table stays below with its bars): month-wise and day-wise columns (Store Issue, Pending Purchase Orders), department / plant / PO type donuts, ageing columns and approver / plant donuts (PO Approval Pending), category / stock type / plant donuts (Store Stock). A click on a bar, a slice or a legend line does what a click on the table row does (the same filter). They are listed in `CHARTS` at the top of the chart section of `ui.js`: add a line there (page, table id, `cols` or `donut`, which column) to chart another table. Pending PR has its own charts. A donut shows the six biggest slices and "Others"; month labels are thinned out when the chart is narrow.
 * The summary tables show a bar behind their value column (the longest bar is the biggest value of that table). The menu tabs have icons and scroll sideways on a phone; on a phone the filters sit in a two column card.
-* **Links between pages**: a page opens with a tile's details when its address has `?tile=KEY` (keys: Pending PR `items value overdue old suspect`; Store Issue `val lines ccs mats top`; Pending Purchase Orders `val delivered open pos items sups`; PO Approval Pending `pos val items sups oldest appr`; Store Stock `val store ipm mats lines slocs qi blocked listed vendor top dead`). It can also carry `plant=1010`, `from=2026-10-01&to=2026-10-31` (ISO dates) or `dates=all` (no dates; without any date value the page keeps its current-month default). The link is read once, on the first load; an unknown tile or plant is ignored. The Summary page builds these links (`go()` in `summary_template.html`).
+* **Links between pages**: a page opens with a tile's details when its address has `?tile=KEY` (keys: Pending PR `items value overdue old suspect`; Store Issue `val lines ccs mats top`; Pending Purchase Orders `val delivered open pos items sups`; Purchase `buy rev net pos sups mats`; PO Approval Pending `pos val items sups oldest appr`; Store Stock `val store ipm mats lines slocs qi blocked listed vendor top dead`). It can also carry `plant=1010`, `from=2026-10-01&to=2026-10-31` (ISO dates) or `dates=all` (no dates; without any date value the page keeps its current-month default). The link is read once, on the first load; an unknown tile or plant is ignored. The Summary page builds these links (`go()` in `summary_template.html`).
 * **CSV**: every card with a table has a small CSV button in its heading (not on the Summary page). It downloads the table as a file that opens in Excel (UTF-8, comma separated), named `page_table_date.csv`. A list that shows only its first 25 rows is opened to all rows for the download and put back. Amounts like "₹1.21 Cr" or "₹39.27 L" are written as whole rupees so Excel can add them up. A card with several tables (a tile's details) puts them one under the other in one file. The code is the CSV block of `ui.js`.
 * The Total row of a table stays at the bottom of its box while the box scrolls (`tfoot` is sticky in `ui.css`; sticky cells inside a `tfoot` do not pin in Chrome, the `tfoot` itself does).
 * Keyboard: `/` jumps to the search box; a button at the bottom right brings you back to the top of a long page.

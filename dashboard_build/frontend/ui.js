@@ -155,6 +155,7 @@
     '/issue': [{ id: 'byMonth', type: 'cols', col: /value/i, rev: true }, { id: 'byDay', type: 'cols', col: /value/i }, { id: 'byDept', type: 'donut', col: /value/i }],
     '/po': [{ id: 'byMonth', type: 'cols', col: /net value/i, rev: true }, { id: 'byDay', type: 'cols', col: /net value/i }, { id: 'byPlant', type: 'donut', col: /net value/i }, { id: 'byType', type: 'donut', col: /net value/i }],
     '/po-approval': [{ id: 'byAge', type: 'cols', col: /^pos$/i }, { id: 'byAppr', type: 'donut', col: /^pos$/i }, { id: 'byPlant', type: 'donut', col: /net value/i }],
+    '/purchase': [{ id: 'byMonth', type: 'cols', col: /net value/i, rev: true }, { id: 'byDay', type: 'cols', col: /net value/i }, { id: 'byDept', type: 'donut', col: /net value/i }, { id: 'byPlant', type: 'donut', col: /net value/i }],
     '/stock': [{ id: 'byCat', type: 'donut', col: /value/i }, { id: 'byType', type: 'donut', col: /total value/i }, { id: 'byPlant', type: 'donut', col: /total value/i }]
   };
   function readTable(box, colTest, rev) {
@@ -252,7 +253,7 @@
   }
 
   // ---------------------------------------------------------------- download a table as CSV (opens in Excel)
-  var PAGE_SLUG = { '/': 'pending-pr', '/issue': 'store-issue', '/po': 'purchase-orders', '/po-approval': 'po-approval', '/stock': 'store-stock' }[location.pathname];
+  var PAGE_SLUG = { '/': 'pending-pr', '/issue': 'store-issue', '/po': 'purchase-orders', '/po-approval': 'po-approval', '/purchase': 'purchase', '/stock': 'store-stock' }[location.pathname];
   function slug(t) { return t.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'table'; }
   function cardTitle(card) {
     var h = card.querySelector('h2');

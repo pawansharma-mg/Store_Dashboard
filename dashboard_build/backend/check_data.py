@@ -44,7 +44,7 @@ def show(title, items, limit=12):
 
 print(f'Checking {BASE}')
 # ---- pages and APIs answer, placeholders are filled
-for p in ('/', '/summary', '/issue', '/po', '/po-approval', '/stock'):
+for p in ('/', '/summary', '/issue', '/po', '/po-approval', '/purchase', '/stock'):
     try:
         html, dt, h = get(p, False)
         left = [x for x in ('__USERS__', '__PGS__', '__MGS__', '__DATA__') if x in html and x != '__DATA__']
@@ -56,7 +56,7 @@ for p in ('/', '/summary', '/issue', '/po', '/po-approval', '/stock'):
         fails.append(p)
         print(f'page {p:14} FAILED: {e}')
 D = {}
-for k, p in (('pr', '/api/pr'), ('issue', '/api/issue'), ('po', '/api/po'), ('stock', '/api/stock'), ('ap', '/api/po-approvers')):
+for k, p in (('pr', '/api/pr'), ('issue', '/api/issue'), ('po', '/api/po'), ('stock', '/api/stock'), ('purchase', '/api/purchase'), ('ap', '/api/po-approvers')):
     try:
         D[k], dt, h = get(p)
         print(f'api  {p:18} ok  ({dt:.1f} s)' + (f'  rows {len(D[k]["rows"]):,}' if 'rows' in D[k] else ''))

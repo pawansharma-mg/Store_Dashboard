@@ -61,6 +61,17 @@ ISSUE_MVTS = ('201', '202')
 ISSUE_DATE_FILTER = "PostingDate ge datetime'2026-01-01T00:00:00'"
 ISSUE_FILTER = ISSUE_DATE_FILTER + ' and (' + ' or '.join(f"GoodsMovementType_1 eq '{m}'" for m in ISSUE_MVTS) + ')'
 
+# Purchases: goods receipts against a purchase order (movement type 101, stock in) and their reversals (102, stock out) from the same view
+# YY1_STORE_RESERVATION_CDS, since 1 Jan 2026, only in the store locations of data/stock_locations.csv (see purchase_compact).
+# The view's own Department field is empty on these rows, so the page takes the department from the purchasing group of the PO.
+PURCHASE_MVTS = ('101', '102')
+PURCHASE_FIELDS = [
+    'PostingDate', 'GoodsMovementType_1', 'DebitCreditCode', 'GoodsMovementIsCancelled', 'Plant', 'StorageLocation', 'Material', 'ProductName', 'ProductGroup',
+    'QuantityInBaseUnit', 'MaterialBaseUnit', 'TotalGoodsMvtAmtInCCCrcy', 'PurchaseOrder', 'PurchaseOrderItem', 'Supplier', 'SupplierName', 'CreatedByUser',
+    'MaterialDocumentYear', 'MaterialDocument', 'MaterialDocumentItem',
+]
+PURCHASE_FILTER = ISSUE_DATE_FILTER + ' and (' + ' or '.join(f"GoodsMovementType_1 eq '{m}'" for m in PURCHASE_MVTS) + ')'
+
 # Purchasing group -> description, the PGr / Description list the user sent from SAP on 18-Oct-2026 (names are spelled as in SAP).
 # A code that is not listed is shown as its number.
 PG_NAMES = {
@@ -716,6 +727,55 @@ def po_compact(rows, asof_day, status_rows=()):
     data = {'asofDay': asof_day, 'rows': out, 'suppliers': sup_list}
     for k, d in dicts.items():
         data[k] = list(d.keys())
+    return data
+
+
+def purchase_compact(rows, asof_day, allowed=None):
+    """Purchase receipts (101) and their reversals (102) in the store locations of `allowed` ({(plant, location): (type, name)}, None = all).
+    Rows: [day, mvt, po, poItem, supplier, plant, sloc, material, productGroup, unit, qty, value, cancelled, postedBy, matDoc, kind].
+    qty and value are positive in both movement types (the page subtracts the 102 lines); cancelled is 1 on a 101 line that SAP says is reversed.
+    Entries: suppliers [id, name], slocs [code, name], mats [id, name]; kinds are the Category of the location (Store / Internal Plant material)."""
+    dicts = {k: {} for k in ('mvts', 'suppliers', 'plants', 'slocs', 'mats', 'groups', 'units', 'users', 'kinds')}
+
+    def code(name, value):
+        d = dicts[name]
+        if value not in d:
+            d[value] = len(d)
+        return d[value]
+
+    out = []
+    for r in rows:
+        mvt = r.get('GoodsMovementType_1')
+        if mvt not in PURCHASE_MVTS:
+            continue
+        plant, sloc = r.get('Plant') or '', r.get('StorageLocation') or ''
+        loc = allowed.get((plant, sloc)) if allowed else ('Store', '')
+        if allowed and loc is None:
+            continue
+        sid = (r.get('Supplier') or '').lstrip('0') or '(blank)'
+        mat = (r.get('Material') or '').lstrip('0')
+        item = (r.get('MaterialDocumentItem') or '').lstrip('0')
+        out.append([
+            _day(r.get('PostingDate')),
+            code('mvts', mvt),
+            (r.get('PurchaseOrder') or '').strip(),
+            int(r.get('PurchaseOrderItem') or 0),
+            code('suppliers', (sid, (r.get('SupplierName') or '').strip())),
+            code('plants', plant or '(blank)'),
+            code('slocs', (sloc, loc[1] if loc else '')),
+            code('mats', (mat, (r.get('ProductName') or '').strip())),
+            code('groups', r.get('ProductGroup') or ''),
+            code('units', r.get('MaterialBaseUnit') or ''),
+            round(_f(r.get('QuantityInBaseUnit')), 3),
+            round(_f(r.get('TotalGoodsMvtAmtInCCCrcy')), 2),
+            1 if r.get('GoodsMovementIsCancelled') in (True, 'true', 'True') else 0,
+            code('users', r.get('CreatedByUser') or ''),
+            f"{r.get('MaterialDocument') or ''}/{item}" if item else (r.get('MaterialDocument') or ''),
+            code('kinds', loc[0] if loc else 'Store'),
+        ])
+    data = {'asofDay': asof_day, 'rows': out, 'listed': len(allowed) if allowed else 0, 'onlyListed': bool(allowed)}
+    for k, d in dicts.items():
+        data[k] = [list(x) if isinstance(x, tuple) else x for x in d.keys()]
     return data
 
 

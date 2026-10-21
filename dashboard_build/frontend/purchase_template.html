@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Purchase</title>
+<link rel="icon" type="image/png" href="/logo.png">
+<style>
+/* Same look as the other pages. */
+:root{
+  color-scheme:light;
+  --plane:#f4f6f5;--surface:#fff;--ink:#0b0b0b;--ink2:#52514e;--muted:#898781;--grid:#e1e0d9;--border:rgba(11,11,11,.10);
+  --s1:#2a78d6;--good:#0ca30c;--warn:#fab219;--serious:#ec835a;--crit:#d03b3b;
+  --brand:#1CADE4;--brand-dark:#0E7FAE;--brand-red:#E42227;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--plane:#101110;--surface:#1a1b1a;--ink:#fff;--ink2:#c3c2b7;--grid:#2c2c2a;--border:rgba(255,255,255,.10);--s1:#3987e5}}
+:root[data-theme="dark"]{color-scheme:dark;--plane:#101110;--surface:#1a1b1a;--ink:#fff;--ink2:#c3c2b7;--grid:#2c2c2a;--border:rgba(255,255,255,.10);--s1:#3987e5}
+*{box-sizing:border-box}
+body{margin:0;background:var(--plane);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.top{position:sticky;top:0;z-index:20;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;background:var(--surface);border-bottom:3px solid var(--brand-red);padding:12px 20px}
+.brand{display:flex;align-items:center;gap:12px;min-width:0}
+.logo{width:42px;height:42px;object-fit:contain;flex:none}
+h1{margin:0;font-size:1.1rem;font-weight:700;color:var(--brand-dark)}
+.sub{margin:2px 0 0;font-size:.8rem;color:var(--muted)}
+.tools{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.live{display:flex;align-items:center;gap:8px;font-size:.8rem;color:var(--muted)}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;flex:none}
+.btn{height:34px;padding:0 14px;border:0;border-radius:7px;background:var(--brand);color:#fff;font-size:.83rem;font-weight:600;text-decoration:none;display:inline-flex;align-items:center}
+.btn:hover{background:var(--brand-dark)}
+.btn:disabled{opacity:.5;cursor:default}
+.nav{display:flex;flex-wrap:wrap;gap:6px;padding:8px 20px;background:var(--surface);border-bottom:1px solid var(--border)}
+.nav a{font-size:.78rem;font-weight:600;color:var(--ink2);text-decoration:none;padding:6px 12px;border-radius:999px;background:var(--plane)}
+.nav a.on{background:var(--brand);color:#fff}
+.wrap{max-width:1240px;margin:0 auto;padding:20px 16px 48px}
+.bar{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
+.fld{display:flex;flex-direction:column;gap:4px;min-width:0}
+.fld>span{font-size:.78rem;color:var(--ink2)}
+.fld select,.fld input{height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface);padding:0 10px;min-width:0}
+.grow{flex:1 1 240px}.grow input{width:100%}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{border:1px solid var(--border);border-radius:999px;background:var(--surface);padding:3px 11px;font-size:12.5px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-top:16px}
+.tile{background:var(--surface);border:1px solid var(--border);border-top:3px solid var(--s1);border-radius:12px;padding:14px 16px;box-shadow:0 1px 2px rgba(11,11,11,.04),0 1px 8px rgba(11,11,11,.04)}
+.tile:nth-child(2){border-top-color:var(--serious)}.tile:nth-child(3){border-top-color:var(--good)}.tile:nth-child(4){border-top-color:var(--warn)}
+.tv{font-size:1.5rem;font-weight:700;font-variant-numeric:tabular-nums}
+.tl{font-size:.76rem;color:var(--muted)}
+.grid{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;margin-top:12px}
+@media (min-width:1200px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;min-width:0;box-shadow:0 1px 2px rgba(11,11,11,.04),0 1px 8px rgba(11,11,11,.04)}
+.card h2{margin:0;font-size:1.02rem;font-weight:700;display:flex;align-items:center;flex-wrap:wrap;gap:9px}
+.sec-badge{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:26px;padding:0 6px;border-radius:8px;background:var(--brand-dark);color:#fff;font-size:.72rem;font-weight:700}
+.badge-live{margin-left:auto;padding:3px 8px;border-radius:999px;font-size:.62rem;font-weight:700;letter-spacing:.04em;color:var(--good);background:rgba(12,163,12,.16)}
+.hint{margin:4px 0 12px;font-size:12.5px;color:var(--ink2)}
+.tbox{max-height:440px;overflow:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--grid);vertical-align:top}
+th{font-size:.7rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);border-bottom:2px solid var(--grid);white-space:nowrap}
+.tbox thead th{position:sticky;top:0;background:var(--surface);z-index:1}
+.tbox tfoot td{background:var(--surface);font-weight:700;border-top:2px solid var(--grid)}
+tbody tr:nth-child(even) td{background:rgba(128,128,128,.04)}
+tbody tr:hover td{background:rgba(28,173,228,.07)}
+tr.sel td{background:rgba(28,173,228,.14)!important}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.nw{white-space:nowrap}
+.lnk{border:0;background:none;padding:0;color:var(--brand-dark);font-weight:600;text-decoration:underline;text-align:left}
+.tablecard{margin-top:12px}
+.tscroll{overflow:auto;max-height:75vh}
+.tscroll table{min-width:1500px}
+.pager{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;margin-top:12px;color:var(--ink2)}
+.empty{padding:28px 0;color:var(--ink2);text-align:center}
+.note{margin-top:16px;color:var(--ink2);font-size:12.5px;max-width:110ch}
+.footer{text-align:center;font-size:.72rem;color:var(--muted);padding:0 20px 24px}
+@media (max-width:700px){.top{position:static}}
+@media (max-width:480px){.sub{display:none}.card{padding:16px}}
+.seg{display:inline-flex;border-radius:8px;overflow:hidden;border:1px solid var(--brand);flex:none}
+.seg button{border:0;border-radius:0;background:transparent;color:var(--brand-dark);font-size:.83rem;font-weight:600;height:32px;padding:0 13px;cursor:pointer}
+.seg button.on{background:var(--brand);color:#fff}
+.seg button:not(.on):hover{background:rgba(28,173,228,.15)}
+.stick{position:sticky;top:0;z-index:20}
+.stick .top{position:static}
+@media (max-width:700px){.stick{position:static}}
+.tscroll>table>thead th{position:sticky;top:0;z-index:3;background:var(--surface);box-shadow:0 2px 0 var(--grid)}
+.tscroll tfoot td{font-weight:700;border-top:2px solid var(--grid);background:var(--surface)}
+[hidden]{display:none!important}
+.tile .ts{font-size:.72rem;font-weight:600;color:var(--brand-dark);margin-top:6px}
+.tilebtn{text-align:left;font:inherit;color:inherit;cursor:pointer;width:100%}
+.tilebtn:hover{box-shadow:0 0 0 2px rgba(28,173,228,.35)}
+.tilebtn[aria-expanded="true"]{box-shadow:0 0 0 2px var(--brand)}
+.topcard{margin-top:16px;border-top:3px solid var(--brand-red);scroll-margin-top:150px}
+.subh{margin:16px 0 6px;font-size:.85rem;font-weight:700;color:var(--ink2)}
+.pill{display:inline-block;padding:1px 8px;border-radius:999px;font-size:.72rem;font-weight:600;white-space:nowrap}
+.pill.ok{color:var(--good);background:rgba(12,163,12,.14)}
+.pill.pend{color:var(--crit);background:rgba(208,59,59,.14)}
+.pill.none{color:var(--muted);background:rgba(128,128,128,.16)}
+.supc{min-width:170px}
+.matc{min-width:230px;max-width:320px}
+.qmore{font-size:.72rem;font-weight:600;color:var(--muted);cursor:help}
+</style>
+<link rel="stylesheet" href="/ui.css">
+</head>
+<body>
+<div class="stick"><header class="top">
+  <div class="brand"><img class="logo" src="/logo.png" alt="Mittal Group"><div>
+    <h1>Mittal Group</h1>
+    <p class="sub">Purchase · goods receipts against purchase orders (101) and their reversals (102) in the store locations, since 1 Jan 2026. Source: S/4HANA Cloud, YY1_STORE_RESERVATION_CDS.</p>
+  </div></div>
+  <div class="tools">
+    <div class="live"><span class="dot" id="liveDot" style="background:var(--warn)"></span><span id="liveTxt">Connecting to SAP…</span></div>
+    <button id="refresh" class="btn" type="button">Refresh</button>
+    <div class="seg" id="themeSeg" role="group" aria-label="Colour mode"><button type="button" data-th="light" title="Normal (light) mode">Normal</button><button type="button" data-th="dark" title="Dark mode">Dark</button></div>
+  </div>
+</header>
+<nav class="nav"><a href="/summary">Summary</a><a href="/">Pending PR</a><a href="/issue">Store Issue</a><a href="/po">Pending Purchase Orders</a><a href="/po-approval">PO Approval Pending</a><a href="/purchase" class="on">Purchase</a><a href="/stock">Store Stock</a></nav></div>
+<div class="wrap">
+  <section class="bar" aria-label="Filters">
+    <label class="fld"><span>Plant</span><select id="plantSel"></select></label>
+    <label class="fld" id="catFld" hidden><span>Category</span><select id="catSel"></select></label>
+    <label class="fld"><span>Department (purch. group)</span><select id="deptSel"></select></label>
+    <label class="fld"><span>Storage location</span><select id="slocSel"></select></label>
+    <label class="fld"><span>Movement</span><select id="mvtSel"><option value="">101 and 102</option><option value="101">101 Purchase</option><option value="102">102 Reversal</option></select></label>
+    <label class="fld"><span>Posting date from</span><input id="dFrom" type="date"></label>
+    <label class="fld"><span>To</span><input id="dTo" type="date"></label>
+    <label class="fld grow"><span>Search</span><input id="q" type="search" placeholder="PO, supplier, material, description, document, department, user name"></label>
+  </section>
+  <div class="chips" id="chips"></div>
+  <section class="kpis" id="kpis"></section>
+
+  <section class="card topcard" id="tileCard" hidden>
+    <h2><span id="tileTitle"></span><span class="badge-live">LIVE</span></h2>
+    <p class="hint" id="tileHint"></p>
+    <div class="tbox" id="tileBox"></div>
+    <div class="pager"><span id="tileInfo"></span><div><button class="btn" id="tileAll" type="button">See all</button></div></div>
+  </section>
+
+  <section class="grid">
+    <article class="card">
+      <h2><span class="sec-badge">1</span>Department wise purchase<span class="badge-live">LIVE</span></h2>
+      <p class="hint" id="deptHint">Department = purchasing group of the PO (the view's own Department field is empty). Purchases (101), reversals (102) and the net value. Click a department to filter everything.</p>
+      <div class="tbox" id="byDept"></div>
+    </article>
+    <article class="card">
+      <h2><span class="sec-badge">2</span>Plant wise<span class="badge-live">LIVE</span></h2>
+      <p class="hint">Click a plant to filter everything.</p>
+      <div class="tbox" id="byPlant"></div>
+    </article>
+    <article class="card">
+      <h2><span class="sec-badge">3</span>Storage location wise<span class="badge-live">LIVE</span></h2>
+      <p class="hint">The store locations of your list. Click a location to filter everything.</p>
+      <div class="tbox" id="bySloc"></div>
+    </article>
+    <article class="card">
+      <h2><span class="sec-badge">4</span>Supplier wise<span class="badge-live">LIVE</span></h2>
+      <p class="hint" id="supHint">Top 50 by net value for the current filters. Click a supplier to filter everything.</p>
+      <div class="tbox" id="bySup"></div>
+    </article>
+    <article class="card">
+      <h2><span class="sec-badge">5</span>Month-wise purchase<span class="badge-live">LIVE</span></h2>
+      <p class="hint">By posting date. Click a month to see it day by day.</p>
+      <div class="tbox" id="byMonth"></div>
+    </article>
+    <article class="card">
+      <h2><span class="sec-badge">6</span><span id="dayTitle">Day-wise purchase</span><span class="badge-live">LIVE</span></h2>
+      <p class="hint">Click a date to filter everything to that day.</p>
+      <div class="tbox" id="byDay"></div>
+    </article>
+  </section>
+
+  <section class="card tablecard">
+    <h2><span class="sec-badge">7</span>Purchase lines<span class="badge-live">LIVE</span></h2>
+    <p class="hint" id="tcount"></p>
+    <div class="tscroll"><table id="tbl"></table></div>
+    <div class="pager"><span id="pinfo"></span><div><button class="btn" id="seeAll" type="button">See all</button></div></div>
+  </section>
+  <p class="note">Movement type 101 is the goods receipt against a purchase order (stock in), 102 reverses it (stock out) and counts as minus; the net value is 101 minus 102. Only the store locations of your list (backend/data/stock_locations.csv) are read. The department is the purchasing group of the PO (matched through PO number and item with the Pending Purchase Orders data, which starts at 1 Jan 2026, so a receipt for an older PO shows "PO not in the 2026 PO data"). A 101 line marked "reversed" is one SAP says has been cancelled; its 102 line is counted too, so the net is right. The posting date starts as the whole current month and moves on by itself; change it, or clear it with the x on its chip, to see older receipts. Data is refreshed from SAP at most every 30 minutes, or with the Refresh button.</p>
+</div>
+<footer class="footer">Mittal Group · Purchase · Source: SAP S/4HANA Cloud, YY1_STORE_RESERVATION_CDS</footer>
+
+<script id="users" type="application/json">__USERS__</script>
+<script id="pgs" type="application/json">__PGS__</script>
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const USER_NAMES=(()=>{try{return JSON.parse(document.getElementById('users').textContent);}catch(e){return {};}})();
+const uName=id=>USER_NAMES[id]?USER_NAMES[id][0]:id;
+const uTip=id=>USER_NAMES[id]?id+(USER_NAMES[id][1]?' ('+USER_NAMES[id][1]+')':''):id;
+const PG_NAMES=(()=>{try{return JSON.parse(document.getElementById('pgs').textContent);}catch(e){return {};}})();
+const pgName=c=>PG_NAMES[c]||c;
+const DEPT_OLD='PO not in the 2026 PO data',DEPT_WAIT='(PO data loading)';
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const PAGE=25;
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtN=n=>Math.round(n).toLocaleString('en-IN');
+function fmtINR(v){const a=Math.abs(v);if(a>=1e7)return '₹'+(v/1e7).toFixed(2)+' Cr';if(a>=1e5)return '₹'+(v/1e5).toFixed(2)+' L';return '₹'+Math.round(v).toLocaleString('en-IN');}
+const fmtDay=d=>new Date(d*864e5).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric',timeZone:'UTC'});
+const mIdx=d=>{const t=new Date(d*864e5);return t.getUTCFullYear()*12+t.getUTCMonth();};
+const mName=k=>MON[k%12]+' '+Math.floor(k/12);
+const dayOf=v=>v?Math.floor(Date.parse(v)/864e5):null;
+const iso=d=>new Date(d*864e5).toISOString().slice(0,10);
+const fmtQty=(q,u)=>q.toLocaleString('en-IN',{maximumFractionDigits:3})+' '+u;
+const qf=([u,v])=>v.toLocaleString('en-IN',{maximumFractionDigits:3})+' '+esc(u);
+// quantities per unit (a list can hold KG, PC, M ...): the first `max` one per line, then "+ N more units" (hover: all of them)
+const qCap=(m,max)=>{const e=[...m].filter(([,v])=>v!==0);if(!e.length)return '–';if(e.length<=max)return e.map(qf).join('<br>');return e.slice(0,max).map(qf).join('<br>')+`<br><span class="qmore" title="${esc(e.map(qf).join(', '))}">+ ${e.length-max} more units</span>`;};
+const qSum=rows=>{const m=new Map();for(const r of rows)m.set(r.unit,(m.get(r.unit)||0)+r.qty);return m;};
+
+let D=null,R=[],CUR=null,renderToken=0,tileToken=0,POD=null,POMAP=new Map(),POPG=new Map();
+const S={tile:null,tileAll:false,all:false,plant:'',cat:null,dept:null,sloc:null,mvt:'',sup:null,from:null,to:null,q:'',mon:null,page:0};
+
+function pass(r,skip){
+  skip=skip||[];
+  if(!skip.includes('plant')&&S.plant&&r.plant!==S.plant)return false;
+  if(!skip.includes('cat')&&S.cat!==null&&r.kind!==S.cat)return false;
+  if(!skip.includes('dept')&&S.dept!==null&&r.dept!==S.dept)return false;
+  if(!skip.includes('sloc')&&S.sloc!==null&&r.skey!==S.sloc)return false;
+  if(S.mvt&&r.mvt!==S.mvt)return false;
+  if(!skip.includes('sup')&&S.sup!==null&&r.supId!==S.sup)return false;
+  if(!skip.includes('date')&&S.from!==null&&!(r.day>=S.from))return false;
+  if(!skip.includes('date')&&S.to!==null&&!(r.day<=S.to))return false;
+  if(S.q&&!r.hay.includes(S.q))return false;
+  return true;
+}
+
+// n1/v1: purchases (101); n2/v2: reversals (102, as a positive amount); net = v1 - v2
+const agg=()=>({n1:0,v1:0,n2:0,v2:0,pos:new Set()});
+function add(m,k,r){let x=m.get(k);if(!x)m.set(k,x=agg());if(r.mvt==='101'){x.n1++;x.v1+=r.val;}else{x.n2++;x.v2-=r.val;}x.pos.add(r.po);}
+const net=x=>x.v1-x.v2;
+const byNet=m=>[...m.entries()].sort((a,b)=>net(b[1])-net(a[1])||b[1].n1-a[1].n1);
+const none='<div class="empty">Nothing matches the filters.</div>';
+function aggTable(list,head,cell,sel){
+  if(!list.length)return none;
+  const tot=agg();for(const [,x] of list){tot.n1+=x.n1;tot.v1+=x.v1;tot.n2+=x.n2;tot.v2+=x.v2;for(const p of x.pos)tot.pos.add(p);}
+  const nums=x=>`<td class="num">${fmtN(x.n1)}</td><td class="num nw">${fmtINR(x.v1)}</td><td class="num">${fmtN(x.n2)}</td><td class="num nw">${fmtINR(x.v2)}</td><td class="num nw"><b>${fmtINR(net(x))}</b></td>`;
+  return `<table><thead><tr><th>${head}</th><th class="num">Purchase lines (101)</th><th class="num">Purchase value (101)</th><th class="num">Reversal lines (102)</th><th class="num">Reversal value (102)</th><th class="num">Net value</th></tr></thead><tbody>`+
+    list.map(([k,x])=>`<tr${k===sel?' class="sel"':''}><td>${cell(k)}</td>${nums(x)}</tr>`).join('')+
+    `</tbody><tfoot><tr><td>Total (${fmtN(list.length)})</td>${nums(tot)}</tr></tfoot></table>`;
+}
+
+// ---------------------------------------------------------------- the purchase lines
+const LHEAD='<thead><tr><th class="num">#</th><th>Posting date</th><th>Movement</th><th>PO</th><th>Item</th><th>Supplier</th><th>Department</th><th>Material</th><th>Description</th><th>Plant</th><th>S.Loc</th><th class="num">Quantity</th><th class="num">Value</th><th>Mat. doc</th><th>Posted by</th><th>Note</th></tr></thead>';
+const lineRow=(r,i)=>`<tr><td class="num">${i+1}</td><td class="nw">${r.day===null?'–':fmtDay(r.day)}</td><td class="nw"><span class="pill ${r.mvt==='101'?'ok':'pend'}">${r.mvt==='101'?'101 Purchase':'102 Reversal'}</span></td><td class="nw">${esc(r.po||'–')}</td><td>${r.item||'–'}</td><td class="supc" title="${esc('Supplier '+r.supId)}">${esc(r.sup)}</td><td class="nw">${esc(r.dept)}</td><td class="nw">${esc(r.mat)}</td><td class="matc">${esc(r.matName)}</td><td>${esc(r.plant)}</td><td class="nw" title="${esc(r.slocName)}">${esc(r.slocName?r.sloc+' · '+r.slocName:r.sloc)}</td><td class="num nw">${fmtQty(r.qty,esc(r.unit))}</td><td class="num nw"><b>${fmtINR(r.val)}</b></td><td class="nw">${esc(r.doc)}</td><td class="nw" title="${esc(uTip(r.user))}">${esc(uName(r.user))}</td><td>${r.canc?'<span class="pill none" title="SAP says this receipt has been reversed (its 102 line is counted too)">reversed</span>':''}</td></tr>`;
+const lineFoot=rows=>`<tfoot><tr><td colspan="11">Total (${fmtN(rows.length)} lines)</td><td class="num nw qlist">${qCap(qSum(rows),3)}</td><td class="num nw">${fmtINR(rows.reduce((s,r)=>s+r.val,0))}</td><td colspan="3"></td></tr></tfoot>`;
+
+// ---------------------------------------------------------------- details of a tile
+const TILE_INFO={
+  buy:['Purchases (101)','Every goods receipt against a PO (movement type 101) of the current filters, newest first.'],
+  rev:['Reversals (102)','Every reversal of a goods receipt (movement type 102) of the current filters, newest first.'],
+  net:['Net purchase value','Purchases (101) minus reversals (102) of the current filters: by department (purchasing group) and by plant.'],
+  pos:['Purchase orders','Purchase orders received (or reversed) in the current filters, most net value first.'],
+  sups:['Suppliers','Suppliers of the current filters, most net value first.'],
+  mats:['Materials','Materials received in the current filters, most net value first.']
+};
+function listOf(rows,keyf,init){const m=new Map();for(const r of rows){const k=keyf(r);let x=m.get(k);if(!x)m.set(k,x=Object.assign(agg(),init(r)));if(r.mvt==='101'){x.n1++;x.v1+=r.val;x.q1+=r.qty;}else{x.n2++;x.v2-=r.val;x.q2+=r.qty;}x.pos.add(r.po);if(r.day!==null&&(x.last===null||r.day>x.last))x.last=r.day;}return [...m.values()].sort((a,b)=>net(b)-net(a)||b.n1-a.n1);}
+const sumFoot=(label,span,list,extra)=>{const t=agg();for(const x of list){t.n1+=x.n1;t.v1+=x.v1;t.n2+=x.n2;t.v2+=x.v2;}return `<tfoot><tr><td colspan="${span}">${label}</td>${extra||''}<td class="num">${fmtN(t.n1)}</td><td class="num nw">${fmtINR(t.v1)}</td><td class="num">${fmtN(t.n2)}</td><td class="num nw">${fmtINR(t.v2)}</td><td class="num nw">${fmtINR(net(t))}</td><td></td></tr></tfoot>`;};
+const nums5=x=>`<td class="num">${fmtN(x.n1)}</td><td class="num nw">${fmtINR(x.v1)}</td><td class="num">${fmtN(x.n2)}</td><td class="num nw">${fmtINR(x.v2)}</td><td class="num nw"><b>${fmtINR(net(x))}</b></td>`;
+function renderTile(){
+  const k=S.tile;
+  if(!k||!CUR||!D||!TILE_INFO[k]){$('tileCard').hidden=true;return;}
+  $('tileCard').hidden=false;
+  $('tileTitle').textContent=TILE_INFO[k][0];$('tileHint').textContent=TILE_INFO[k][1];
+  const rows=CUR.rows;
+  let list=null,thead='',rowFn=null,foot=null,html='',n=0,unit='lines';
+  const newest=a=>a.slice().sort((x,y)=>(y.day||0)-(x.day||0)||y.doc.localeCompare(x.doc));
+  if(k==='buy'||k==='rev'){
+    list=newest(rows.filter(r=>r.mvt===(k==='buy'?'101':'102')));thead=LHEAD;rowFn=lineRow;foot=l=>lineFoot(l);
+  }else if(k==='net'){
+    const dp=new Map(),pl=new Map();for(const r of rows){add(dp,r.dept,r);add(pl,r.plant,r);}
+    html='<h3 class="subh">Department wise (purchasing group of the PO)</h3>'+aggTable(byNet(dp),'Department',x=>esc(x))+'<h3 class="subh">Plant wise</h3>'+aggTable(byNet(pl),'Plant',x=>esc(x));
+  }else if(k==='pos'){
+    list=listOf(rows,r=>r.po||'(no PO)',r=>({po:r.po||'(no PO)',sup:r.sup,dept:r.dept,q1:0,q2:0,last:null}));unit='purchase orders';
+    thead='<thead><tr><th class="num">#</th><th>PO</th><th>Supplier</th><th>Department</th><th class="num">Purchase lines (101)</th><th class="num">Purchase value (101)</th><th class="num">Reversal lines (102)</th><th class="num">Reversal value (102)</th><th class="num">Net value</th><th>Last posting</th></tr></thead>';
+    rowFn=(x,i)=>`<tr><td class="num">${i+1}</td><td class="nw">${esc(x.po)}</td><td class="supc">${esc(x.sup)}</td><td class="nw">${esc(x.dept)}</td>${nums5(x)}<td class="nw">${x.last===null?'–':fmtDay(x.last)}</td></tr>`;
+    foot=l=>sumFoot(`Total (${fmtN(l.length)} purchase orders)`,4,l);
+  }else if(k==='sups'){
+    list=listOf(rows,r=>r.supId,r=>({sup:r.sup,q1:0,q2:0,last:null}));unit='suppliers';
+    thead='<thead><tr><th class="num">#</th><th>Supplier</th><th class="num">POs</th><th class="num">Purchase lines (101)</th><th class="num">Purchase value (101)</th><th class="num">Reversal lines (102)</th><th class="num">Reversal value (102)</th><th class="num">Net value</th><th>Last posting</th></tr></thead>';
+    rowFn=(x,i)=>`<tr><td class="num">${i+1}</td><td class="supc">${esc(x.sup)}</td><td class="num">${fmtN(x.pos.size)}</td>${nums5(x)}<td class="nw">${x.last===null?'–':fmtDay(x.last)}</td></tr>`;
+    foot=l=>sumFoot(`Total (${fmtN(l.length)} suppliers)`,3,l);
+  }else if(k==='mats'){
+    list=listOf(rows,r=>r.mat,r=>({mat:r.mat,name:r.matName,unit:r.unit,q1:0,q2:0,last:null}));unit='materials';
+    thead='<thead><tr><th class="num">#</th><th>Material</th><th>Description</th><th class="num">Purchase quantity (101)</th><th class="num">Reversal quantity (102)</th><th class="num">Purchase value (101)</th><th class="num">Reversal value (102)</th><th class="num">Net value</th><th>Last posting</th></tr></thead>';
+    rowFn=(x,i)=>`<tr><td class="num">${i+1}</td><td class="nw">${esc(x.mat)}</td><td class="matc">${esc(x.name)}</td><td class="num nw">${fmtQty(x.q1,esc(x.unit))}</td><td class="num nw">${x.q2?fmtQty(-x.q2,esc(x.unit)):'–'}</td><td class="num nw">${fmtINR(x.v1)}</td><td class="num nw">${fmtINR(x.v2)}</td><td class="num nw"><b>${fmtINR(net(x))}</b></td><td class="nw">${x.last===null?'–':fmtDay(x.last)}</td></tr>`;
+    foot=l=>{const t=agg();for(const x of l){t.v1+=x.v1;t.v2+=x.v2;}return `<tfoot><tr><td colspan="5">Total (${fmtN(l.length)} materials)</td><td class="num nw">${fmtINR(t.v1)}</td><td class="num nw">${fmtINR(t.v2)}</td><td class="num nw">${fmtINR(net(t))}</td><td></td></tr></tfoot>`;};
+  }
+  if(list){
+    n=list.length;const slice=S.tileAll?list:list.slice(0,PAGE),first=S.tileAll?slice.slice(0,300):slice;
+    $('tileBox').innerHTML=list.length?`<table>${thead}<tbody>${first.map((x,i)=>rowFn(x,i)).join('')}</tbody>${foot?foot(list):''}</table>`:none;
+    // See all can mean thousands of lines: the first rows appear at once and the rest are added in batches
+    const token=++tileToken;let done=first.length;
+    const more=()=>{if(token!==tileToken||done>=slice.length)return;const tb=$('tileBox').querySelector('tbody');if(!tb)return;tb.insertAdjacentHTML('beforeend',slice.slice(done,done+500).map((x,i)=>rowFn(x,done+i)).join(''));done+=500;setTimeout(more,0);};
+    setTimeout(more,0);
+  }else{tileToken++;$('tileBox').innerHTML=html;}
+  $('tileInfo').textContent=!list||!n?'':(S.tileAll||n<=PAGE?`All ${fmtN(n)} ${unit} shown`:`Showing the first ${PAGE} of ${fmtN(n)} ${unit}`);
+  $('tileAll').hidden=!list||n<=PAGE;$('tileAll').textContent=S.tileAll?'Show first '+PAGE:'See all '+fmtN(n);
+}
+const reveal=id=>{const el=$(id);if(el&&!el.hidden)el.scrollIntoView({behavior:'smooth',block:'start'});};
+
+function render(){
+  if(!D)return;
+  const rows=R.filter(r=>pass(r));
+  let v1=0,v2=0,n1=0,n2=0;const pos=new Set(),sups=new Set(),mats=new Set();
+  for(const r of rows){if(r.mvt==='101'){v1+=r.val;n1++;}else{v2-=r.val;n2++;}pos.add(r.po);sups.add(r.supId);mats.add(r.mat);}
+  CUR={rows,v1,v2};
+  // every tile opens its details under the tiles
+  $('kpis').innerHTML=[[fmtINR(v1),`Purchase value (101) · ${fmtN(n1)} lines`,'buy'],[fmtINR(v2),`Reversal value (102) · ${fmtN(n2)} lines`,'rev'],[fmtINR(v1-v2),'Net purchase value (101 − 102)','net'],[fmtN(pos.size),'Purchase orders','pos'],[fmtN(sups.size),'Suppliers','sups'],[fmtN(mats.size),'Materials','mats']]
+    .map(t=>`<button type="button" class="tile tilebtn" data-tile="${t[2]}" aria-expanded="${S.tile===t[2]}"><div class="tv">${t[0]}</div><div class="tl">${t[1]}</div><div class="ts">${S.tile===t[2]?'click to hide':'click for details'}</div></button>`).join('');
+  renderTile();
+  // chips
+  const c=[];
+  if(S.plant)c.push(['plant','Plant '+S.plant]);
+  if(S.cat!==null)c.push(['cat','Category: '+S.cat]);
+  if(S.dept!==null)c.push(['dept','Department: '+S.dept]);
+  if(S.sloc!==null){const x=SLOC.get(S.sloc);c.push(['sloc','Location: '+(x?x.label:S.sloc)]);}
+  if(S.mvt)c.push(['mvt','Movement '+S.mvt]);
+  if(S.sup!==null){const x=R.find(r=>r.supId===S.sup);c.push(['sup','Supplier: '+(x?x.sup:S.sup)]);}
+  if(S.from!==null||S.to!==null)c.push(['date','Posting date '+(S.from!==null?fmtDay(S.from):'start')+' – '+(S.to!==null?fmtDay(S.to):'today')]);
+  if(S.q)c.push(['q','Search: '+S.q]);
+  $('chips').innerHTML=c.map(x=>`<button type="button" class="chip" data-clr="${x[0]}">${esc(x[1])} ×</button>`).join('')+(c.length?'<button type="button" class="chip" data-clr="all">Reset filters</button>':'');
+  // each table ignores its own filter, so the list stays when you pick a row
+  const dp=new Map(),pl=new Map(),sl=new Map(),sp=new Map();
+  for(const r of R){
+    if(pass(r,['dept']))add(dp,r.dept,r);
+    if(pass(r,['plant']))add(pl,r.plant,r);
+    if(pass(r,['sloc']))add(sl,r.skey,r);
+    if(pass(r,['sup']))add(sp,r.supId,r);
+  }
+  $('byDept').innerHTML=aggTable(byNet(dp),'Department',k=>`<button type="button" class="lnk" data-dept="${esc(k)}">${esc(k)}</button>`,S.dept);
+  $('byPlant').innerHTML=aggTable(byNet(pl),'Plant',k=>`<button type="button" class="lnk" data-plant="${esc(k)}">${esc(k)}</button>`,S.plant||null);
+  $('bySloc').innerHTML=aggTable(byNet(sl),'Storage location',k=>{const x=SLOC.get(k);return `<button type="button" class="lnk" data-sloc="${esc(k)}">${esc(x?x.label:k)}</button>`;},S.sloc);
+  const spl=byNet(sp);
+  $('supHint').textContent='Net value for the current filters'+(spl.length>50?`; top 50 of ${fmtN(spl.length)} suppliers shown, the total covers all`:'')+'. Click a supplier to filter everything.';
+  $('bySup').innerHTML=aggTable(spl.slice(0,50),'Supplier',k=>{const x=SUPN.get(k);return `<button type="button" class="lnk" data-sup="${esc(k)}">${esc(x||k)}</button>`;},S.sup);
+  // month / day (ignore From/To so every month stays listed)
+  const mon=new Map(),day=new Map();
+  if(S.mon===null)S.mon=mIdx(D.asofDay);
+  for(const r of R){if(r.day===null||!pass(r,['date']))continue;const k=mIdx(r.day);add(mon,k,r);if(k===S.mon)add(day,r.day,r);}
+  $('byMonth').innerHTML=aggTable([...mon.entries()].sort((a,b)=>b[0]-a[0]),'Month',k=>`<button type="button" class="lnk" data-mon="${k}">${mName(k)}</button>`,S.mon);
+  $('dayTitle').textContent='Day-wise purchase · '+mName(S.mon);
+  $('byDay').innerHTML=aggTable([...day.entries()].sort((a,b)=>a[0]-b[0]),'Posting date',k=>`<button type="button" class="lnk" data-day="${k}">${fmtDay(k)}</button>`);
+  // the lines, newest first
+  rows.sort((a,b)=>(b.day||0)-(a.day||0)||b.doc.localeCompare(a.doc));
+  const slice=S.all?rows:rows.slice(0,PAGE);
+  const first=S.all?slice.slice(0,400):slice;
+  $('tbl').innerHTML=LHEAD+'<tbody>'+(first.length?first.map((r,i)=>lineRow(r,i)).join(''):'<tr><td colspan="16" class="empty">Nothing matches the filters.</td></tr>')+'</tbody>'+(rows.length?lineFoot(rows):'');
+  const token=++renderToken;let done=first.length;
+  const more=()=>{if(token!==renderToken||done>=slice.length)return;document.querySelector('#tbl tbody').insertAdjacentHTML('beforeend',slice.slice(done,done+600).map((r,i)=>lineRow(r,done+i)).join(''));done+=600;setTimeout(more,0);};
+  setTimeout(more,0);
+  $('tcount').textContent=fmtN(rows.length)+' lines · '+fmtN(n1)+' purchases (101) '+fmtINR(v1)+' · '+fmtN(n2)+' reversals (102) '+fmtINR(v2)+' · net '+fmtINR(v1-v2);
+  $('pinfo').textContent=!rows.length?'':rows.length<=PAGE||S.all?`All ${fmtN(rows.length)} lines shown`:`Showing the first ${PAGE} of ${fmtN(rows.length)}`;
+  $('seeAll').hidden=rows.length<=PAGE;$('seeAll').textContent=S.all?'Show first '+PAGE:'See all '+fmtN(rows.length);
+}
+
+function setMonthDates(){const t=new Date(D.asofDay*864e5);const y=t.getUTCFullYear(),m=t.getUTCMonth();const a=Date.UTC(y,m,1)/864e5,b=Date.UTC(y,m+1,0)/864e5;S.from=a;S.to=b;$('dFrom').value=iso(a);$('dTo').value=iso(b);}
+document.addEventListener('click',e=>{
+  const t=e.target.closest('button');if(!t)return;
+  if(t.dataset.dept!==undefined){S.dept=S.dept===t.dataset.dept?null:t.dataset.dept;$('deptSel').value=S.dept===null?'':S.dept;}
+  else if(t.dataset.plant!==undefined){S.plant=S.plant===t.dataset.plant?'':t.dataset.plant;$('plantSel').value=S.plant;}
+  else if(t.dataset.sloc!==undefined){S.sloc=S.sloc===t.dataset.sloc?null:t.dataset.sloc;$('slocSel').value=S.sloc===null?'':S.sloc;}
+  else if(t.dataset.sup!==undefined){S.sup=S.sup===t.dataset.sup?null:t.dataset.sup;}
+  else if(t.dataset.mon!==undefined){S.mon=+t.dataset.mon;}
+  else if(t.dataset.day!==undefined){const d=+t.dataset.day;S.from=S.to=d;$('dFrom').value=$('dTo').value=iso(d);}
+  else if(t.dataset.clr){const c=t.dataset.clr;
+    if(c==='plant'||c==='all'){S.plant='';$('plantSel').value='';}
+    if(c==='cat'||c==='all'){S.cat=null;$('catSel').value='';}
+    if(c==='dept'||c==='all'){S.dept=null;$('deptSel').value='';}
+    if(c==='sloc'||c==='all'){S.sloc=null;$('slocSel').value='';}
+    if(c==='mvt'||c==='all'){S.mvt='';$('mvtSel').value='';}
+    if(c==='sup'||c==='all')S.sup=null;
+    if(c==='date')S.from=S.to=null,$('dFrom').value=$('dTo').value='';
+    if(c==='all')setMonthDates();
+    if(c==='q'||c==='all'){S.q='';$('q').value='';}}
+  else if(t.dataset.tile!==undefined){const k=t.dataset.tile;S.tile=S.tile===k?null:k;S.tileAll=false;render();if(S.tile)reveal('tileCard');return;}
+  else if(t.id==='tileAll'){S.tileAll=!S.tileAll;renderTile();return;}
+  else if(t.id==='seeAll'){S.all=!S.all;render();if(!S.all)document.querySelector('.tscroll').scrollTop=0;return;}
+  else return;
+  S.page=0;render();
+});
+$('plantSel').addEventListener('change',e=>{S.plant=e.target.value;render();});
+$('catSel').addEventListener('change',e=>{S.cat=e.target.value===''?null:e.target.value;render();});
+$('deptSel').addEventListener('change',e=>{S.dept=e.target.value===''?null:e.target.value;render();});
+$('slocSel').addEventListener('change',e=>{S.sloc=e.target.value===''?null:e.target.value;render();});
+$('mvtSel').addEventListener('change',e=>{S.mvt=e.target.value;render();});
+$('dFrom').addEventListener('change',e=>{S.from=dayOf(e.target.value);render();});
+$('dTo').addEventListener('change',e=>{S.to=dayOf(e.target.value);render();});
+let qT;$('q').addEventListener('input',e=>{clearTimeout(qT);qT=setTimeout(()=>{S.q=e.target.value.trim().toLowerCase();render();},200);});
+
+const root=document.documentElement;
+function setTheme(t,save){root.dataset.theme=t;for(const b of document.querySelectorAll('#themeSeg button'))b.classList.toggle('on',b.dataset.th===t);if(save){try{localStorage.setItem('spr-theme',t);}catch(e){}}}
+let savedTheme='dark';try{savedTheme=localStorage.getItem('spr-theme')||'dark';}catch(e){}
+setTheme(savedTheme==='light'?'light':'dark',false);
+document.getElementById('themeSeg').addEventListener('click',e=>{const b=e.target.closest('button[data-th]');if(b)setTheme(b.dataset.th,true);});
+
+// ---------------------------------------------------------------- data
+let SLOC=new Map(),SUPN=new Map();
+// the department of a receipt: the purchasing group of its PO (PO and item, else any item of the PO); the PO data is the /po data
+function assignDepts(){
+  for(const r of R){
+    const pg=POMAP.get(r.po+'|'+r.item)||POPG.get(r.po);
+    r.dept=pg?pgName(pg):(POD?DEPT_OLD:DEPT_WAIT);
+    r.hay=(r.po+' '+r.sup+' '+r.mat+' '+r.matName+' '+r.doc+' '+r.dept+' '+r.sloc+' '+r.slocName+' '+r.user+' '+uName(r.user)).toLowerCase();
+  }
+}
+function fillSelects(){
+  const cnt=f=>{const c=new Map();for(const r of R)c.set(f(r),(c.get(f(r))||0)+1);return [...c.entries()].sort((a,b)=>b[1]-a[1]);};
+  $('plantSel').innerHTML='<option value="">All plants</option>'+cnt(r=>r.plant).map(e=>`<option value="${esc(e[0])}">${esc(e[0])}</option>`).join('');$('plantSel').value=S.plant;
+  const kinds=cnt(r=>r.kind).map(e=>e[0]);
+  $('catSel').innerHTML='<option value="">All categories</option>'+kinds.map(k=>`<option value="${esc(k)}">${esc(k)}</option>`).join('');
+  if(S.cat!==null&&!kinds.includes(S.cat))S.cat=null;$('catSel').value=S.cat===null?'':S.cat;$('catFld').hidden=kinds.length<2;
+  const dl=cnt(r=>r.dept).sort((a,b)=>(a[0]===DEPT_OLD)-(b[0]===DEPT_OLD)||b[1]-a[1]);
+  $('deptSel').innerHTML='<option value="">All departments</option>'+dl.map(e=>`<option value="${esc(e[0])}">${esc(e[0])}</option>`).join('');
+  if(S.dept!==null&&!dl.some(e=>e[0]===S.dept))S.dept=null;$('deptSel').value=S.dept===null?'':S.dept;
+  SLOC=new Map();for(const r of R)if(!SLOC.has(r.skey))SLOC.set(r.skey,{label:(r.slocName?r.slocName+' ('+r.sloc+')':r.sloc)+' · '+r.plant});
+  const sl=cnt(r=>r.skey);
+  $('slocSel').innerHTML='<option value="">All storage locations</option>'+sl.map(e=>`<option value="${esc(e[0])}">${esc(SLOC.get(e[0]).label)}</option>`).join('');
+  if(S.sloc!==null&&!SLOC.has(S.sloc))S.sloc=null;$('slocSel').value=S.sloc===null?'':S.sloc;
+  if(S.sup!==null&&!SUPN.has(S.sup))S.sup=null;
+}
+function setData(d){
+  D=d;SUPN=new Map();
+  R=d.rows.map(a=>{
+    const mvt=d.mvts[a[1]],s=mvt==='102'?-1:1,sp=d.suppliers[a[4]],sl=d.slocs[a[6]],mt=d.mats[a[7]],plant=d.plants[a[5]];
+    const r={day:a[0],mvt,po:a[2],item:a[3],supId:sp[0],sup:sp[1]?sp[1]+' ('+sp[0]+')':sp[0],plant,sloc:sl[0],slocName:sl[1],skey:plant+'|'+sl[0],mat:mt[0],matName:mt[1],grp:d.groups[a[8]],unit:d.units[a[9]],qty:s*a[10],val:s*a[11],canc:a[12],user:d.users[a[13]],doc:a[14],kind:d.kinds[a[15]]};
+    SUPN.set(r.supId,r.sup);
+    return r;
+  });
+  assignDepts();fillSelects();
+}
+// the purchasing group of every PO item of the Pending Purchase Orders data: PO + item -> group, and PO -> group (any item)
+function setPO(j){
+  POD=j;POMAP=new Map();POPG=new Map();
+  for(const a of j.rows){const pg=j.pgs[a[19]];POMAP.set(a[2]+'|'+a[3],pg);if(!POPG.has(a[2]))POPG.set(a[2],pg);}
+  if(D){assignDepts();fillSelects();render();}
+}
+// a link from the Summary page: ?tile=buy&plant=1010&from=2026-10-01&to=2026-10-31 (dates=all clears the dates); used once, on the first load
+let LINK=(()=>{try{const q=new URLSearchParams(location.search);return q.has('tile')||q.has('plant')||q.has('from')||q.has('to')||q.has('dates')?q:null;}catch(e){return null;}})();
+function applyLink(){
+  if(!LINK)return;const q=LINK;LINK=null;
+  if(q.has('plant')){S.plant=q.get('plant')||'';if(![...$('plantSel').options].some(o=>o.value===S.plant))S.plant='';$('plantSel').value=S.plant;}
+  if(q.get('dates')==='all'){S.from=S.to=null;$('dFrom').value=$('dTo').value='';}
+  else if(q.has('from')||q.has('to')){S.from=dayOf(q.get('from'));S.to=dayOf(q.get('to'));$('dFrom').value=S.from===null?'':iso(S.from);$('dTo').value=S.to===null?'':iso(S.to);}
+  const k=q.get('tile');if(k&&TILE_INFO[k]){S.tile=k;S.tileAll=false;S.reveal=true;}
+}
+function setLive(kind,text){$('liveDot').style.background=kind==='ok'?'var(--good)':kind==='err'?'var(--crit)':'var(--warn)';$('liveTxt').textContent=text;$('refresh').disabled=kind==='busy';}
+const hhmm=ms=>new Date(ms).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+let loading=false;
+async function load(force){
+  if(loading)return;loading=true;
+  setLive('busy',D?'Refreshing from SAP…':'Loading purchases from SAP (first load can take a minute)…');
+  // the PO data (for the department) is fetched in parallel; the page is drawn as soon as the purchases are there
+  const poP=fetch('/api/po'+(force?'?refresh=1':''),{cache:'no-store'}).then(r=>r.ok?r.json():null).catch(()=>null);
+  try{
+    const res=await fetch('/api/purchase'+(force?'?refresh=1':''),{cache:'no-store'});
+    const j=await res.json().catch(()=>({}));
+    if(!res.ok)throw new Error(j.error||('HTTP '+res.status));
+    setData(j);if(!S.dInit){S.dInit=true;setMonthDates();applyLink();}render();
+    if(S.reveal){S.reveal=false;setTimeout(()=>reveal('tileCard'),150);}
+    setLive('ok','Live from SAP · updated '+hhmm(j.fetchedAt)+' · '+fmtN(R.length)+' lines');
+    poP.then(p=>{if(p)setPO(p);});
+  }catch(e){
+    const msg=e.message==='Failed to fetch'?'The dashboard server is not running. Start it again with Start_Live_Dashboard.bat.':e.message;
+    setLive('err',msg);
+  }finally{loading=false;}
+}
+$('refresh').addEventListener('click',()=>load(true));
+load(false);
+setInterval(()=>{if(!document.hidden)load(false);},1800000);
+})();
+</script>
+<script src="/ui.js" defer></script>
+</body>
+</html>

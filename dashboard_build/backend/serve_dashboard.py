@@ -27,9 +27,9 @@ import webbrowser
 from concurrent.futures import ThreadPoolExecutor
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from pr_data import (CONSUME_FIELDS, CONSUME_MVTS, FIELDS, ISSUE_DATE_FILTER, ISSUE_FIELDS, ISSUE_FILTER, PO_DATE_FILTER, PO_FIELDS, PO_STATUS_FIELDS, STOCK_FIELDS, STOCK_ORDER,
+from pr_data import (CONSUME_FIELDS, CONSUME_MVTS, FIELDS, ISSUE_DATE_FILTER, ISSUE_FIELDS, ISSUE_FILTER, PURCHASE_FIELDS, PURCHASE_FILTER, PO_DATE_FILTER, PO_FIELDS, PO_STATUS_FIELDS, STOCK_FIELDS, STOCK_ORDER,
                      MG_NAMES, PG_NAMES, USER_NAMES,
-                     consume_fold, issue_compact, po_compact, stock_compact, to_compact)
+                     consume_fold, issue_compact, po_compact, purchase_compact, stock_compact, to_compact)
 
 HERE = os.path.dirname(os.path.abspath(__file__))  # backend/
 FRONTEND = os.path.join(os.path.dirname(HERE), 'frontend')  # the pages and the logo
@@ -39,6 +39,7 @@ ISSUE_TPL = os.path.join(FRONTEND, 'issue_template.html')
 PO_TPL = os.path.join(FRONTEND, 'po_template.html')
 STOCK_TPL = os.path.join(FRONTEND, 'stock_template.html')
 SUMMARY_TPL = os.path.join(FRONTEND, 'summary_template.html')
+PURCHASE_TPL = os.path.join(FRONTEND, 'purchase_template.html')
 PO_APPROVAL_TPL = os.path.join(FRONTEND, 'po_approval_template.html')
 LOGO = os.path.join(FRONTEND, 'logo.png')
 # the look and the small helpers shared by every page (frontend/ui.css, frontend/ui.js)
@@ -401,11 +402,15 @@ def load_stock_locations():
     return out or None
 
 
+def purchase_view(rows, asof_day):
+    return purchase_compact(rows, asof_day, load_stock_locations())
+
+
 def stock_view(rows, asof_day, *extra):
     return stock_compact(rows, asof_day, load_stock_locations(), extra[0].state if extra else None)
 
 
-PAGES = {'/': TPL, '/index.html': TPL, '/issue': ISSUE_TPL, '/po': PO_TPL, '/po-approval': PO_APPROVAL_TPL, '/stock': STOCK_TPL, '/summary': SUMMARY_TPL}
+PAGES = {'/': TPL, '/index.html': TPL, '/issue': ISSUE_TPL, '/po': PO_TPL, '/po-approval': PO_APPROVAL_TPL, '/stock': STOCK_TPL, '/summary': SUMMARY_TPL, '/purchase': PURCHASE_TPL}
 # User ID -> full name, put into the page like the data (no '<' in names, so it is safe inside a script tag).
 USERS_JSON = json.dumps(USER_NAMES, ensure_ascii=False, separators=(',', ':'))
 PGS_JSON = json.dumps(PG_NAMES, ensure_ascii=False, separators=(',', ':'))
@@ -515,7 +520,12 @@ def main():
     # Store stock: about 27,000 rows from SAP of which about 5,000 hold stock; same 30 minute refresh as the other big views.
     stock = Sap(STOCK_BASE, STOCK_ENTITY, STOCK_QUERY, stock_view, user, password, max(args.ttl, 1800), min_refresh=300,
                 extra=[(ISSUE_BASE, 'YY1_Store_Reservation', CONSUME_QUERY, consume_fold, True)])
-    apis = {'/api/pr': sap, '/api/issue': issue, '/api/po': po, '/api/stock': stock}
+    # Purchases (movement types 101 / 102) from the same view as the Store Issue. SAP is asked for the lines that have a purchase order first; if it
+    # refuses that filter the simpler query is used and the lines without a PO are read too (much more data).
+    pq = {'$select': ','.join(PURCHASE_FIELDS), '$orderby': _ORDER}
+    purchase = Sap(ISSUE_BASE, 'YY1_Store_Reservation', [{**pq, '$filter': PURCHASE_FILTER + " and PurchaseOrder ne ''"}, {**pq, '$filter': PURCHASE_FILTER}],
+                   purchase_view, user, password, max(args.ttl, 1800), min_refresh=300)
+    apis = {'/api/pr': sap, '/api/issue': issue, '/api/po': po, '/api/stock': stock, '/api/purchase': purchase}
     del password
 
     if CLOUD:
