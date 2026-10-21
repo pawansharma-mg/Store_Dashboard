@@ -118,6 +118,8 @@ purchasing groups and material groups without a name, user IDs without a name, r
 POs In Approval without a confirmed or likely approver, listed stock locations that hold no stock, and how old the data is. It exits with 1 when a page or an API fails.
 Run it after changing `pr_data.py` or the CSV files, and before a deployment.
 
+`python backend/export_po_datewise.py OUT.xlsx 2026-10-01 2026-10-31` (dashboard running) writes an Excel file of the purchase order items created in those dates, date wise, with the description and the three values (Total order value, Delivered value, Pending value in rupees) per item, a date wise summary and a summary by delivery status, both made with Excel formulas over the item list so they can be checked. The data is the live SAP data of `/api/po`. Note: with all items, the total also holds the "No GR" items (nothing left to deliver, nothing received), which SAP's own Purchase Order Items list does not show (₹17.73 Cr of 25 items in October 2026, mostly the STO PO 4800000585); they are shown on their own line of the status summary.
+
 ## Page rules
 
 ### Summary (`/summary`)
