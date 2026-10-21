@@ -92,6 +92,7 @@ tr.sel td{background:rgba(28,173,228,.14)!important}
 .tbox th.qh{white-space:normal;line-height:1.25;min-width:80px}
 .tscroll th.qh{white-space:normal;line-height:1.25;min-width:84px}
 .tbox th.qh,.tbox td.qlist{padding-left:6px}
+.storerow td{font-weight:700;background:rgba(250,178,25,.18)!important}
 .qmore{font-size:.72rem;font-weight:600;color:var(--muted);cursor:help}
 .tilebtn{text-align:left;font:inherit;color:inherit;cursor:pointer;width:100%}
 .tilebtn:hover{box-shadow:0 0 0 2px rgba(28,173,228,.35)}
@@ -133,6 +134,7 @@ tr.sel td{background:rgba(28,173,228,.14)!important}
   <section class="bar" aria-label="Filters">
     <label class="fld"><span>Plant</span><select id="plantSel"></select></label>
     <label class="fld"><span>PO type</span><select id="typeSel"></select></label>
+    <label class="fld"><span>Material type</span><select id="mtSel"></select></label>
     <label class="fld"><span>Purch. group</span><select id="pgSel"></select></label>
     <label class="fld"><span>Supplier</span><input id="supIn" list="supList" placeholder="All suppliers" autocomplete="off" style="width:230px"><datalist id="supList"></datalist></label>
     <label class="fld"><span>Delivery</span><select id="delSel"><option value="every">All</option><option value="pending" selected>Pending delivery</option></select></label>
@@ -164,34 +166,39 @@ tr.sel td{background:rgba(28,173,228,.14)!important}
       <div class="tbox" id="byType"></div>
     </article>
     <article class="card">
-      <h2><span class="sec-badge">3</span>Plant wise<span class="badge-live">LIVE</span></h2>
+      <h2><span class="sec-badge">3</span>Material type wise<span class="badge-live">LIVE</span></h2>
+      <p class="hint">PO items by material type. The yellow line adds up the Store material types (ZCON, ZHMI, ZSPR, ZSRM, ZVRP): click it to see only the Store POs. Items without a material (services, asset text items) have no type.</p>
+      <div class="tbox" id="byMt"></div>
+    </article>
+    <article class="card">
+      <h2><span class="sec-badge">4</span>Plant wise<span class="badge-live">LIVE</span></h2>
       <p class="hint">Click a plant to filter everything.</p>
       <div class="tbox" id="byPlant"></div>
     </article>
     <article class="card">
-      <h2><span class="sec-badge">4</span>Material group wise<span class="badge-live">LIVE</span></h2>
+      <h2><span class="sec-badge">5</span>Material group wise<span class="badge-live">LIVE</span></h2>
       <p class="hint">Click a material group to filter everything.</p>
       <div class="tbox" id="byGrp"></div>
     </article>
     <article class="card">
-      <h2><span class="sec-badge">5</span>Purchasing group wise<span class="badge-live">LIVE</span></h2>
+      <h2><span class="sec-badge">6</span>Purchasing group wise<span class="badge-live">LIVE</span></h2>
       <p class="hint">Click a purchasing group to filter everything.</p>
       <div class="tbox" id="byPg"></div>
     </article>
     <article class="card">
-      <h2><span class="sec-badge">6</span>Month-wise POs<span class="badge-live">LIVE</span></h2>
+      <h2><span class="sec-badge">7</span>Month-wise POs<span class="badge-live">LIVE</span></h2>
       <p class="hint">By the date chosen above (PO date or Created on). Click a month to see it day by day.</p>
       <div class="tbox" id="byMonth"></div>
     </article>
     <article class="card">
-      <h2><span class="sec-badge">7</span><span id="dayTitle">Day-wise POs</span><span class="badge-live">LIVE</span></h2>
+      <h2><span class="sec-badge">8</span><span id="dayTitle">Day-wise POs</span><span class="badge-live">LIVE</span></h2>
       <p class="hint">Click a date to filter everything to that day.</p>
       <div class="tbox" id="byDay"></div>
     </article>
   </section>
 
   <section class="card tablecard">
-    <h2><span class="sec-badge">8</span>PO items<span class="badge-live">LIVE</span></h2>
+    <h2><span class="sec-badge">9</span>PO items<span class="badge-live">LIVE</span></h2>
     <p class="hint" id="tcount"></p>
     <div class="tscroll"><table id="tbl"></table></div>
     <div class="pager"><span id="pinfo"></span><div><button class="btn" id="seeAll" type="button">See all</button></div></div>
@@ -220,6 +227,13 @@ const PO_TYPES={NB:'Standard PO',NB2:'Enh.Ret.to Supplier',UB:'Stock Transp. Ord
 const DEL_TXT={pending:'Pending delivery',every:'All'};
 const REL_TXT={ok:'Released',appr:'In Approval',rej:'Rejected'};
 const typeName=t=>PO_TYPES[t]?t+' · '+PO_TYPES[t]:t;
+// Material types (the user's list of 21-Oct-2026). STORE_MT are the Store material types (marked yellow in that list): a view of only the
+// Store POs shows just these. A PO item without a material (services, asset text items) has no material type: '(blank)'.
+const MT_NAMES={ZCON:'Consumable items',ZFGS:'Finished goods',ZHMI:'PRD tools',ZPRS:'Processed scrap',ZRMA:'Raw materials',ZSCP:'Scrap materials',ZSFG:'Semi finished goods',ZSPR:'Spare parts',ZSRM:'Raw materials stores',ZTOL:'Tool room',ZTRG:'Trading goods',ZUNB:'Non valuated material',ZVRP:'Packaging material'};
+const STORE_MT=['ZCON','ZHMI','ZSPR','ZSRM','ZVRP'];
+const mtLabel=c=>c==='(blank)'?'(no material)':MT_NAMES[c]?c+' · '+MT_NAMES[c]:c;
+const mtOpt=c=>mtLabel(c)+(STORE_MT.includes(c)?' (Store)':'');
+const mtTip=c=>c==='(blank)'?'No material on the item (a service or an asset text item), so no material type':MT_NAMES[c]?c+' · '+MT_NAMES[c]+(STORE_MT.includes(c)?' · a Store material type':''):'Material type '+c+' (no name given yet)';
 const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const PAGE=25,SUP_LIMIT=300;
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -232,12 +246,13 @@ const mName=k=>MON[k%12]+' '+Math.floor(k/12);
 const dayOf=v=>v?Math.floor(Date.parse(v)/864e5):null;
 
 let D=null,R=[],renderToken=0,CUR=null,tileToken=0;
-const S={tile:null,tileAll:false,all:false,plant:'',type:null,sup:null,del:'pending',rel:'',dt:'cr',grp:null,pg:null,from:null,to:null,q:'',mon:null,page:0};
+const S={tile:null,tileAll:false,all:false,plant:'',type:null,mt:null,sup:null,del:'pending',rel:'',dt:'cr',grp:null,pg:null,from:null,to:null,q:'',mon:null,page:0};
 
 function pass(r,skip){
   skip=skip||[];
   if(!skip.includes('plant')&&S.plant&&r.plant!==S.plant)return false;
   if(!skip.includes('type')&&S.type!==null&&r.type!==S.type)return false;
+  if(!skip.includes('mt')&&S.mt!==null){const c=r.mtype||'(blank)';if(S.mt==='STORE'?!STORE_MT.includes(c):c!==S.mt)return false;}
   if(!skip.includes('sup')&&S.sup!==null&&r.sup!==S.sup)return false;
   if(!skip.includes('grp')&&S.grp!==null&&r.grp!==S.grp)return false;
   if(!skip.includes('pg')&&S.pg!==null&&r.pg!==S.pg)return false;
@@ -261,12 +276,12 @@ function add(m,k,r){let x=m.get(k);if(!x)m.set(k,x=agg());x.n++;x.pos.add(r.po);
 const fv=(v,x)=>fmtINR(v);
 function aggTable(list,head,cell,sel,limit){
   if(!list.length)return '<div class="empty">Nothing matches the filters.</div>';
-  const tot=agg();for(const [,x] of list){tot.n+=x.n;tot.amt+=x.amt;tot.pend+=x.pend;tot.fx+=x.fx;for(const p of x.pos)tot.pos.add(p);for(const [u,v] of x.q)tot.q.set(u,(tot.q.get(u)||0)+v);}
+  const tot=agg();for(const [,x] of list){if(x.sub)continue;tot.n+=x.n;tot.amt+=x.amt;tot.pend+=x.pend;tot.fx+=x.fx;for(const p of x.pos)tot.pos.add(p);for(const [u,v] of x.q)tot.q.set(u,(tot.q.get(u)||0)+v);}
   const nums=(x,max)=>`<td class="num">${fmtN(x.pos.size)}</td><td class="num">${fmtN(x.n)}</td><td class="num nw">${fv(x.amt,x)}</td><td class="num nw">${fv(x.pend,x)}</td><td class="num nw qlist" data-full="${esc(qFull(x.q))}">${qCap(x.q,max)}</td>`;
   const shown=limit?list.slice(0,limit):list;
   return `<table><thead><tr><th>${head}</th><th class="num">POs</th><th class="num">Items</th><th class="num">Net value</th><th class="num qh">Value to be delivered</th><th class="num qh">Quantity to be delivered</th></tr></thead><tbody>`+
-    shown.map(([k,x])=>`<tr${k===sel?' class="sel"':''}><td>${cell(k)}</td>${nums(x,4)}</tr>`).join('')+
-    `</tbody><tfoot><tr><td>Total (${fmtN(list.length)})</td>${nums(tot,2)}</tr></tfoot></table>`;
+    shown.map(([k,x])=>`<tr class="${k===sel?'sel ':''}${x.sub?'storerow':''}"><td>${cell(k)}</td>${nums(x,4)}</tr>`).join('')+
+    `</tbody><tfoot><tr><td>Total (${fmtN(list.filter(e=>!e[1].sub).length)})</td>${nums(tot,2)}</tr></tfoot></table>`;
 }
 const byValue=m=>[...m.entries()].sort((a,b)=>b[1].amt-a[1].amt||b[1].n-a[1].n);
 const supLabel=i=>{const s=D.suppliers[i];return (s[1]||'(no name)')+' ('+s[0]+')';};
@@ -373,8 +388,8 @@ function renderTile(){
 const reveal=id=>{const el=$(id);if(el&&!el.hidden)el.scrollIntoView({behavior:'smooth',block:'start'});};
 
 // the columns of the PO items list, in this order (the row cells in rowHtml and these headers share the keys)
-const COLS=['n','po','item','qty','gr','still','price','amt','dlv','pend','del','rel','sup','mat','type','plant','sloc','pg','pday','cday','user'];
-const HEAD={n:'<th class="num">#</th>',po:'<th>PO</th>',item:'<th>Item</th>',pday:'<th>PO date</th>',cday:'<th>Created on</th>',user:'<th>Created by</th>',type:'<th>PO type</th>',sup:'<th>Supplier</th>',mat:'<th>Material</th>',plant:'<th>Plant</th>',sloc:'<th>S.Loc</th>',pg:'<th>Purch. group</th>',qty:'<th class="num qh">Order quantity</th>',gr:'<th class="num qh">Delivered quantity</th>',still:'<th class="num qtd qh">Quantity to be delivered</th>',price:'<th class="num">Price</th>',amt:'<th class="num">Net value</th>',dlv:'<th class="num qh">Delivered value</th>',pend:'<th class="num qtd qh">Value to be delivered</th>',del:'<th>Delivery</th>',rel:'<th>Release</th>'};
+const COLS=['n','po','item','qty','gr','still','price','amt','dlv','pend','del','rel','sup','mat','mtp','type','plant','sloc','pg','pday','cday','user'];
+const HEAD={n:'<th class="num">#</th>',po:'<th>PO</th>',item:'<th>Item</th>',pday:'<th>PO date</th>',cday:'<th>Created on</th>',user:'<th>Created by</th>',type:'<th>PO type</th>',sup:'<th>Supplier</th>',mat:'<th>Material</th>',mtp:'<th>Material type</th>',plant:'<th>Plant</th>',sloc:'<th>S.Loc</th>',pg:'<th>Purch. group</th>',qty:'<th class="num qh">Order quantity</th>',gr:'<th class="num qh">Delivered quantity</th>',still:'<th class="num qtd qh">Quantity to be delivered</th>',price:'<th class="num">Price</th>',amt:'<th class="num">Net value</th>',dlv:'<th class="num qh">Delivered value</th>',pend:'<th class="num qtd qh">Value to be delivered</th>',del:'<th>Delivery</th>',rel:'<th>Release</th>'};
 
 function render(){
   if(!D)return;  // the data is still loading
@@ -391,6 +406,7 @@ function render(){
   const c=[];
   if(S.plant)c.push(['plant','Plant '+S.plant]);
   if(S.type!==null)c.push(['type','PO type: '+typeName(S.type)]);
+  if(S.mt!==null)c.push(['mt','Material type: '+(S.mt==='STORE'?'Store material types ('+STORE_MT.join(', ')+')':mtLabel(S.mt))]);
   if(S.sup!==null)c.push(['sup','Supplier: '+supLabel(S.sup)]);
   if(S.grp!==null)c.push(['grp','Material group: '+mgName(S.grp)]);
   if(S.pg!==null)c.push(['pg','Purch. group: '+pgName(S.pg)]);
@@ -400,10 +416,11 @@ function render(){
   if(S.q)c.push(['q','Search: '+S.q]);
   $('chips').innerHTML=c.map(x=>`<button type="button" class="chip" data-clr="${x[0]}">${esc(x[1])} ×</button>`).join('')+(c.length?'<button type="button" class="chip" data-clr="all">Reset filters</button>':'');
   // each table ignores its own filter, so the list stays when you pick a row
-  const sp=new Map(),ty=new Map(),pl=new Map(),gr=new Map(),pgm=new Map();
+  const sp=new Map(),ty=new Map(),pl=new Map(),gr=new Map(),pgm=new Map(),mtm=new Map(),mts=new Map();
   for(const r of R){
     if(pass(r,['sup']))add(sp,r.sup,r);
     if(pass(r,['type']))add(ty,r.type,r);
+    if(pass(r,['mt'])){add(mtm,r.mtype||'(blank)',r);if(STORE_MT.includes(r.mtype))add(mts,'STORE',r);}
     if(pass(r,['plant']))add(pl,r.plant,r);
     if(pass(r,['grp']))add(gr,r.grp,r);
     if(pass(r,['pg']))add(pgm,r.pg,r);
@@ -411,6 +428,8 @@ function render(){
   const sl=byValue(sp);
   $('supHint').textContent='Net order value (INR) of the PO items. Click a supplier to filter everything.'+(sl.length>SUP_LIMIT?` Top ${SUP_LIMIT} of ${fmtN(sl.length)} suppliers by value shown; the total covers all. Use the Supplier filter or Search for the others.`:'');
   $('bySup').innerHTML=aggTable(sl,'Supplier',k=>`<button type="button" class="lnk" data-sup="${k}" title="${esc(D.suppliers[k][2]?'GSTIN '+D.suppliers[k][2]:'')}">${esc(supLabel(k))}</button>`,S.sup,SUP_LIMIT);
+  const stx=mts.get('STORE');if(stx)stx.sub=true;
+  $('byMt').innerHTML=aggTable([...(stx?[['STORE',stx]]:[]),...byValue(mtm)],'Material type',k=>k==='STORE'?`<button type="button" class="lnk" data-mt="STORE">Store material types</button> <span title="${esc(STORE_MT.map(c=>mtLabel(c)).join(', '))}">(${STORE_MT.join(', ')})</span>`:`<button type="button" class="lnk" data-mt="${esc(k)}" title="${esc(mtTip(k))}">${esc(mtLabel(k))}${STORE_MT.includes(k)?' ★':''}</button>`,S.mt);
   $('byType').innerHTML=aggTable(byValue(ty),'PO type',k=>`<button type="button" class="lnk" data-type="${esc(k)}">${esc(typeName(k))}</button>`,S.type);
   $('byPlant').innerHTML=aggTable(byValue(pl),'Plant',k=>`<button type="button" class="lnk" data-plant="${esc(k)}">${esc(k)}</button>`,S.plant||null);
   $('byPg').innerHTML=aggTable(byValue(pgm),'Purchasing group',k=>`<button type="button" class="lnk" data-pg="${esc(k)}" title="${esc(pgTip(k))}">${esc(pgName(k))}</button>`,S.pg);
@@ -438,6 +457,7 @@ function render(){
     user:`<td class="nw" title="${esc(uTip(r.user))}">${esc(uName(r.user))}</td>`,
     type:`<td class="nw" title="${esc(typeName(r.type))}">${esc(r.type)}</td>`,
     sup:`<td class="supc" title="${esc(r.gst?'Supplier '+D.suppliers[r.sup][0]+' · GSTIN '+r.gst:'Supplier '+D.suppliers[r.sup][0])}">${esc(D.suppliers[r.sup][1]||D.suppliers[r.sup][0])}</td>`,
+    mtp:`<td class="nw" title="${esc(mtTip(r.mtype||'(blank)'))}">${esc(r.mtype||'–')}${STORE_MT.includes(r.mtype)?' ★':''}</td>`,
     mat:`<td class="matc" title="${esc((r.grp?'Material group '+mgName(r.grp)+(MG_NAMES[r.grp]?' ('+r.grp+')':''):'')+(r.mtype?' · type '+r.mtype:''))}">${r.mat?`<span class="matno">${esc(r.mat)}</span><br>`:''}${esc(r.text)}</td>`,
     plant:`<td>${esc(r.plant)}</td>`,
     sloc:`<td>${r.sloc?esc(r.sloc):'–'}</td>`,
@@ -470,6 +490,7 @@ document.addEventListener('click',e=>{
   const t=e.target.closest('button');if(!t)return;
   if(t.dataset.sup!==undefined){const v=+t.dataset.sup;S.sup=S.sup===v?null:v;setSupInput();}
   else if(t.dataset.type!==undefined){S.type=S.type===t.dataset.type?null:t.dataset.type;$('typeSel').value=S.type===null?'':S.type;}
+  else if(t.dataset.mt!==undefined){S.mt=S.mt===t.dataset.mt?null:t.dataset.mt;$('mtSel').value=S.mt===null?'':S.mt;}
   else if(t.dataset.plant!==undefined){S.plant=S.plant===t.dataset.plant?'':t.dataset.plant;$('plantSel').value=S.plant;}
   else if(t.dataset.grp!==undefined){S.grp=S.grp===t.dataset.grp?null:t.dataset.grp;}
   else if(t.dataset.pg!==undefined){S.pg=S.pg===t.dataset.pg?null:t.dataset.pg;$('pgSel').value=S.pg===null?'':S.pg;}
@@ -478,6 +499,7 @@ document.addEventListener('click',e=>{
   else if(t.dataset.clr){const c=t.dataset.clr;
     if(c==='plant'||c==='all'){S.plant='';$('plantSel').value='';}
     if(c==='type'||c==='all'){S.type=null;$('typeSel').value='';}
+    if(c==='mt'||c==='all'){S.mt=null;$('mtSel').value='';}
     if(c==='sup'||c==='all'){S.sup=null;setSupInput();}
     if(c==='grp'||c==='all')S.grp=null;
     if(c==='pg'||c==='all'){S.pg=null;$('pgSel').value='';}
@@ -495,6 +517,7 @@ document.addEventListener('click',e=>{
 });
 $('plantSel').addEventListener('change',e=>{S.plant=e.target.value;S.page=0;render();});
 $('typeSel').addEventListener('change',e=>{S.type=e.target.value===''?null:e.target.value;S.page=0;render();});
+$('mtSel').addEventListener('change',e=>{S.mt=e.target.value===''?null:e.target.value;S.page=0;render();});
 $('pgSel').addEventListener('change',e=>{S.pg=e.target.value===''?null:e.target.value;S.page=0;render();});
 $('delSel').addEventListener('change',e=>{S.del=e.target.value;S.page=0;render();});
 $('relSel').addEventListener('change',e=>{S.rel=e.target.value;S.page=0;render();});
@@ -533,7 +556,7 @@ function setData(d){
     r.dlvAmt=r.gr!==null&&r.qty>0?r.amt*r.gr/r.qty:0;
     // the same values in rupees, as SAP's own list shows them: other currencies are converted at the PO's exchange rate (1 for INR)
     r.rate=r.cur==='INR'?1:(a[24]>0?a[24]:0);r.amtI=r.amt*r.rate;r.pendI=r.pendAmt*r.rate;r.dlvI=r.dlvAmt*r.rate;
-    r.hay=(r.po+' '+s[0]+' '+s[1]+' '+s[2]+' '+r.mat+' '+r.text+' '+r.grp+' '+mgName(r.grp)+' '+pgName(r.pg)+' '+r.user+' '+uName(r.user)+' '+r.plant+' '+r.sloc+' '+r.type+' '+(PO_TYPES[r.type]||'')).toLowerCase();
+    r.hay=(r.po+' '+s[0]+' '+s[1]+' '+s[2]+' '+r.mat+' '+r.text+' '+r.grp+' '+mgName(r.grp)+' '+pgName(r.pg)+' '+r.mtype+' '+(MT_NAMES[r.mtype]||'')+' '+r.user+' '+uName(r.user)+' '+r.plant+' '+r.sloc+' '+r.type+' '+(PO_TYPES[r.type]||'')).toLowerCase();
     return r;
   });
   applyDate();
@@ -549,6 +572,11 @@ function setData(d){
   $('typeSel').innerHTML='<option value="">All PO types</option>'+[...tc.entries()].sort((a,b)=>b[1]-a[1]).map(e=>`<option value="${esc(e[0])}">${esc(typeName(e[0]))}</option>`).join('');
   if(S.type!==null&&!tc.has(S.type))S.type=null;
   $('typeSel').value=S.type===null?'':S.type;
+  // material types: "Store material types" first, then every type of the data, most items first
+  const mc=new Map();for(const r of R){const k=r.mtype||'(blank)';mc.set(k,(mc.get(k)||0)+1);}
+  $('mtSel').innerHTML='<option value="">All material types</option><option value="STORE">Store material types ('+STORE_MT.join(', ')+')</option>'+[...mc.entries()].sort((a,b)=>b[1]-a[1]).map(e=>`<option value="${esc(e[0])}">${esc(mtOpt(e[0]))}</option>`).join('');
+  if(S.mt!==null&&S.mt!=='STORE'&&!mc.has(S.mt))S.mt=null;
+  $('mtSel').value=S.mt===null?'':S.mt;
   // supplier list for the Supplier box: 'Name (number)', suppliers with the most items first
   const sc=new Map();for(const r of R)sc.set(r.sup,(sc.get(r.sup)||0)+1);
   SUP_LABELS=new Map();
@@ -563,6 +591,7 @@ let LINK=(()=>{try{const q=new URLSearchParams(location.search);return q.has('ti
 function applyLink(){
   if(!LINK)return;const q=LINK;LINK=null;
   if(q.has('plant')){S.plant=q.get('plant')||'';if(![...$('plantSel').options].some(o=>o.value===S.plant))S.plant='';$('plantSel').value=S.plant;}
+  if(q.has('mt')){const v=q.get('mt');S.mt=v&&[...$('mtSel').options].some(o=>o.value===v)?v:null;$('mtSel').value=S.mt===null?'':S.mt;}
   if(q.get('dates')==='all'){S.from=S.to=null;$('dFrom').value=$('dTo').value='';}
   else if(q.has('from')||q.has('to')){S.from=dayOf(q.get('from'));S.to=dayOf(q.get('to'));$('dFrom').value=S.from===null?'':iso(S.from);$('dTo').value=S.to===null?'':iso(S.to);}
   if(q.has('dates')||q.has('from')||q.has('to')){S.dt='cr';$('dtSel').value='cr';applyDate();}
