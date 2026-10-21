@@ -124,6 +124,19 @@ a.tilebtn:hover{box-shadow:0 0 0 2px rgba(28,173,228,.35)}
 .loading{padding:18px 0;color:var(--ink2)}
 .err{color:var(--crit)}
 html{scroll-behavior:smooth}
+/* the other pages, stacked under the Summary: scroll on and the next page comes (each page loads when it is near) */
+.stack{margin-top:6px}
+.pg{margin-top:34px;scroll-margin-top:calc(var(--stickH,120px) + 6px)}
+.pgbar{max-width:1240px;margin:0 auto;padding:0 16px}
+.pgbar .in{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 16px;border-radius:12px;background:var(--surface);border:1px solid var(--border);border-top:3px solid var(--brand-red);box-shadow:0 1px 2px rgba(11,11,11,.04),0 1px 8px rgba(11,11,11,.04)}
+.pgbar h2{margin:0;font-size:1.15rem;font-weight:800;color:var(--brand-dark);display:flex;align-items:center;gap:10px}
+.pgnum{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:26px;padding:0 7px;border-radius:8px;background:var(--brand-dark);color:#fff;font-size:.74rem;font-weight:700}
+.pgbar .lk{display:flex;gap:14px;font-size:.8rem;font-weight:600}
+.pgbar .lk a{color:var(--brand-dark);text-decoration:none}.pgbar .lk a:hover{text-decoration:underline}
+.pgbody{position:relative;min-height:220px}
+.pgbody iframe{display:block;width:100%;border:0;height:700px;background:transparent}
+.pgload{padding:70px 20px;text-align:center;color:var(--muted)}
+@media print{.stack{display:none}}
 </style>
 <link rel="stylesheet" href="/ui.css">
 </head>
@@ -189,6 +202,7 @@ html{scroll-behavior:smooth}
     </article>
   </section>
 </div>
+<div class="stack" id="stack"></div>
 <footer class="footer">Mittal Group · Summary of Pending PR, Store Issue, Pending Purchase Orders, PO Approval Pending, Purchase and Store Stock · Source: SAP S/4HANA Cloud</footer>
 
 <script id="pgs" type="application/json">__PGS__</script>
@@ -455,6 +469,58 @@ function load(force){
   fetchJSON('/api/po-approvers').then(j=>{AP=j.approvers||{};RULES=j.rules||[];}).catch(()=>{}).finally(()=>{APTRIED=true;PREP.apprFor=null;renderAll();});
 }
 
+/* ---------- the other pages, one under the other (menu order): Store Issue, Store Stock, Pending PR, ... ---------- */
+const STACK=[['issue','Store Issue','/issue'],['stock','Store Stock','/stock'],['pr','Pending PR','/'],['po','Pending Purchase Orders','/po'],['approval','PO Approval Pending','/po-approval'],['purchase','Purchase','/purchase']];
+// inside the stack a page has no header, menu, footer or back-to-top button of its own, and its long lists have a fixed height (a page that is as tall as its content must not use vh)
+const EMBED_CSS='.stick,.footer,.totop{display:none!important}.tscroll{max-height:640px!important}html,body{background:transparent!important}';
+const SECS={};
+function buildStack(){
+  $('stack').innerHTML=STACK.map((s,i)=>`<section class="pg" id="p-${s[0]}" data-id="${s[0]}" data-href="${s[2]}"><div class="pgbar"><div class="in"><h2><span class="pgnum">${i+2}</span>${esc(s[1])}</h2><div class="lk"><a href="${s[2]}">Open full page &#8599;</a><a href="#top" data-top="1">&#8593; Top</a></div></div></div><div class="pgbody"><div class="pgload">Loading ${esc(s[1])}…</div></div></section>`).join('');
+  for(const el of document.querySelectorAll('#stack .pg'))SECS[el.dataset.id]={el,ready:null};
+  for(const a of document.querySelectorAll('#stack [data-top]'))a.addEventListener('click',e=>{e.preventDefault();window.scrollTo({top:0,behavior:'smooth'});});
+}
+function mountPage(id){
+  const s=SECS[id];if(!s)return Promise.resolve();if(s.ready)return s.ready;
+  s.ready=new Promise(resolve=>{
+    const f=document.createElement('iframe');f.title=id;f.src=s.el.dataset.href+(s.el.dataset.href.includes('?')?'&':'?')+'embed=1';
+    let done=false;const fin=()=>{if(!done){done=true;resolve();}};setTimeout(fin,20000);
+    f.addEventListener('load',()=>{
+      try{
+        const d=f.contentDocument,st=d.createElement('style');st.textContent=EMBED_CSS;d.head.appendChild(st);
+        d.documentElement.dataset.theme=document.documentElement.dataset.theme||'dark';
+        const fit=()=>{f.style.height=Math.ceil(d.body.getBoundingClientRect().height)+'px';};
+        fit();new f.contentWindow.ResizeObserver(fit).observe(d.body);
+        const ld=s.el.querySelector('.pgload');if(ld)ld.remove();
+      }catch(e){}
+      setTimeout(fin,1200);  // the page is drawn; its data arrives a moment later and the height follows by itself
+    });
+    s.el.querySelector('.pgbody').appendChild(f);
+  });
+  return s.ready;
+}
+// every page above the one wanted loads first, so the layout stops moving before the scroll
+function goSec(id){
+  if(id==='top'){window.scrollTo({top:0,behavior:'smooth'});return;}
+  const ids=STACK.map(s=>s[0]),up=ids.slice(0,ids.indexOf(id)+1);
+  Promise.all(up.map(mountPage)).then(()=>SECS[id].el.scrollIntoView({behavior:'smooth',block:'start'}));
+}
+function stackInit(){
+  buildStack();
+  const io=new IntersectionObserver(es=>{for(const e of es)if(e.isIntersecting)mountPage(e.target.dataset.id);},{rootMargin:'900px 0px 900px 0px'});
+  for(const s of Object.values(SECS))io.observe(s.el);
+  // the menu of the Summary jumps to the page in the stack
+  const map={'/issue':'issue','/stock':'stock','/':'pr','/po':'po','/po-approval':'approval','/purchase':'purchase','/summary':'top'};
+  const tabs=[...document.querySelectorAll('.nav a')];
+  for(const a of tabs){const id=map[a.getAttribute('href')];if(!id)continue;a.dataset.sec=id;a.addEventListener('click',e=>{e.preventDefault();goSec(id);});}
+  // the tab of the page that is in view is lit
+  let tick=false;
+  const spy=()=>{tick=false;let cur='top';for(const s of STACK){const r=SECS[s[0]].el.getBoundingClientRect();if(r.top<=(parseInt(getComputedStyle(document.documentElement).getPropertyValue('--stickH'))||120)+40)cur=s[0];}for(const a of tabs)if(a.dataset.sec)a.classList.toggle('on',a.dataset.sec===cur);};
+  window.addEventListener('scroll',()=>{if(!tick){tick=true;setTimeout(spy,60);}},{passive:true});
+  const setH=()=>{const h=document.querySelector('.stick');if(h)document.documentElement.style.setProperty('--stickH',h.offsetHeight+'px');};setH();window.addEventListener('resize',setH);
+  // the colour mode follows into the pages
+  new MutationObserver(()=>{for(const s of Object.values(SECS)){const f=s.el.querySelector('iframe');try{if(f&&f.contentDocument)f.contentDocument.documentElement.dataset.theme=document.documentElement.dataset.theme;}catch(e){}}}).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+}
+
 /* ---------- controls ---------- */
 $('plantSel').addEventListener('change',e=>{S.plant=e.target.value;renderAll();});
 $('dFrom').addEventListener('change',e=>{S.from=dayOf(e.target.value);renderAll();});
@@ -469,7 +535,7 @@ let savedTheme='dark';try{savedTheme=localStorage.getItem('spr-theme')||'dark';}
 setTheme(savedTheme==='light'?'light':'dark',false);
 $('themeSeg').addEventListener('click',e=>{const b=e.target.closest('button[data-th]');if(b)setTheme(b.dataset.th,true);});
 
-setMonthDates();renderAll();load(false);
+setMonthDates();renderAll();load(false);stackInit();
 setInterval(()=>{if(!document.hidden)load(false);},1800000);
 })();
 </script>
