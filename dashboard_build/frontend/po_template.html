@@ -380,11 +380,11 @@ function render(){
   if(!D)return;  // the data is still loading
   const rows=R.filter(r=>pass(r));
   // KPIs
-  let amt=0,open=0,dlv=0,fx=0;const pos=new Set(),sups=new Set();
-  for(const r of rows){pos.add(r.po);sups.add(r.sup);amt+=r.amtI;open+=r.pendI;dlv+=r.dlvI;if(r.cur!=='INR')fx++;}
+  let amt=0,open=0,dlv=0,fx=0,ast=0;const pos=new Set(),sups=new Set();
+  for(const r of rows){pos.add(r.po);sups.add(r.sup);amt+=r.amtI;open+=r.pendI;dlv+=r.dlvI;if(r.type==='ZAST')ast+=r.pendI;if(r.cur!=='INR')fx++;}
   CUR={rows,amt,open,dlv};
   // every tile opens its details under the tiles
-  $('kpis').innerHTML=[[fmtINR(amt),'Total order value (INR)'+(fx?` · includes ${fmtN(fx)} other-currency items converted to INR at the PO's exchange rate`:''),'val'],[fmtINR(dlv),'Delivered value (INR) · goods already received','delivered'],[fmtINR(open),'Pending value (INR) · still to be delivered','open'],[fmtN(pos.size),'Purchase orders','pos'],[fmtN(rows.length),'PO items','items'],[fmtN(sups.size),'Suppliers','sups']]
+  $('kpis').innerHTML=[[fmtINR(amt),'Total order value (INR)'+(fx?` · includes ${fmtN(fx)} other-currency items converted to INR at the PO's exchange rate`:''),'val'],[fmtINR(dlv),'Delivered value (INR) · goods already received','delivered'],[fmtINR(open),'Pending value (INR) · still to be delivered'+(ast?` · incl. ${fmtINR(ast)} of asset POs`:''),'open'],[fmtN(pos.size),'Purchase orders','pos'],[fmtN(rows.length),'PO items','items'],[fmtN(sups.size),'Suppliers','sups']]
     .map(t=>`<button type="button" class="tile tilebtn" data-tile="${t[2]}" aria-expanded="${S.tile===t[2]}"><div class="tv">${t[0]}</div><div class="tl">${t[1]}</div><div class="ts">${S.tile===t[2]?'click to hide':'click for details'}</div></button>`).join('');
   renderTile();
   // chips
@@ -448,7 +448,7 @@ function render(){
     price:`<td class="num nw">${fmtAmt(r.price,r.cur)}</td>`,
     amt:`<td class="num nw"${r.cur!=='INR'&&r.rate>0?` title="${esc('= '+fmtINR(r.amtI)+' at the PO exchange rate '+r.rate)}"`:''}>${fmtAmt(r.amt,r.cur)}</td>`,
     dlv:`<td class="num nw">${r.dlvAmt?fmtAmt(r.dlvAmt,r.cur):'–'}</td>`,
-    pend:`<td class="num nw qtd">${r.pendAmt?fmtAmt(r.pendAmt,r.cur):(r.type==='ZAST'&&r.still>0?'<span title="Asset PO: SAP shows no value to be delivered">–</span>':'–')}</td>`,
+    pend:`<td class="num nw qtd">${r.pendAmt?fmtAmt(r.pendAmt,r.cur)+(r.type==='ZAST'?' <span title="Asset PO: counted here; SAP lists it under Value to be Invoiced, not under Value to be Delivered">*</span>':''):'–'}</td>`,
     del:`<td title="${esc(st[2])}"><span class="pill ${st[0]}">${st[1]}</span></td>`,
     rel:`<td title="Proc. state ${esc(r.proc)}"><span class="pill ${r.proc==='03'||r.proc==='08'?'pend':'ok'}">${r.proc==='03'?'In Approval':r.proc==='08'?'Rejected':'Released'}</span></td>`};
     return '<tr>'+COLS.map(k=>c[k]).join('')+'</tr>';};
@@ -458,7 +458,7 @@ function render(){
   const token=++renderToken;let done=first.length;
   const more=()=>{if(token!==renderToken||done>=slice.length)return;document.querySelector('#tbl tbody').insertAdjacentHTML('beforeend',slice.slice(done,done+600).map((r,i)=>rowHtml(r,done+i)).join(''));done+=600;setTimeout(more,0);};
   setTimeout(more,0);
-  $('tcount').innerHTML=fmtN(rows.length)+' items in '+fmtN(pos.size)+' purchase orders · Total order value '+fmtINR(amt)+' · Delivered value '+fmtINR(dlv)+' · <b>Pending value '+fmtINR(open)+'</b>'+(fx?' · includes '+fmtN(fx)+' other-currency items converted to INR at the PO\'s exchange rate':'');
+  $('tcount').innerHTML=fmtN(rows.length)+' items in '+fmtN(pos.size)+' purchase orders · Total order value '+fmtINR(amt)+' · Delivered value '+fmtINR(dlv)+' · <b>Pending value '+fmtINR(open)+'</b>'+(ast?' (incl. '+fmtINR(ast)+' of asset POs)':'')+(fx?' · includes '+fmtN(fx)+' other-currency items converted to INR at the PO\'s exchange rate':'');
   $('pinfo').textContent=!rows.length?'':rows.length<=PAGE||S.all?`All ${fmtN(rows.length)} items shown`:`Showing the first ${fmtN(PAGE)} of ${fmtN(rows.length)}`;
   $('seeAll').hidden=rows.length<=PAGE;$('seeAll').textContent=S.all?'Show first '+PAGE:'See all '+fmtN(rows.length);
 }
@@ -526,8 +526,9 @@ function setData(d){
     const r={day:a[1],cday:a[0],pday:a[1],po:a[2],item:a[3],type:d.types[a[4]],sup:a[5],plant:d.plants[a[6]],sloc:d.slocs[a[7]],mat:d.mats[a[8]],text:d.texts[a[9]],grp:d.groups[a[10]],mtype:d.mtypes[a[11]],user:d.users[a[12]],unit:d.units[a[13]],cur:d.curs[a[14]],qty:a[15],price:a[16],amt:a[17],pend:!!(a[18]&1),pg:d.pgs[a[19]],org:d.orgs[a[20]],proc:d.procs[a[21]],gr:a[22],still:a[23],gst:s[2]};
     // delivery from the status view: still to deliver > 0 = open (nothing received) or partly; nothing left and something received = delivered
     r.st=r.gr===null?'nodata':r.still>0?(r.gr>0?'partly':'open'):(r.gr!==0?'done':'nogr');
-    // asset POs (ZAST) have a non-valuated goods receipt in SAP, so SAP shows no value still to be delivered for them
-    r.pendAmt=r.type!=='ZAST'&&r.still>0&&r.qty>0?r.amt*Math.min(r.still,r.qty)/r.qty:0;
+    // value of what is still to be delivered: net value x quantity still to deliver / order quantity. Asset POs (ZAST) are counted too, so that
+    // Total = Delivered + Pending; SAP leaves them out of its "Value to be Delivered" (non-valuated goods receipt) and lists them under "Value to be Invoiced".
+    r.pendAmt=r.still>0&&r.qty>0?r.amt*Math.min(r.still,r.qty)/r.qty:0;
     // delivered value as in SAP: goods received x net value / order quantity
     r.dlvAmt=r.gr!==null&&r.qty>0?r.amt*r.gr/r.qty:0;
     // the same values in rupees, as SAP's own list shows them: other currencies are converted at the PO's exchange rate (1 for INR)
