@@ -202,6 +202,7 @@ const pgDisp=key=>{const i=key.indexOf(' / ');return i<0?key:key.slice(0,i)+' / 
 const uTip=id=>USER_NAMES[id]?id+(USER_NAMES[id][1]?' ('+USER_NAMES[id][1]+')':''):id;
 const PO_TYPES={NB:'Standard PO',NB2:'Enh.Ret.to Supplier',UB:'Stock Transp. Order',UD:'StockTranspOrderDel',ZAST:'Asset PO',ZBNG:'Prepaid Bank Guarant',ZDNB:'Domestic-Others',ZDRM:'Domestic PO - Raw (RM from inside India)',ZIMP:'Import PO - Others',ZIRM:'Import PO - Raw (RM from outside India)',ZPRE:'Prepaid Expenses',ZPRI:'Prepaid Insurance',ZSER:'Service PO',ZSTO:'STO PO (internal transfer between departments)',ZSUB:'Sub Contracting PO (internal scrap to RM)',ZTRD:'Trading PO'};
 const typeName=t=>PO_TYPES[t]?t+' · '+PO_TYPES[t]:t;
+const typeShort=t=>PO_TYPES[t]?t+' · '+PO_TYPES[t].replace(/\s*\(.*$/,''):t;  // the dropdown shows the SAP name only, the tables show the meaning too
 const AGES=['0–2 days','3–7 days','8–15 days','16–30 days','31–90 days','Over 90 days'];
 const ageBucket=a=>a<=2?0:a<=7?1:a<=15?2:a<=30?3:a<=90?4:5;
 const UNKNOWN='(not on the approver list)';
@@ -468,7 +469,7 @@ function fillSelects(){
   const cnt=f=>{const c=new Map();for(const p of base)for(const k of f(p))c.set(k,(c.get(k)||0)+1);return [...c.entries()].sort((a,b)=>b[1]-a[1]);};
   const keep=(sel,val,list)=>{if(val!==null&&val!==''&&!list.some(e=>e[0]===val))return null;return val;};
   const pl=cnt(p=>p.plants);$('plantSel').innerHTML=opts('All plants',pl,k=>k);if(S.plant&&!pl.some(e=>e[0]===S.plant))S.plant='';$('plantSel').value=S.plant;
-  const tl=cnt(p=>[p.type]);$('typeSel').innerHTML=opts('All PO types',tl,typeName);S.type=keep('type',S.type,tl);$('typeSel').value=S.type===null?'':S.type;
+  const tl=cnt(p=>[p.type]);$('typeSel').innerHTML=opts('All PO types',tl,typeShort);S.type=keep('type',S.type,tl);$('typeSel').value=S.type===null?'':S.type;
   const gl=cnt(p=>[p.pgKey]);$('pgSel').innerHTML=opts('All purch. groups',gl,pgDisp);S.pg=keep('pg',S.pg,gl);$('pgSel').value=S.pg===null?'':S.pg;
   const al=cnt(p=>[p.apprKey]);$('apprSel').innerHTML=opts('All approvers',al,k=>k);S.appr=keep('appr',S.appr,al);$('apprSel').value=S.appr===null?'':S.appr;
   const ul=cnt(p=>[p.user]);$('userSel').innerHTML=opts('All users',ul,uName);S.user=keep('user',S.user,ul);$('userSel').value=S.user===null?'':S.user;

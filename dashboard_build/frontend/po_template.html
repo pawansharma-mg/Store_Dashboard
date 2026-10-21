@@ -40,6 +40,12 @@ h1{margin:0;font-size:1.1rem;font-weight:700;color:var(--brand-dark)}
 .fld>span{font-size:.78rem;color:var(--ink2)}
 .fld select,.fld input{height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface);padding:0 10px;min-width:0}
 .grow{flex:1 1 240px}.grow input{width:100%}
+@media (min-width:701px){
+  .bar{gap:8px 10px}
+  .fld select,.fld input{text-overflow:ellipsis}
+  #plantSel{width:96px}#typeSel{width:150px}#pogSel{width:150px}#mtSel{width:150px}#pgSel{width:150px}#supIn{width:150px}#delSel{width:140px}#relSel{width:96px}
+  #dtSel{width:112px}#dFrom,#dTo{width:132px}
+}
 .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
 .chip{border:1px solid var(--border);border-radius:999px;background:var(--surface);padding:3px 11px;font-size:12.5px}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-top:16px}
@@ -135,10 +141,10 @@ tr.sel td{background:rgba(28,173,228,.14)!important}
   <section class="bar" aria-label="Filters">
     <label class="fld"><span>Plant</span><select id="plantSel"></select></label>
     <label class="fld"><span>PO type</span><select id="typeSel"></select></label>
-    <label class="fld"><span>PO group</span><select id="pogSel"><option value="">All PO groups</option><option value="RM">RM (all: ZDRM, ZIRM, ZSTO, ZSUB)</option><option value="RMBUY">RM bought (ZDRM, ZIRM)</option><option value="RMINT">RM internal transfer (ZSTO, ZSUB)</option><option value="OTHER">Other PO types</option></select></label>
+    <label class="fld"><span>PO group</span><select id="pogSel"><option value="">All PO groups</option><option value="RM" title="ZDRM, ZIRM, ZSTO, ZSUB">RM (all)</option><option value="RMBUY" title="ZDRM, ZIRM">RM bought</option><option value="RMINT" title="ZSTO, ZSUB">RM internal transfer</option><option value="OTHER">Other PO types</option></select></label>
     <label class="fld"><span>Material type</span><select id="mtSel"></select></label>
     <label class="fld"><span>Purch. group</span><select id="pgSel"></select></label>
-    <label class="fld"><span>Supplier</span><input id="supIn" list="supList" placeholder="All suppliers" autocomplete="off" style="width:230px"><datalist id="supList"></datalist></label>
+    <label class="fld"><span>Supplier</span><input id="supIn" list="supList" placeholder="All suppliers" autocomplete="off"><datalist id="supList"></datalist></label>
     <label class="fld"><span>Delivery</span><select id="delSel"><option value="every">All</option><option value="pending" selected>Pending delivery</option></select></label>
     <label class="fld"><span>Release</span><select id="relSel"><option value="">All</option><option value="ok">Released</option><option value="appr">In Approval</option><option value="rej">Rejected</option></select></label>
     <label class="fld"><span>Date</span><select id="dtSel"><option value="cr" selected>Created on</option><option value="po">PO date (SAP Order Date)</option></select></label>
@@ -234,6 +240,7 @@ const PO_TYPES={NB:'Standard PO',NB2:'Enh.Ret.to Supplier',UB:'Stock Transp. Ord
 const DEL_TXT={pending:'Pending delivery',every:'All'};
 const REL_TXT={ok:'Released',appr:'In Approval',rej:'Rejected'};
 const typeName=t=>PO_TYPES[t]?t+' · '+PO_TYPES[t]:t;
+const typeShort=t=>PO_TYPES[t]?t+' · '+PO_TYPES[t].replace(/\s*\(.*$/,''):t;  // the dropdown shows the SAP name only, the tables show the meaning too
 // Material types (the user's list of 21-Oct-2026). STORE_MT are the Store material types (marked yellow in that list): a view of only the
 // Store POs shows just these. A PO item without a material (services, asset text items) has no material type: '(blank)'.
 // PO groups (the user's explanation of 21-Oct-2026). RM: ZDRM raw material bought inside India, ZIRM raw material imported from outside India,
@@ -593,13 +600,13 @@ function setData(d){
   $('plantSel').innerHTML='<option value="">All plants</option>'+[...pc.entries()].sort((a,b)=>b[1]-a[1]).map(e=>`<option value="${esc(e[0])}">${esc(e[0])}</option>`).join('');
   $('plantSel').value=S.plant;
   const tc=new Map();for(const r of R)tc.set(r.type,(tc.get(r.type)||0)+1);
-  $('typeSel').innerHTML='<option value="">All PO types</option>'+[...tc.entries()].sort((a,b)=>b[1]-a[1]).map(e=>`<option value="${esc(e[0])}">${esc(typeName(e[0]))}</option>`).join('');
+  $('typeSel').innerHTML='<option value="">All PO types</option>'+[...tc.entries()].sort((a,b)=>b[1]-a[1]).map(e=>`<option value="${esc(e[0])}">${esc(typeShort(e[0]))}</option>`).join('');
   if(S.type!==null&&!tc.has(S.type))S.type=null;
   $('typeSel').value=S.type===null?'':S.type;
   // material types: "Store material types" first, then every type of the data, most items first
   const mc=new Map();for(const r of R){const k=r.mtype||'(blank)';mc.set(k,(mc.get(k)||0)+1);}
   const mo=e=>`<option value="${esc(e[0])}">${esc(mtLabel(e[0]))}</option>`,mcs=[...mc.entries()].sort((a,b)=>b[1]-a[1]);
-  $('mtSel').innerHTML='<option value="">All material types</option><optgroup label="Store material types"><option value="STORE">All Store material types ('+STORE_MT.join(', ')+')</option>'+mcs.filter(e=>STORE_MT.includes(e[0])).map(mo).join('')+'</optgroup><optgroup label="Other material types">'+mcs.filter(e=>!STORE_MT.includes(e[0])).map(mo).join('')+'</optgroup>';
+  $('mtSel').innerHTML='<option value="">All material types</option><optgroup label="Store material types"><option value="STORE" title="'+STORE_MT.join(', ')+'">All Store types</option>'+mcs.filter(e=>STORE_MT.includes(e[0])).map(mo).join('')+'</optgroup><optgroup label="Other material types">'+mcs.filter(e=>!STORE_MT.includes(e[0])).map(mo).join('')+'</optgroup>';
   if(S.mt!==null&&S.mt!=='STORE'&&!mc.has(S.mt))S.mt=null;
   $('mtSel').value=S.mt===null?'':S.mt;
   // supplier list for the Supplier box: 'Name (number)', suppliers with the most items first
