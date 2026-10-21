@@ -11,7 +11,7 @@ dashboard_build/
   README.md
 ```
 
-The menu (the same on every page) is in this order: Summary, Store Issue, Pending PR, Pending Purchase Orders, PO Approval Pending, Purchase, Store Stock (Store Issue first, as the user asked on 21-Oct-2026). The order is the `<nav class="nav">` line at the top of each page template; the table below is in the order the pages were built.
+The menu (the same on every page) is in this order: Summary, Store Issue, Store Stock, Pending PR, Pending Purchase Orders, PO Approval Pending, Purchase (Store Issue first and Store Stock second, as the user asked on 21-Oct-2026). The order is the `<nav class="nav">` line at the top of each page template; the table below is in the order the pages were built.
 
 | Page | Menu tab | CDS view(s) | What it shows |
 |---|---|---|---|
