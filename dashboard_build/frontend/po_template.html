@@ -75,11 +75,13 @@ tr.sel td{background:rgba(28,173,228,.14)!important}
 .tablecard{margin-top:12px}
 .tscroll{overflow:auto;max-height:75vh}
 .tscroll table{min-width:1900px}
-#tbl th:nth-child(1),#tbl td:nth-child(1){position:sticky;left:0;z-index:2;box-sizing:border-box;width:46px;min-width:46px;background:var(--surface)}
-#tbl th:nth-child(2),#tbl td:nth-child(2){position:sticky;left:46px;z-index:2;background:var(--surface);box-shadow:2px 0 0 var(--grid)}
+#tbl thead th:nth-child(1),#tbl tbody td:nth-child(1){position:sticky;left:0;z-index:2;box-sizing:border-box;width:46px;min-width:46px;background:var(--surface)}
+#tbl thead th:nth-child(2),#tbl tbody td:nth-child(2){position:sticky;left:46px;z-index:2;background:var(--surface);box-shadow:2px 0 0 var(--grid)}
+.tscroll tfoot td{font-weight:700;border-top:2px solid var(--grid)}
+#tbl tfoot td:first-child{position:sticky;left:0;z-index:3;background:var(--surface)}
 #tbl thead th:nth-child(1),#tbl thead th:nth-child(2){z-index:4}
 #tbl tbody tr:nth-child(even) td:nth-child(-n+2){background:linear-gradient(rgba(128,128,128,.04),rgba(128,128,128,.04)),var(--surface)}
-@media (max-width:700px){#tbl th:nth-child(1),#tbl td:nth-child(1),#tbl th:nth-child(2),#tbl td:nth-child(2){position:static;box-shadow:none}}
+@media (max-width:700px){#tbl thead th:nth-child(1),#tbl tbody td:nth-child(1),#tbl thead th:nth-child(2),#tbl tbody td:nth-child(2),#tbl tfoot td:first-child{position:static;box-shadow:none}}
 .matc{min-width:270px;max-width:340px}
 .tscroll tbody tr td.qtd{font-weight:700;background:rgba(250,178,25,.20)}
 .tscroll>table>thead th.qtd{font-weight:800;color:var(--ink);box-shadow:inset 0 -3px 0 var(--warn),0 2px 0 var(--grid)}
@@ -291,6 +293,32 @@ const qtyTxt=m=>m.size&&[...m.values()].every(v=>v===0)?'0':[...m.entries()].map
 const relTxt=p=>p==='03'?'In Approval':p==='08'?'Rejected':'Released';
 const poHead=first=>`<thead><tr><th>${first}</th><th>PO</th><th>Created on</th><th>Supplier</th><th>PO type</th><th>Plant</th><th class="num">Items</th><th class="num">Items pending</th><th class="num">Net value</th><th class="num qh">Delivered value</th><th class="num qh">Value to be delivered</th><th class="num qh">Delivered quantity</th><th class="num qh">Quantity to be delivered</th><th>Release</th></tr></thead>`;
 const poRow=(x,i)=>`<tr><td>${i+1}</td><td class="nw">${esc(x.po)}</td><td class="nw">${x.day===null?'–':fmtDay(x.day)}</td><td class="supc" title="${esc('Supplier '+D.suppliers[x.sup][0])}">${esc(D.suppliers[x.sup][1]||D.suppliers[x.sup][0])}</td><td class="nw" title="${esc(typeName(x.type))}">${esc(x.type)}</td><td class="nw">${esc([...x.plants].sort().join(' / '))}</td><td class="num">${fmtN(x.n)}</td><td class="num">${fmtN(x.still)}</td><td class="num nw">${fv(x.amt,x)}</td><td class="num nw">${x.dlv?fmtINR(x.dlv):(x.fx>0&&x.amt===0?fv(0,x):'–')}</td><td class="num nw qtd">${fv(x.pend,x)}</td><td class="num nw qlist">${qtyTxt(x.g)}</td><td class="num nw qtd qlist">${qtyTxt(x.q)}</td><td class="nw">${relTxt(x.rel)}</td></tr>`;
+// units with a zero total are left out when another unit has some (a list of "0 PC", "0 SET" ... says nothing)
+const nzQ=m=>{const e=[...m].filter(([,v])=>v!==0);return e.length?new Map(e):m;};
+// total row of a list of purchase orders (the whole list, not only the rows shown): items, values in rupees, quantities per unit (first 3 units, then "+ N more units")
+function poFoot(list){
+  const tt={n:0,still:0,amt:0,dlv:0,pend:0,q:new Map(),g:new Map()};
+  for(const x of list){tt.n+=x.n;tt.still+=x.still;tt.amt+=x.amt;tt.dlv+=x.dlv;tt.pend+=x.pend;for(const [u,v] of x.q)tt.q.set(u,(tt.q.get(u)||0)+v);for(const [u,v] of x.g)tt.g.set(u,(tt.g.get(u)||0)+v);}
+  return `<tfoot><tr><td colspan="6">Total (${fmtN(list.length)} purchase orders)</td><td class="num">${fmtN(tt.n)}</td><td class="num">${fmtN(tt.still)}</td><td class="num nw">${fmtINR(tt.amt)}</td><td class="num nw">${fmtINR(tt.dlv)}</td><td class="num nw">${fmtINR(tt.pend)}</td><td class="num nw qlist">${qCap(nzQ(tt.g),3)}</td><td class="num nw qlist">${qCap(nzQ(tt.q),3)}</td><td></td></tr></tfoot>`;
+}
+// total row of the PO items list, over all the items of the current filters
+function listFoot(rows){
+  const q=new Map(),g=new Map(),s=new Map();let amt=0,dlv=0,pend=0;
+  for(const r of rows){
+    q.set(r.unit,(q.get(r.unit)||0)+(r.qty||0));
+    if(r.gr!==null&&r.gr!==undefined)g.set(r.unit,(g.get(r.unit)||0)+r.gr);
+    if(r.still>0)s.set(r.unit,(s.get(r.unit)||0)+r.still);
+    amt+=r.amtI;dlv+=r.dlvI;pend+=r.pendI;
+  }
+  const F={
+    qty:`<td class="num nw qlist">${qCap(nzQ(q),3)}</td>`,
+    gr:`<td class="num nw qlist">${qCap(nzQ(g),3)}</td>`,
+    still:`<td class="num nw qtd qlist">${qCap(nzQ(s),3)}</td>`,
+    amt:`<td class="num nw" title="In rupees (other currencies converted)">${fmtINR(amt)}</td>`,
+    dlv:`<td class="num nw">${fmtINR(dlv)}</td>`,
+    pend:`<td class="num nw qtd">${fmtINR(pend)}</td>`};
+  return `<tfoot><tr><td colspan="3">Total (${fmtN(rows.length)} items)</td>${COLS.slice(3).map(k=>F[k]||'<td></td>').join('')}</tr></tfoot>`;
+}
 const TILE_INFO={
   val:['Total order value','The full order value (INR) of the PO items of the current filters, the part already delivered included: by PO type, by plant, and the 10 purchase orders with the most value.'],
   delivered:['Delivered value','Value (INR) of the goods already received (delivered quantity x price) for the current filters, most delivered value first.'],
@@ -306,18 +334,18 @@ function renderTile(){
   $('tileCard').hidden=false;
   $('tileTitle').textContent=TILE_INFO[k][0];$('tileHint').textContent=TILE_INFO[k][1];
   const rows=CUR.rows,none='<div class="empty">Nothing matches the filters.</div>';
-  let list=null,thead='',rowFn=null,html='',n=0,unit='rows';
+  let list=null,thead='',rowFn=null,foot=null,html='',n=0,unit='rows';
   if(k==='val'){
     const ty=new Map(),pl=new Map();for(const r of rows){add(ty,r.type,r);add(pl,r.plant,r);}
     const top=poList(rows).sort((a,b)=>b.amt-a.amt).slice(0,10);
     html='<h3 class="subh">By PO type</h3>'+aggTable(byValue(ty),'PO type',x=>esc(typeName(x)))+'<h3 class="subh">By plant</h3>'+aggTable(byValue(pl),'Plant',x=>esc(x))+
-      '<h3 class="subh">The 10 purchase orders with the most value</h3>'+(top.length?`<table>${poHead('#')}<tbody>${top.map(poRow).join('')}</tbody></table>`:none);
+      '<h3 class="subh">The 10 purchase orders with the most value</h3>'+(top.length?`<table>${poHead('#')}<tbody>${top.map(poRow).join('')}</tbody>${poFoot(top)}</table>`:none);
   }else if(k==='delivered'){
-    list=poList(rows).filter(x=>x.dlv>0).sort((a,b)=>b.dlv-a.dlv);thead=poHead('#');rowFn=poRow;unit='purchase orders';
+    list=poList(rows).filter(x=>x.dlv>0).sort((a,b)=>b.dlv-a.dlv);thead=poHead('#');rowFn=poRow;foot=poFoot;unit='purchase orders';
   }else if(k==='open'){
-    list=poList(rows).filter(x=>x.pend>0||x.still>0).sort((a,b)=>b.pend-a.pend||b.still-a.still);thead=poHead('#');rowFn=poRow;unit='purchase orders';
+    list=poList(rows).filter(x=>x.pend>0||x.still>0).sort((a,b)=>b.pend-a.pend||b.still-a.still);thead=poHead('#');rowFn=poRow;foot=poFoot;unit='purchase orders';
   }else if(k==='pos'){
-    list=poList(rows).sort((a,b)=>(b.day||0)-(a.day||0)||b.po.localeCompare(a.po));thead=poHead('#');rowFn=poRow;unit='purchase orders';
+    list=poList(rows).sort((a,b)=>(b.day||0)-(a.day||0)||b.po.localeCompare(a.po));thead=poHead('#');rowFn=poRow;foot=poFoot;unit='purchase orders';
   }else if(k==='items'){
     const sm=new Map();for(const r of rows){let x=sm.get(r.st);if(!x)sm.set(r.st,x=agg());x.n++;x.pos.add(r.po);addQ(x.q,r);x.amt+=r.amtI;x.pend+=r.pendI;if(r.cur!=='INR')x.fx++;}
     html='<h3 class="subh">By delivery status</h3>'+aggTable([...sm.entries()].sort((a,b)=>b[1].amt-a[1].amt),'Delivery',x=>esc(ST_TXT[x]||x))+'<h3 class="subh">Items with the most value (first 25)</h3>';
@@ -327,12 +355,13 @@ function renderTile(){
     const m=new Map();for(const r of rows)add(m,r.sup,r);
     list=byValue(m);unit='suppliers';
     const tot=CUR.amt;
+    foot=()=>`<tfoot><tr><td colspan="3">Total (${fmtN(list.length)} suppliers)</td><td class="num">${fmtN(new Set(CUR.rows.map(r=>r.po)).size)}</td><td class="num">${fmtN(CUR.rows.length)}</td><td class="num nw">${fmtINR(CUR.amt)}</td><td class="num nw">${fmtINR(CUR.open)}</td><td class="num">100%</td></tr></tfoot>`;
     thead='<thead><tr><th>#</th><th>Supplier</th><th>GSTIN</th><th class="num">POs</th><th class="num">Items</th><th class="num">Net value</th><th class="num qh">Value to be delivered</th><th class="num">Share</th></tr></thead>';
     rowFn=([s,x],i)=>`<tr><td>${i+1}</td><td>${esc(supLabel(s))}</td><td class="nw">${esc(D.suppliers[s][2]||'–')}</td><td class="num">${fmtN(x.pos.size)}</td><td class="num">${fmtN(x.n)}</td><td class="num nw"><b>${fv(x.amt,x)}</b></td><td class="num nw">${fv(x.pend,x)}</td><td class="num">${shareOf(x.amt,tot)}</td></tr>`;
   }
   if(list){
     n=list.length;const slice=S.tileAll?list:list.slice(0,25),first=S.tileAll?slice.slice(0,300):slice;
-    $('tileBox').innerHTML=list.length?`<table>${thead}<tbody>${first.map(rowFn).join('')}</tbody></table>`:none;
+    $('tileBox').innerHTML=list.length?`<table>${thead}<tbody>${first.map(rowFn).join('')}</tbody>${foot?foot(list):''}</table>`:none;
     // See all can mean thousands of lines: the first rows appear at once and the rest are added in batches
     const token=++tileToken;let done=first.length;
     const more=()=>{if(token!==tileToken||done>=slice.length)return;const tb=$('tileBox').querySelector('tbody');if(!tb)return;tb.insertAdjacentHTML('beforeend',slice.slice(done,done+500).map((x,i)=>rowFn(x,done+i)).join(''));done+=500;setTimeout(more,0);};
@@ -425,7 +454,7 @@ function render(){
     return '<tr>'+COLS.map(k=>c[k]).join('')+'</tr>';};
   // See all can mean thousands of rows: the first rows appear at once and the rest are added in small batches, so the page stays responsive
   const first=S.all?slice.slice(0,400):slice;
-  $('tbl').innerHTML='<thead><tr>'+COLS.map(k=>HEAD[k]).join('')+'</tr></thead><tbody>'+(first.length?first.map((r,i)=>rowHtml(r,i)).join(''):'<tr><td colspan="'+COLS.length+'" class="empty">Nothing matches the filters.</td></tr>')+'</tbody>';
+  $('tbl').innerHTML='<thead><tr>'+COLS.map(k=>HEAD[k]).join('')+'</tr></thead><tbody>'+(first.length?first.map((r,i)=>rowHtml(r,i)).join(''):'<tr><td colspan="'+COLS.length+'" class="empty">Nothing matches the filters.</td></tr>')+'</tbody>'+(rows.length?listFoot(rows):'');
   const token=++renderToken;let done=first.length;
   const more=()=>{if(token!==renderToken||done>=slice.length)return;document.querySelector('#tbl tbody').insertAdjacentHTML('beforeend',slice.slice(done,done+600).map((r,i)=>rowHtml(r,done+i)).join(''));done+=600;setTimeout(more,0);};
   setTimeout(more,0);
