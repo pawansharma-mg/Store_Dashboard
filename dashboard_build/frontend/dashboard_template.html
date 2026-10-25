@@ -108,7 +108,6 @@ button.tile[aria-pressed="true"]{border-color:var(--ink)}
 .hrow.off{opacity:.4}
 .hrow:hover .hl{text-decoration:underline}
 .legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:12px;font-size:12.5px;color:var(--ink2)}
-.sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px}
 
 .mcols{display:flex;align-items:flex-end;gap:2px;height:190px;border-bottom:1px solid var(--axis)}
 .mc{flex:1 1 0;min-width:0;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:4px}
@@ -166,7 +165,6 @@ h1{font-size:1.1rem;font-weight:700;color:var(--brand-dark);letter-spacing:-.01e
 .card h2{font-size:1.02rem;font-weight:700;display:flex;align-items:center;flex-wrap:wrap;gap:9px}
 .cardhead h2{flex:1 1 auto}
 .sec-badge{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:26px;padding:0 6px;border-radius:8px;background:var(--brand-dark);color:#fff;font-size:.72rem;font-weight:700}
-.badge-live{margin-left:auto;padding:3px 8px;border-radius:999px;font-size:.62rem;font-weight:700;letter-spacing:.04em;color:var(--good);background:rgba(12,163,12,.16)}
 /* KPI tiles: coloured top accent like Case .kpi-accent-* */
 #kpis>*{border-top:3px solid var(--s1)}
 #kpis>:nth-child(2){border-top-color:var(--good)}
@@ -221,6 +219,7 @@ tbody tr:hover td{background:rgba(28,173,228,.07)}
 [hidden]{display:none!important}
 </style>
 <link rel="stylesheet" href="/ui.css">
+<script src="/live.js"></script>
 </head>
 <body>
   <div class="stick"><header class="top">
@@ -229,11 +228,12 @@ tbody tr:hover td{background:rgba(28,173,228,.07)}
       <p class="sub">Store Pending PR · Purchase requisition items waiting for a purchase order. Source: S/4HANA Cloud, YY1_STORE_PENDING_PR_CDS. Data as of <b id="asof"></b>.</p>
     </div></div>
     <div class="tools">
-      <div class="live" id="live" hidden><span class="dot" id="liveDot" style="background:var(--warn)"></span><span id="liveTxt">Connecting to SAP…</span><button id="refresh" class="ghost" type="button">Refresh</button></div>
+      <div class="live" id="live"><span class="dot" id="liveDot" style="background:var(--warn)"></span><span id="liveTxt">Connecting to SAP…</span></div>
+      <button id="refresh" class="btn" type="button">Refresh</button>
       <div class="seg" id="themeSeg" role="group" aria-label="Colour mode"><button type="button" data-th="light" title="Normal (light) mode">Normal</button><button type="button" data-th="dark" title="Dark mode">Dark</button></div>
     </div>
   </header>
-  <nav class="nav"><a href="/summary">Summary</a><a href="/issue">Store Issue</a><a href="/stock">Store Stock</a><a href="/" class="on">Pending PR</a><a href="/po">Pending Purchase Orders</a><a href="/po-approval">PO Approval Pending</a><a href="/purchase">Purchase</a></nav></div>
+  <nav class="nav"><a href="/summary">Summary</a><a href="/issue">Store Issue</a><a href="/stock">Store Stock</a><a href="/" class="on">Pending PR</a><a href="/po">Pending Purchase Orders</a><a href="/po-approval">PO Approval Pending</a><a href="/invoice">Pending Invoice Entry</a><a href="/purchase">Purchase</a><a href="/price">Price Variance</a><a href="/ageing">Payment Ageing</a></nav></div>
 <div class="wrap">
 
   <section class="bar" aria-label="Filters">
@@ -249,26 +249,26 @@ tbody tr:hover td{background:rgba(28,173,228,.07)}
   <section class="kpis" id="kpis" aria-label="Summary"></section>
 
   <section class="card topcard" id="tileCard" hidden>
-    <div class="cardhead"><h2><span id="tileTitle"></span><span class="badge-live">LIVE</span></h2><span id="tileAct"></span></div>
+    <div class="cardhead"><h2><span id="tileTitle"></span></h2><span id="tileAct"></span></div>
     <p class="hint" id="tileHint"></p>
     <div class="tbox" id="tileBox"></div>
     <div class="pager"><span id="tileInfo"></span><div class="btns"><button id="tileAll" type="button">See all</button></div></div>
   </section>
 
   <section class="card srccard" style="margin-top:12px">
-    <h2><span class="sec-badge">1</span>Manual PRs and MRP PRs<span class="badge-live">LIVE</span></h2>
+    <h2><span class="sec-badge">1</span>Manual PRs and MRP PRs</h2>
     <p class="hint">MRP PRs are the requisitions the MRP run proposes (created by the user "MRP Controll", PR type NB); manual PRs are the ones the departments raised. Follows the other filters. Click a line to see only those PRs (click again to remove), or use the filter "PR source".</p>
     <div class="tbox" id="bySrc"></div>
   </section>
 
   <section class="grid">
     <article class="card">
-      <h2><span class="sec-badge">2</span>Ageing<span class="badge-live">LIVE</span></h2>
+      <h2><span class="sec-badge">2</span>Ageing</h2>
       <p class="hint">Days since the PR was created. Click a bar to filter the list.</p>
       <div id="age"></div>
     </article>
     <article class="card">
-      <h2><span class="sec-badge">3</span>Plant and PO status<span class="badge-live">LIVE</span></h2>
+      <h2><span class="sec-badge">3</span>Plant and PO status</h2>
       <p class="hint">Pending items per plant. Click a plant to filter.</p>
       <div id="plant"></div>
       <div class="legend" id="plantLegend"></div>
@@ -278,7 +278,7 @@ tbody tr:hover td{background:rgba(28,173,228,.07)}
       <div id="dim"></div>
     </article>
     <article class="card">
-      <h2><span class="sec-badge">5</span>Created per month<span class="badge-live">LIVE</span></h2>
+      <h2><span class="sec-badge">5</span>Created per month</h2>
       <p class="hint">Items in view by the month their PR was created, every month. Months outside the PR creation date range are faded.</p>
       <div id="month"></div>
     </article>
@@ -286,12 +286,12 @@ tbody tr:hover td{background:rgba(28,173,228,.07)}
 
   <section class="grid">
     <article class="card">
-      <h2><span class="sec-badge">6</span>Pending PR by purchasing group<span class="badge-live">LIVE</span></h2>
+      <h2><span class="sec-badge">6</span>Pending PR by purchasing group</h2>
       <p class="hint">Open items with quantity still to order, as in ME5A. Follows the plant, date and search filters.</p>
       <div class="tbox" id="byPg"></div>
     </article>
     <article class="card">
-      <h2><span class="sec-badge">7</span>Pending PR by user<span class="badge-live">LIVE</span></h2>
+      <h2><span class="sec-badge">7</span>Pending PR by user</h2>
       <p class="hint">Created by is the SAP user ID; requisitioner is the name typed on the PR (often blank).</p>
       <div class="tbox" id="byUser"></div>
     </article>
@@ -299,34 +299,32 @@ tbody tr:hover td{background:rgba(28,173,228,.07)}
 
   <section class="grid">
     <article class="card">
-      <h2><span class="sec-badge">8</span>Month-wise pending<span class="badge-live">LIVE</span></h2>
+      <h2><span class="sec-badge">8</span>Month-wise pending</h2>
       <p class="hint">By requisition date, as in ME5A. Click a month to see it day by day.</p>
       <div class="tbox" id="byMonth"></div>
     </article>
     <article class="card">
-      <h2><span class="sec-badge">9</span><span id="dayTitle">Day-wise pending</span><span class="badge-live">LIVE</span></h2>
+      <h2><span class="sec-badge">9</span><span id="dayTitle">Day-wise pending</span></h2>
       <p class="hint">Click a date to filter the whole dashboard and the item list to that day.</p>
       <div class="tbox" id="byDay"></div>
     </article>
   </section>
 
   <section class="card tablecard">
-    <div class="cardhead"><h2><span class="sec-badge">10</span>Item list<span class="badge-live">LIVE</span></h2><span id="tcount" class="hint" style="margin:0"></span></div>
+    <div class="cardhead"><h2><span class="sec-badge">10</span>Item list</h2><span id="tcount" class="hint" style="margin:0"></span></div>
     <div class="tscroll"><table id="tbl"></table></div>
     <div class="pager"><span id="pinfo"></span><div class="btns"><button id="seeAll" type="button">See all</button></div></div>
   </section>
 
-  <p class="note" id="note"></p>
+  <details class="notebox"><summary>Notes about these figures</summary><p class="note" id="note"></p></details>
 </div>
 <footer class="footer">Mittal Group · Store Pending PR · Source: SAP S/4HANA Cloud, YY1_STORE_PENDING_PR_CDS</footer>
 <div id="tip" hidden></div>
 
-<script id="data" type="application/json">__DATA__</script>
 <script id="users" type="application/json">__USERS__</script>
 <script id="pgs" type="application/json">__PGS__</script>
 <script>
 (function(){
-const EMBED=JSON.parse(document.getElementById('data').textContent);
 let D=null,R=[],M0=0,M1=0,lastFetch=0,renderToken=0,TILE=null,TILEALL=false,tileToken=0,REVEAL=false;
 const $=id=>document.getElementById(id);
 const STATUS=['No PO yet','PO created','RFQ created'];
@@ -392,7 +390,7 @@ function renderKPIs(rows){
   const n=rows.length;let amt=0,od=0,old=0,sus=0;const prs=new Set();
   for(const r of rows){prs.add(r.pr);if(r.sus)sus++;else amt+=r.amt;if(r.od)od++;if(r.age>365)old++;}
   // every tile opens its details under the tiles; Delivery date passed, Older than 1 year and Quantity to check also keep their filter (button inside the details)
-  const cta=k=>`<span class="cta">${TILE===k?'click to hide':'click for details'}</span>`;
+  const cta=k=>TILE===k?'<span class="cta">click to hide</span>':'';
   const btn=(k,extra,inner)=>`<button type="button" class="tile tilebtn" data-tile="${k}" aria-expanded="${TILE===k}"${extra||''}>${inner}</button>`;
   $('kpis').innerHTML=
    `<button type="button" class="hero tilebtn" data-tile="items" aria-expanded="${TILE==='items'}"><div class="big">${fmtN(n)}</div><div class="lab">Pending PR items · quantity not yet ordered<br>${fmtN(prs.size)} pending PRs<br>${cta('items')}</div></button>`+
@@ -726,12 +724,12 @@ function setLive(kind,text){
 }
 const hhmm=ms=>new Date(ms).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
 let loading=false;
-async function load(force){
+async function load(force,auto){
   if(loading)return;
-  loading=true;setLive('busy','Loading from SAP…');
+  loading=true;if(!auto||!D)setLive('busy','Loading from SAP…');
   try{
-    const res=await fetch('/api/pr'+(force?'?refresh=1':''),{cache:'no-store'});
-    const j=await res.json().catch(()=>({}));
+    const g=await LIVE.get('/api/pr',force),res=g.res,j=g.j;
+    if(g.same){lastFetch=g.stamp;setLive('ok','Live from SAP · updated '+hhmm(g.stamp)+' · '+fmtN(R.length)+' items');return;}
     if(!res.ok)throw new Error(j.error||('HTTP '+res.status));
     lastFetch=j.fetchedAt;setData(j);if(!S.dInit){S.dInit=true;setMonthDates();applyLink();}render();
     if(REVEAL){REVEAL=false;setTimeout(()=>{const c=$('tileCard');if(c&&!c.hidden)c.scrollIntoView({behavior:'smooth',block:'start'});},150);}
@@ -743,14 +741,11 @@ async function load(force){
   }finally{loading=false;}
 }
 
-if(EMBED){setData(EMBED);setMonthDates();render();}
-else{
-  $('live').hidden=false;
-  $('kpis').innerHTML='<div class="hero"><div class="lab">Loading live data from SAP…</div></div>';
-  $('refresh').addEventListener('click',()=>load(true));
-  load(false);
-  setInterval(()=>{if(!document.hidden)load(false);},300000);
-}
+$('kpis').innerHTML='<div class="hero"><div class="lab">Loading live data from SAP…</div></div>';
+$('refresh').addEventListener('click',()=>load(true));
+load(false);
+setInterval(()=>{if(!document.hidden)load(false,true);},LIVE.every);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)load(false,true);});
 })();
 </script>
 <script src="/ui.js" defer></script>

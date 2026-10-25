@@ -72,6 +72,30 @@ PURCHASE_FIELDS = [
 ]
 PURCHASE_FILTER = ISSUE_DATE_FILTER + ' and (' + ' or '.join(f"GoodsMovementType_1 eq '{m}'" for m in PURCHASE_MVTS) + ')'
 
+# Pending invoice entry: the supplier's invoice is entered as an inbound delivery (SAP monitor VL06); it is pending while its goods receipt (MIGO) is not posted.
+# From YY1_STORE_INVOICE_VL06_CDS (one row per delivery item, since June 2024). Item status A = goods receipt not started, B = partly, C = done,
+# blank = not relevant (the receipt was posted against the PO directly), so A and B are the pending ones. The view has no supplier name.
+INVOICE_STATUSES = ('A', 'B')
+INVOICE_FIELDS = [
+    'InboundDelivery', 'InboundDeliveryItem', 'PurchaseOrder', 'PurchaseOrderItem', 'Material', 'DeliveryDocumentItemText', 'ProductName', 'Plant',
+    'StorageLocation', 'ActualDeliveryQuantity', 'DeliveryQuantityUnit', 'GoodsMovementStatus', 'OverallGoodsMovementStatus', 'DeliveryDate',
+    'CreationDate', 'Supplier', 'CreatedByUser', 'PurchaseOrderDate', 'PurchaseOrderType', 'PurchasingGroup', 'PurchasingOrganization',
+    'CreatedByUser1', 'GoodsReceiptQty', 'GoodsReceiptAmountInCoCodeCrcy', 'InvoiceReceiptQty', 'InvoiceReceiptAmount', 'StillToBeDeliveredQuantity',
+    'PurchaseOrderQuantityUnit',
+]
+INVOICE_FILTER = '(' + ' or '.join(f"GoodsMovementStatus eq '{s}'" for s in INVOICE_STATUSES) + ')'
+
+# Payment ageing: the open vendor line items of YY1_STORE_VENDOR_AGEING_CDS (SAP FI, one row per vendor line item, both company codes). An item is open while it has
+# no ClearingDate; the page ages the open items by their net due date. Credit items (H, an invoice, amount negative) are what is owed, debit items (S, a payment or a
+# debit note that is not cleared yet, amount positive) reduce it, so the net payable is minus the sum of the amounts (as SAP's vendor line item list shows it).
+AGEING_FIELDS = [
+    'CompanyCode', 'AccountingDocument', 'FiscalYear', 'AccountingDocumentItem', 'AccountingDocumentType', 'SpecialGLCode', 'DebitCreditCode', 'Supplier',
+    'DocumentReferenceID', 'DocumentDate', 'PostingDate', 'DueCalculationBaseDate', 'NetDueDate', 'PaymentTerms', 'AmountInCompanyCodeCurrency',
+    'AmountInTransactionCurrency', 'TransactionCurrency', 'ClearingDate', 'BusinessPlace', 'PaymentBlockingReason', 'PaymentMethod', 'AccountingDocCreatedByUser',
+    'DocumentItemText', 'SupplierName', 'CityName', 'SupplierAccountGroup', 'TaxNumber3',
+]
+AGEING_FILTER = 'ClearingDate eq null'
+
 # Purchasing group -> description, the PGr / Description list the user sent from SAP on 18-Oct-2026 (names are spelled as in SAP).
 # A code that is not listed is shown as its number.
 PG_NAMES = {
@@ -779,6 +803,117 @@ def purchase_compact(rows, asof_day, allowed=None):
     return data
 
 
+def invoice_compact(rows, asof_day):
+    """Pending inbound-delivery items (invoice entered, goods receipt not posted: item status A or B).
+    Rows: [deliveryDay, createdDay, delivery, item, po, poItem, supplier, plant, sloc, material, unit, deliveryQty, status, receivedQty, toDeliverQty,
+    invoicedQty, poDay, poType, purchGroup, createdBy, poCreatedBy, receivedAmount, invoicedAmount].
+    Entries: suppliers [id], mats [id, name]. The delivery quantity is what the supplier brought on this invoice; receivedQty / toDeliverQty are the
+    whole PO item's goods receipt and still-to-deliver quantity (SAP's own figures on the delivery row)."""
+    dicts = {k: {} for k in ('suppliers', 'plants', 'slocs', 'mats', 'units', 'statuses', 'types', 'pgs', 'users')}
+
+    def code(name, value):
+        d = dicts[name]
+        if value not in d:
+            d[value] = len(d)
+        return d[value]
+
+    out = []
+    for r in rows:
+        st = r.get('GoodsMovementStatus')
+        if st not in INVOICE_STATUSES:
+            continue
+        sid = (r.get('Supplier') or '').lstrip('0') or '(blank)'
+        mat = (r.get('Material') or '').lstrip('0')
+        name = (r.get('ProductName') or r.get('DeliveryDocumentItemText') or '').strip()
+        out.append([
+            _day(r.get('DeliveryDate')),
+            _day(r.get('CreationDate')),
+            r.get('InboundDelivery') or '',
+            int(r.get('InboundDeliveryItem') or 0),
+            (r.get('PurchaseOrder') or '').strip(),
+            int(r.get('PurchaseOrderItem') or 0),
+            code('suppliers', sid),
+            code('plants', r.get('Plant') or '(blank)'),
+            code('slocs', r.get('StorageLocation') or ''),
+            code('mats', (mat, name)),
+            code('units', r.get('DeliveryQuantityUnit') or r.get('PurchaseOrderQuantityUnit') or ''),
+            round(_f(r.get('ActualDeliveryQuantity')), 3),
+            code('statuses', st),
+            round(_f(r.get('GoodsReceiptQty')), 3),
+            round(_f(r.get('StillToBeDeliveredQuantity')), 3),
+            round(_f(r.get('InvoiceReceiptQty')), 3),
+            _day(r.get('PurchaseOrderDate')),
+            code('types', r.get('PurchaseOrderType') or ''),
+            code('pgs', r.get('PurchasingGroup') or ''),
+            code('users', r.get('CreatedByUser') or ''),
+            code('users', r.get('CreatedByUser1') or ''),
+            round(_f(r.get('GoodsReceiptAmountInCoCodeCrcy')), 2),
+            round(_f(r.get('InvoiceReceiptAmount')), 2),
+        ])
+    data = {'asofDay': asof_day, 'rows': out}
+    for k, d in dicts.items():
+        data[k] = [list(x) if isinstance(x, tuple) else x for x in d.keys()]
+    return data
+
+
+def _good_day(s):
+    """A date as a day number, or None when SAP holds a nonsense date (year 0205 or 2262 appear on a few documents)."""
+    d = _day(s)
+    return d if d is not None and 10957 <= d <= 47481 else None  # 1 Jan 2000 .. 31 Dec 2099
+
+
+def ageing_compact(rows, asof_day):
+    """Open vendor items (no clearing date). Rows: [postingDay, dueDay, docDate, doc, item, fiscalYear, docType, supplier, amount, foreignAmount, currency,
+    terms, block, method, company, businessPlace, createdBy, specialGL, reference, text].
+    amount is in INR as SAP gives it (credit = negative = owed); foreignAmount in the transaction currency; dueDay is the net due date, else the base date, else the
+    posting date. Entries: suppliers [id, name, city, accountGroup, GSTIN]."""
+    dicts = {k: {} for k in ('types', 'suppliers', 'curs', 'terms', 'blocks', 'methods', 'companies', 'places', 'users', 'sgls')}
+
+    def code(name, value):
+        d = dicts[name]
+        if value not in d:
+            d[value] = len(d)
+        return d[value]
+
+    out = []
+    for r in rows:
+        if r.get('ClearingDate'):
+            continue
+        post = _good_day(r.get('PostingDate'))
+        due = _good_day(r.get('NetDueDate'))
+        if due is None:
+            due = _good_day(r.get('DueCalculationBaseDate'))
+        if due is None:
+            due = post
+        sid = (r.get('Supplier') or '').lstrip('0') or '(blank)'
+        out.append([
+            post,
+            due,
+            _good_day(r.get('DocumentDate')),
+            r.get('AccountingDocument') or '',
+            int(r.get('AccountingDocumentItem') or 0),
+            r.get('FiscalYear') or '',
+            code('types', r.get('AccountingDocumentType') or ''),
+            code('suppliers', (sid, (r.get('SupplierName') or '').strip(), (r.get('CityName') or '').strip(), r.get('SupplierAccountGroup') or '', (r.get('TaxNumber3') or '').strip())),
+            round(_f(r.get('AmountInCompanyCodeCurrency')), 2),
+            round(_f(r.get('AmountInTransactionCurrency')), 2),
+            code('curs', r.get('TransactionCurrency') or ''),
+            code('terms', r.get('PaymentTerms') or ''),
+            code('blocks', r.get('PaymentBlockingReason') or ''),
+            code('methods', r.get('PaymentMethod') or ''),
+            code('companies', r.get('CompanyCode') or ''),
+            code('places', r.get('BusinessPlace') or ''),
+            code('users', r.get('AccountingDocCreatedByUser') or ''),
+            code('sgls', r.get('SpecialGLCode') or ''),
+            (r.get('DocumentReferenceID') or '').strip(),
+            (r.get('DocumentItemText') or '').strip(),
+        ])
+    data = {'asofDay': asof_day, 'rows': out}
+    for k, d in dicts.items():
+        data[k] = [list(x) if isinstance(x, tuple) else x for x in d.keys()]
+    return data
+
+
 def consume_fold(state, rows):
     """Reads the goods issue rows page by page (the rows are not kept: there are several hundred thousand) and keeps the last day of
     consumption per (plant, material) as {(plant, material): day}."""
@@ -898,6 +1033,7 @@ def issue_compact(rows, asof_day):
             dept, basis = usual[res_user], 5
         if not dept:
             dept, basis = 'Unassigned', 6
+        dept = DEPT_MERGE.get(dept, dept)
         sign = 1 if r.get('DebitCreditCode') == 'H' else -1
         name = ccname or (r.get('CostCenterName') or '').strip()  # a machine-list cost center gets its readable name from the lists
         mat = (r.get('Material') or '').lstrip('0')
@@ -1165,6 +1301,9 @@ USER_DEPT = {u: dept for dept, users in DEPT_USERS.items() for u in users}
 # Department of the user who raised the reservation, as given by the user on 20-Oct-2026 ("Store Issue me department kaise lena hai: user ke hisaab se").
 # This is the first layer of the Store Issue department: it replaces the department the cost center would give. A line without a reservation, or a
 # reservation creator who is not listed here, is placed by the cost center layers below. Not given: Nipendra Jha (CB9980000093, he only posts issues).
+# Departments shown under another name: the user asked on 24-Oct-2026 to add "Coin" to "Coin Production" and "Coil" to "Coil Production" (the cost center layers say Coin, the user list says Coin Production).
+DEPT_MERGE = {'Coin': 'Coin Production', 'Coil': 'Coil Production'}
+
 ISSUE_USER_DEPT = {
     'CB9980000035': 'CCP',                              # Omprakash Sahu
     'CB9980000038': 'Coil',                             # Surya Karma

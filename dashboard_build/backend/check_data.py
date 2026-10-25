@@ -44,10 +44,10 @@ def show(title, items, limit=12):
 
 print(f'Checking {BASE}')
 # ---- pages and APIs answer, placeholders are filled
-for p in ('/', '/summary', '/issue', '/po', '/po-approval', '/purchase', '/stock'):
+for p in ('/', '/summary', '/issue', '/po', '/po-approval', '/purchase', '/invoice', '/price', '/ageing', '/stock', '/pricevar.js', '/live.js'):
     try:
         html, dt, h = get(p, False)
-        left = [x for x in ('__USERS__', '__PGS__', '__MGS__', '__DATA__') if x in html and x != '__DATA__']
+        left = [x for x in ('__USERS__', '__PGS__', '__MGS__') if x in html]
         status = 'ok' if not left else f'placeholders left: {left}'
         if left:
             fails.append(p)
@@ -56,7 +56,7 @@ for p in ('/', '/summary', '/issue', '/po', '/po-approval', '/purchase', '/stock
         fails.append(p)
         print(f'page {p:14} FAILED: {e}')
 D = {}
-for k, p in (('pr', '/api/pr'), ('issue', '/api/issue'), ('po', '/api/po'), ('stock', '/api/stock'), ('purchase', '/api/purchase'), ('ap', '/api/po-approvers')):
+for k, p in (('pr', '/api/pr'), ('issue', '/api/issue'), ('po', '/api/po'), ('stock', '/api/stock'), ('purchase', '/api/purchase'), ('invoice', '/api/invoice'), ('ageing', '/api/ageing'), ('ap', '/api/po-approvers')):
     try:
         D[k], dt, h = get(p)
         print(f'api  {p:18} ok  ({dt:.1f} s)' + (f'  rows {len(D[k]["rows"]):,}' if 'rows' in D[k] else ''))
@@ -121,7 +121,8 @@ if 'po' in D and 'ap' in D:
             p['amt'] += a[17]
         else:
             p['fx'] = True
-    pend = {n: p for n, p in pos.items() if p['proc'] == '03' or n in AP}
+    pend = {n: p for n, p in pos.items() if p['proc'] == '03'}
+    released = [n for n in AP if n in pos and pos[n]['proc'] not in ('03', '08')]
 
     def rule(p):
         for r in RULES:
@@ -138,6 +139,8 @@ if 'po' in D and 'ap' in D:
     nobody = [f'PO {n}  org {p["org"]} / group {p["pg"]} ({PG_NAMES.get(p["pg"], "?")})  Rs {p["amt"]:,.0f}' for n, p in pend.items() if n not in AP and not rule(p)]
     show(f'POs In Approval ({len(pend)}) without a confirmed or likely approver', nobody)
     print(f'   confirmed {sum(1 for n in pend if n in AP)}, likely (rule) {sum(1 for n, p in pend.items() if n not in AP and rule(p))}')
+    if released:
+        notes.append(f'{len(released)} POs on the saved approver list are released now (state 05), not counted as pending; export the list again')
 
 # ---- Store Stock
 if 'stock' in D:

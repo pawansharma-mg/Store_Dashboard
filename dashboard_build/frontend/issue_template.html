@@ -42,7 +42,7 @@ h1{margin:0;font-size:1.1rem;font-weight:700;color:var(--brand-dark)}
 .grow{flex:1 1 240px}.grow input{width:100%}
 .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
 .chip{border:1px solid var(--border);border-radius:999px;background:var(--surface);padding:3px 11px;font-size:12.5px}
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-top:16px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(138px,1fr));gap:12px;margin-top:16px}
 .tile{background:var(--surface);border:1px solid var(--border);border-top:3px solid var(--s1);border-radius:12px;padding:14px 16px;box-shadow:0 1px 2px rgba(11,11,11,.04),0 1px 8px rgba(11,11,11,.04)}
 .tile:nth-child(2){border-top-color:var(--good)}.tile:nth-child(3){border-top-color:var(--serious)}.tile:nth-child(4){border-top-color:var(--warn)}
 .tv{font-size:1.5rem;font-weight:700;font-variant-numeric:tabular-nums}
@@ -52,7 +52,6 @@ h1{margin:0;font-size:1.1rem;font-weight:700;color:var(--brand-dark)}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;min-width:0;box-shadow:0 1px 2px rgba(11,11,11,.04),0 1px 8px rgba(11,11,11,.04)}
 .card h2{margin:0;font-size:1.02rem;font-weight:700;display:flex;align-items:center;flex-wrap:wrap;gap:9px}
 .sec-badge{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:26px;padding:0 6px;border-radius:8px;background:var(--brand-dark);color:#fff;font-size:.72rem;font-weight:700}
-.badge-live{margin-left:auto;padding:3px 8px;border-radius:999px;font-size:.62rem;font-weight:700;letter-spacing:.04em;color:var(--good);background:rgba(12,163,12,.16)}
 .hint{margin:4px 0 12px;font-size:12.5px;color:var(--ink2)}
 .tbox{max-height:440px;overflow:auto}
 table{width:100%;border-collapse:collapse;font-size:13px}
@@ -85,16 +84,17 @@ tr.sel td{background:rgba(28,173,228,.14)!important}
 @media (max-width:700px){.stick{position:static}}
 .tscroll>table>thead th{position:sticky;top:0;z-index:3;background:var(--surface);box-shadow:0 2px 0 var(--grid)}
 [hidden]{display:none!important}
+.mvrev{color:var(--crit);font-weight:700}
 .tile .ts{font-size:.72rem;font-weight:600;color:var(--brand-dark);margin-top:6px}
 .tilebtn{text-align:left;font:inherit;color:inherit;cursor:pointer;width:100%}
 .tilebtn:hover{box-shadow:0 0 0 2px rgba(28,173,228,.35)}
 .tilebtn[aria-expanded="true"]{box-shadow:0 0 0 2px var(--brand)}
 .tile.opt1{border-top-color:var(--brand-red)}
 .topcard{margin-top:16px;border-top:3px solid var(--brand-red);scroll-margin-top:150px}
-.topby{display:flex;align-items:center;gap:10px;margin:0 0 12px;font-size:.8rem;color:var(--ink2)}
 .subh{margin:16px 0 6px;font-size:.85rem;font-weight:700;color:var(--ink2)}
 </style>
 <link rel="stylesheet" href="/ui.css">
+<script src="/live.js"></script>
 </head>
 <body>
 <div class="stick"><header class="top">
@@ -108,11 +108,12 @@ tr.sel td{background:rgba(28,173,228,.14)!important}
     <div class="seg" id="themeSeg" role="group" aria-label="Colour mode"><button type="button" data-th="light" title="Normal (light) mode">Normal</button><button type="button" data-th="dark" title="Dark mode">Dark</button></div>
   </div>
 </header>
-<nav class="nav"><a href="/summary">Summary</a><a href="/issue" class="on">Store Issue</a><a href="/stock">Store Stock</a><a href="/">Pending PR</a><a href="/po">Pending Purchase Orders</a><a href="/po-approval">PO Approval Pending</a><a href="/purchase">Purchase</a></nav></div>
+<nav class="nav"><a href="/summary">Summary</a><a href="/issue" class="on">Store Issue</a><a href="/stock">Store Stock</a><a href="/">Pending PR</a><a href="/po">Pending Purchase Orders</a><a href="/po-approval">PO Approval Pending</a><a href="/invoice">Pending Invoice Entry</a><a href="/purchase">Purchase</a><a href="/price">Price Variance</a><a href="/ageing">Payment Ageing</a></nav></div>
 <div class="wrap">
   <section class="bar" aria-label="Filters">
     <label class="fld"><span>Plant</span><select id="plantSel"></select></label>
     <label class="fld"><span>Department</span><select id="deptSel"></select></label>
+    <label class="fld"><span>Movement</span><select id="mvtSel"><option value="">All (201 + 202)</option><option value="201">201 · Issues</option><option value="202">202 · Reversals</option></select></label>
     <label class="fld"><span>Posting date from</span><input id="dFrom" type="date"></label>
     <label class="fld"><span>To</span><input id="dTo" type="date"></label>
     <label class="fld grow"><span>Search</span><input id="q" type="search" placeholder="Cost center, material, storage location, reservation, document, user name"></label>
@@ -121,53 +122,53 @@ tr.sel td{background:rgba(28,173,228,.14)!important}
   <section class="kpis" id="kpis"><div id="kpiMain" style="display:contents"></div><div id="kpiOpt" style="display:contents"></div></section>
 
   <section class="card topcard" id="tileCard" hidden>
-    <h2><span id="tileTitle"></span><span class="badge-live">LIVE</span></h2>
+    <h2><span id="tileTitle"></span></h2>
     <p class="hint" id="tileHint"></p>
     <div class="tbox" id="tileBox"></div>
     <div class="pager"><span id="tileInfo"></span><div><button class="btn" id="tileAll" type="button">See all</button></div></div>
   </section>
 
   <section class="card topcard" id="topCard">
-    <h2>Top 5 most expensive items issued (quantity 1)<span class="badge-live">LIVE</span></h2>
+    <h2>Top 5 most expensive items issued (quantity 1)</h2>
     <p class="hint" id="topHint">Items issued one piece at a time (issue lines with quantity 1), the most expensive first. One row per material, with its most expensive single-piece issue; the last column says how many times it was issued as one piece. The current filters apply.</p>
     <div class="tbox" id="top5"></div>
   </section>
 
   <section class="grid">
     <article class="card">
-      <h2><span class="sec-badge">1</span>Department wise issue<span class="badge-live">LIVE</span></h2>
+      <h2><span class="sec-badge">1</span>Department wise issue</h2>
       <p class="hint">Net value (issues minus reversals). Department comes from your machine cost center list; an older cost center is placed by its department code, and if that is not known, by the reservation creator. Click a department to filter everything.</p>
       <div class="tbox" id="byDept"></div>
     </article>
     <article class="card">
-      <h2><span class="sec-badge">2</span>Cost center wise issue<span class="badge-live">LIVE</span></h2>
+      <h2><span class="sec-badge">2</span>Cost center wise issue</h2>
       <p class="hint">Net value (issues minus reversals). Click a cost center to filter everything.</p>
       <div class="tbox" id="byCc"></div>
     </article>
     <article class="card">
-      <h2><span class="sec-badge">3</span>Top materials issued<span class="badge-live">LIVE</span></h2>
+      <h2><span class="sec-badge">3</span>Top materials issued</h2>
       <p class="hint">Top 50 by net value for the current filters.</p>
       <div class="tbox" id="byMat"></div>
     </article>
     <article class="card">
-      <h2><span class="sec-badge">4</span>Month-wise issue<span class="badge-live">LIVE</span></h2>
+      <h2><span class="sec-badge">4</span>Month-wise issue</h2>
       <p class="hint">By posting date. Click a month to see it day by day.</p>
       <div class="tbox" id="byMonth"></div>
     </article>
     <article class="card">
-      <h2><span class="sec-badge">5</span><span id="dayTitle">Day-wise issue</span><span class="badge-live">LIVE</span></h2>
+      <h2><span class="sec-badge">5</span><span id="dayTitle">Day-wise issue</span></h2>
       <p class="hint">Click a date to filter everything to that day.</p>
       <div class="tbox" id="byDay"></div>
     </article>
   </section>
 
   <section class="card tablecard">
-    <h2><span class="sec-badge">6</span>Issue lines<span class="badge-live">LIVE</span></h2>
+    <h2><span class="sec-badge">6</span>Issue lines</h2>
     <p class="hint" id="tcount"></p>
     <div class="tscroll"><table id="tbl"></table></div>
     <div class="pager"><span id="pinfo"></span><div><button class="btn" id="seeAll" type="button">See all</button></div></div>
   </section>
-  <p class="note">Movement type 201 is a goods issue to a cost center; 202 is its reversal and counts as minus. The posting date starts as the whole current month and moves on by itself; change it, or clear it with the x on its chip, to see older issues. Data is refreshed from SAP at most every 30 minutes, or with the Refresh button.</p>
+  <details class="notebox"><summary>Notes about these figures</summary><p class="note">Movement type 201 is a goods issue to a cost center; 202 is its reversal and counts as minus. The tile "Reversed (202)" lists the reversals, and the Movement filter shows only the issues (201) or only the reversals (202). The posting date starts as the whole current month and moves on by itself; change it, or clear it with the x on its chip, to see older issues. Data is refreshed from SAP at most every 30 minutes, or with the Refresh button.</p></details>
 </div>
 <footer class="footer">Mittal Group · Store Issue · Source: SAP S/4HANA Cloud, YY1_STORE_RESERVATION_CDS</footer>
 
@@ -187,18 +188,21 @@ const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','De
 const PAGE=25;
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtN=n=>Math.round(n).toLocaleString('en-IN');
-function fmtINR(v){const a=Math.abs(v);if(a>=1e7)return '₹'+(v/1e7).toFixed(2)+' Cr';if(a>=1e5)return '₹'+(v/1e5).toFixed(2)+' L';return '₹'+Math.round(v).toLocaleString('en-IN');}
+// a negative value (a reversal) reads -₹15,600: the minus in front of the rupee sign
+function fmtINR(v){const a=Math.abs(v),s=v<-0.5?'-':'';if(a>=1e7)return s+'₹'+(a/1e7).toFixed(2)+' Cr';if(a>=1e5)return s+'₹'+(a/1e5).toFixed(2)+' L';return s+'₹'+Math.round(a).toLocaleString('en-IN');}
+const fmtRs=v=>'₹'+Math.round(v).toLocaleString('en-IN');
 const fmtDay=d=>new Date(d*864e5).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric',timeZone:'UTC'});
 const mIdx=d=>{const t=new Date(d*864e5);return t.getUTCFullYear()*12+t.getUTCMonth();};
 const mName=k=>MON[k%12]+' '+Math.floor(k/12);
 const dayOf=v=>v?Math.floor(Date.parse(v)/864e5):null;
 
 let D=null,R=[],renderToken=0,CUR=null,tileToken=0;
-const S={tile:null,tileAll:false,top:true,all:false,plant:'',cc:null,dept:null,from:null,to:null,q:'',mon:null,page:0};
+const S={tile:null,tileAll:false,top:true,all:false,plant:'',mvt:'',cc:null,dept:null,from:null,to:null,q:'',mon:null,page:0};
 
 function pass(r,skip){
   skip=skip||[];
   if(S.plant&&r.plant!==S.plant)return false;
+  if(S.mvt&&r.mvt!==S.mvt)return false;
   if(!skip.includes('cc')&&S.cc!==null&&r.cc!==S.cc)return false;
   if(!skip.includes('dept')&&S.dept!==null&&r.dept!==S.dept)return false;
   if(!skip.includes('date')&&S.from!==null&&!(r.day>=S.from))return false;
@@ -250,26 +254,26 @@ function renderTop(){
 
 // details of a tile: click a tile to open them under the tiles
 const TILE_INFO={
-  val:['Net issue value','Issues (movement 201) minus reversals (202) for the current filters, and where the value went by plant.'],
+  iss:['Issues (movement 201)','Every issue line (201) of the current filters, newest first. Issued (201) minus reversed (202) is the net issue value.'],
+  rev:['Reversals (movement 202)','Every reversal line (202) of the current filters, newest first. A reversal brings the material back to stock, so its quantity and value are minus in the net issue value.'],
   lines:['Issue lines','Every issue line of the current filters, newest first.'],
   ccs:['Cost centers','Cost centers that had issues for the current filters, most net value first.'],
-  mats:['Materials','Materials issued for the current filters, most net value first.']
+  mats:['Issue Materials','Materials issued for the current filters, most net value first.']
 };
 const MVT_TXT={'201':'201 · Issue to a cost center','202':'202 · Reversal of an issue'};
+// a reversal (202) stands out in every list
+const mvtCell=m=>m==='202'?`<span class="mvrev" title="${esc(MVT_TXT['202'])}">202 · Reversal</span>`:esc(m);
 function renderTile(){
   const k=S.tile;
   if(!k||!CUR||!D||!TILE_INFO[k]){$('tileCard').hidden=true;return;}
   $('tileCard').hidden=false;
   $('tileTitle').textContent=TILE_INFO[k][0];$('tileHint').textContent=TILE_INFO[k][1];
-  const rows=CUR.rows,total=CUR.amt,none='<div class="empty">Nothing matches the filters.</div>';
+  const rows=CUR.rows,total=CUR.amt,none=`<div class="empty">${k==='rev'?'No reversal (movement 202) for the current filters.':'Nothing matches the filters.'}</div>`;
   let list=null,thead='',rowFn=null,html='',paged=true,n=0;
-  if(k==='val'){
-    paged=false;const mv=new Map(),pl=new Map();for(const r of rows){add(mv,r.mvt,r);add(pl,r.plant,r);}
-    html='<h3 class="subh">Issues and reversals</h3>'+aggTable([...mv.entries()].sort((a,b)=>b[1].amt-a[1].amt),'Movement',m=>esc(MVT_TXT[m]||m))+'<h3 class="subh">By plant</h3>'+aggTable(byValue(pl),'Plant',p=>esc(p));
-  }else if(k==='lines'){
-    list=rows.slice().sort((a,b)=>(b.day||0)-(a.day||0)||b.doc.localeCompare(a.doc));
-    thead='<thead><tr><th>#</th><th>Posting date</th><th>Mat. doc</th><th>Cost center</th><th>Department</th><th>Material</th><th class="num">Qty</th><th class="num">Value</th><th>Posted by</th></tr></thead>';
-    rowFn=(r,i)=>`<tr><td>${i+1}</td><td class="nw">${r.day===null?'–':fmtDay(r.day)}</td><td class="nw">${esc(r.doc)}</td><td>${esc(r.cc)}</td><td class="nw">${esc(deptLabel(r.dept))}</td><td>${esc(r.mat)}</td><td class="num nw">${fmtQty(r.qty,esc(r.unit))}</td><td class="num nw">${fmtINR(r.amt)}</td><td class="nw" title="${esc(uTip(r.user))}">${esc(uName(r.user))}</td></tr>`;
+  if(k==='lines'||k==='rev'||k==='iss'){
+    list=rows.filter(r=>k==='lines'||r.mvt===(k==='rev'?'202':'201')).sort((a,b)=>(b.day||0)-(a.day||0)||b.doc.localeCompare(a.doc));
+    thead='<thead><tr><th>#</th><th>Posting date</th><th>Mat. doc</th><th>Mvt</th><th>Cost center</th><th>Department</th><th>Material</th><th class="num">Qty</th><th class="num">Value</th><th>Posted by</th></tr></thead>';
+    rowFn=(r,i)=>`<tr><td>${i+1}</td><td class="nw">${r.day===null?'–':fmtDay(r.day)}</td><td class="nw">${esc(r.doc)}</td><td class="nw">${mvtCell(r.mvt)}</td><td>${esc(r.cc)}</td><td class="nw">${esc(deptLabel(r.dept))}</td><td>${esc(r.mat)}</td><td class="num nw">${fmtQty(r.qty,esc(r.unit))}</td><td class="num nw">${fmtINR(r.amt)}</td><td class="nw" title="${esc(uTip(r.user))}">${esc(uName(r.user))}</td></tr>`;
   }else if(k==='ccs'){
     paged=false;const m=new Map();for(const r of rows){let x=m.get(r.cc);if(!x)m.set(r.cc,x={cc:r.cc,dept:r.dept,n:0,amt:0});x.n++;x.amt+=r.amt;}
     const ls=[...m.values()].sort((a,b)=>b.amt-a.amt);n=ls.length;
@@ -294,17 +298,19 @@ function render(){
   if(!D)return;  // the data is still loading
   const rows=R.filter(r=>pass(r));
   // KPIs
-  let amt=0;const ccs=new Set(),mats=new Set();
-  for(const r of rows){amt+=r.amt;ccs.add(r.cc);mats.add(r.mat);}
+  let amt=0,iss=0,issN=0,rev=0,revN=0;const ccs=new Set(),mats=new Set();
+  for(const r of rows){amt+=r.amt;ccs.add(r.cc);mats.add(r.mat);if(r.mvt==='202'){rev+=r.amt;revN++;}else{iss+=r.amt;issN++;}}
   CUR={rows,amt};
-  // every tile opens its details under the tiles
-  $('kpiMain').innerHTML=[[fmtINR(amt),'Net issue value','val'],[fmtN(rows.length),'Issue lines','lines'],[fmtN(ccs.size),'Cost centers','ccs'],[fmtN(mats.size),'Materials','mats']]
-    .map(t=>`<button type="button" class="tile tilebtn" data-tile="${t[2]}" aria-expanded="${S.tile===t[2]}"><div class="tv">${t[0]}</div><div class="tl">${t[1]}</div><div class="ts">${S.tile===t[2]?'click to hide':'click for details'}</div></button>`).join('');
+  // issued (201), reversed (202, minus), materials and cost centers; the tooltip of the reversal tile has the balance (issued - reversed = net); every tile opens its details under the tiles
+  const lines=(n)=>`${fmtN(n)} ${n===1?'line':'lines'}`,bal=`Issued ${fmtRs(iss)} - Reversed ${fmtRs(0-rev)} = Net ${fmtRs(amt)}`;
+  $('kpiMain').innerHTML=[[fmtINR(iss),'Issued (201)','iss','Issues to cost centers (movement 201): '+lines(issN)],[fmtINR(rev||0),'Reversed (202)','rev','Reversals (movement 202), minus: '+lines(revN)+'. '+bal],[fmtN(mats.size),'Issue Materials','mats',''],[fmtN(ccs.size),'Cost centers','ccs','']]
+    .map(t=>`<button type="button" class="tile tilebtn" data-tile="${t[2]}" aria-expanded="${S.tile===t[2]}"${t[3]?` title="${esc(t[3])}"`:''}><div class="tv">${t[0]}</div><div class="tl">${t[1]}</div>${S.tile===t[2]?'<div class="ts">click to hide</div>':''}</button>`).join('');
   renderTop();renderTile();
   // chips
   const c=[];
   if(S.plant)c.push(['plant','Plant '+S.plant]);
   if(S.dept!==null)c.push(['dept','Department: '+deptLabel(S.dept)]);
+  if(S.mvt)c.push(['mvt','Movement '+(MVT_TXT[S.mvt]||S.mvt)]);
   if(S.cc!==null)c.push(['cc','Cost center: '+S.cc]);
   if(S.from!==null||S.to!==null)c.push(['date','Posting date '+(S.from!==null?fmtDay(S.from):'start')+' – '+(S.to!==null?fmtDay(S.to):'today')]);
   if(S.q)c.push(['q','Search: '+S.q]);
@@ -327,7 +333,7 @@ function render(){
   rows.sort((a,b)=>(b.day||0)-(a.day||0)||b.doc.localeCompare(a.doc));
   // the list shows the first rows; See all shows every line of the current filters (the list scrolls inside its card)
   const slice=S.all?rows:rows.slice(0,PAGE);
-  const rowHtml=r=>`<tr><td class="nw">${r.day===null?'–':fmtDay(r.day)}</td><td class="nw">${esc(r.doc)}</td><td>${esc(r.mvt)}</td><td class="nw">${esc(r.ccId)}</td><td>${r.ccName?esc(r.ccName):'–'}</td><td class="nw" title="${esc(BASIS[r.basis]||'')}">${esc(deptLabel(r.dept))}</td><td>${esc(r.mat)}</td><td>${esc(r.sloc)}</td><td class="num nw">${r.qty.toLocaleString('en-IN',{maximumFractionDigits:3})} ${esc(r.unit)}</td><td class="num nw">${fmtINR(r.amt)}</td><td>${r.res?esc(r.res):'–'}</td><td class="nw" title="${r.res?esc(uTip(r.rby)):'Issued without a reservation (direct issue)'}">${r.rby?esc(uName(r.rby)):(r.res?'–':'No reservation')}</td><td class="nw" title="${esc(uTip(r.user))}">${esc(uName(r.user))}</td></tr>`;
+  const rowHtml=r=>`<tr><td class="nw">${r.day===null?'–':fmtDay(r.day)}</td><td class="nw">${esc(r.doc)}</td><td class="nw">${mvtCell(r.mvt)}</td><td class="nw">${esc(r.ccId)}</td><td>${r.ccName?esc(r.ccName):'–'}</td><td class="nw" title="${esc(BASIS[r.basis]||'')}">${esc(deptLabel(r.dept))}</td><td>${esc(r.mat)}</td><td>${esc(r.sloc)}</td><td class="num nw">${r.qty.toLocaleString('en-IN',{maximumFractionDigits:3})} ${esc(r.unit)}</td><td class="num nw">${fmtINR(r.amt)}</td><td>${r.res?esc(r.res):'–'}</td><td class="nw" title="${r.res?esc(uTip(r.rby)):'Issued without a reservation (direct issue)'}">${r.rby?esc(uName(r.rby)):(r.res?'–':'No reservation')}</td><td class="nw" title="${esc(uTip(r.user))}">${esc(uName(r.user))}</td></tr>`;
   const first=S.all?slice.slice(0,400):slice;
   $('tbl').innerHTML='<thead><tr><th>Posting date</th><th>Mat. doc</th><th>Mvt</th><th>Cost center</th><th>Cost center name</th><th>Department</th><th>Material</th><th>S.Loc</th><th class="num">Qty</th><th class="num">Value</th><th>Reservation</th><th>Reservation by</th><th>Posted by</th></tr></thead><tbody>'+(first.length?first.map(rowHtml).join(''):'<tr><td colspan="13" class="empty">Nothing matches the filters.</td></tr>')+'</tbody>';
   const token=++renderToken;let done=first.length;
@@ -348,6 +354,7 @@ document.addEventListener('click',e=>{
   else if(t.dataset.day!==undefined){const d=+t.dataset.day;S.from=S.to=d;$('dFrom').value=$('dTo').value=iso(d);}
   else if(t.dataset.clr){const c=t.dataset.clr;
     if(c==='plant'||c==='all'){S.plant='';$('plantSel').value='';}
+    if(c==='mvt'||c==='all'){S.mvt='';$('mvtSel').value='';}
     if(c==='cc'||c==='all')S.cc=null;
     if(c==='dept'||c==='all'){S.dept=null;$('deptSel').value='';}
     if(c==='date'){S.from=S.to=null;$('dFrom').value=$('dTo').value='';}
@@ -364,6 +371,7 @@ document.addEventListener('click',e=>{
 });
 $('plantSel').addEventListener('change',e=>{S.plant=e.target.value;S.page=0;render();});
 $('deptSel').addEventListener('change',e=>{S.dept=e.target.value===''?null:e.target.value;S.page=0;render();});
+$('mvtSel').addEventListener('change',e=>{S.mvt=e.target.value;S.page=0;render();});
 $('dFrom').addEventListener('change',e=>{S.from=dayOf(e.target.value);S.page=0;render();});
 $('dTo').addEventListener('change',e=>{S.to=dayOf(e.target.value);S.page=0;render();});
 let qT;$('q').addEventListener('input',e=>{clearTimeout(qT);qT=setTimeout(()=>{S.q=e.target.value.trim().toLowerCase();S.page=0;render();},200);});
@@ -392,10 +400,11 @@ function setData(d){
   $('deptSel').value=S.dept===null?'':S.dept;
 }
 // a link from the Summary page: ?tile=KEY&plant=1010&from=2026-10-01&to=2026-10-31 (dates=all clears the dates); used once, on the first load
-let LINK=(()=>{try{const q=new URLSearchParams(location.search);return q.has('tile')||q.has('plant')||q.has('from')||q.has('to')||q.has('dates')?q:null;}catch(e){return null;}})();
+let LINK=(()=>{try{const q=new URLSearchParams(location.search);return q.has('tile')||q.has('plant')||q.has('mvt')||q.has('from')||q.has('to')||q.has('dates')?q:null;}catch(e){return null;}})();
 function applyLink(){
   if(!LINK)return;const q=LINK;LINK=null;
   if(q.has('plant')){S.plant=q.get('plant')||'';if(![...$('plantSel').options].some(o=>o.value===S.plant))S.plant='';$('plantSel').value=S.plant;}
+  if(q.has('mvt')){S.mvt=['201','202'].includes(q.get('mvt'))?q.get('mvt'):'';$('mvtSel').value=S.mvt;}
   if(q.get('dates')==='all'){S.from=S.to=null;$('dFrom').value=$('dTo').value='';}
   else if(q.has('from')||q.has('to')){S.from=dayOf(q.get('from'));S.to=dayOf(q.get('to'));$('dFrom').value=S.from===null?'':new Date(S.from*864e5).toISOString().slice(0,10);$('dTo').value=S.to===null?'':new Date(S.to*864e5).toISOString().slice(0,10);}
   const k=q.get('tile');
@@ -405,12 +414,12 @@ function applyLink(){
 function setLive(kind,text){$('liveDot').style.background=kind==='ok'?'var(--good)':kind==='err'?'var(--crit)':'var(--warn)';$('liveTxt').textContent=text;$('refresh').disabled=kind==='busy';}
 const hhmm=ms=>new Date(ms).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
 let loading=false;
-async function load(force){
+async function load(force,auto){
   if(loading)return;loading=true;
-  setLive('busy',D?'Refreshing from SAP…':'Loading store issue data from SAP (first load can take a minute)…');
+  if(!auto||!D)setLive('busy',D?'Refreshing from SAP…':'Loading store issue data from SAP (first load can take a minute)…');
   try{
-    const res=await fetch('/api/issue'+(force?'?refresh=1':''),{cache:'no-store'});
-    const j=await res.json().catch(()=>({}));
+    const g=await LIVE.get('/api/issue',force),res=g.res,j=g.j;
+    if(g.same){setLive('ok','Live from SAP · updated '+hhmm(g.stamp)+' · '+fmtN(R.length)+' lines');return;}
     if(!res.ok)throw new Error(j.error||('HTTP '+res.status));
     setData(j);if(!S.dInit){S.dInit=true;setMonthDates();applyLink();}render();
     if(S.reveal){const id=S.reveal;S.reveal=null;setTimeout(()=>reveal(id),150);}
@@ -422,7 +431,8 @@ async function load(force){
 }
 $('refresh').addEventListener('click',()=>load(true));
 load(false);
-setInterval(()=>{if(!document.hidden)load(false);},1800000);
+setInterval(()=>{if(!document.hidden)load(false,true);},LIVE.every);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)load(false,true);});
 })();
 </script>
 <script src="/ui.js" defer></script>

@@ -1,4 +1,3 @@
 __pycache__/
 *.pyc
 *.log
-build_dashboard.py

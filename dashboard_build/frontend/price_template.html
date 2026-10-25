@@ -1,0 +1,661 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Price Variance</title>
+<link rel="icon" type="image/png" href="/logo.png">
+<style>
+/* Same look as the other pages. */
+:root{
+  color-scheme:light;
+  --plane:#f4f6f5;--surface:#fff;--ink:#0b0b0b;--ink2:#52514e;--muted:#898781;--grid:#e1e0d9;--border:rgba(11,11,11,.10);
+  --s1:#2a78d6;--good:#0ca30c;--warn:#fab219;--serious:#ec835a;--crit:#d03b3b;
+  --brand:#1CADE4;--brand-dark:#0E7FAE;--brand-red:#E42227;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--plane:#101110;--surface:#1a1b1a;--ink:#fff;--ink2:#c3c2b7;--grid:#2c2c2a;--border:rgba(255,255,255,.10);--s1:#3987e5}}
+:root[data-theme="dark"]{color-scheme:dark;--plane:#101110;--surface:#1a1b1a;--ink:#fff;--ink2:#c3c2b7;--grid:#2c2c2a;--border:rgba(255,255,255,.10);--s1:#3987e5}
+*{box-sizing:border-box}
+body{margin:0;background:var(--plane);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.top{position:sticky;top:0;z-index:20;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;background:var(--surface);border-bottom:3px solid var(--brand-red);padding:12px 20px}
+.brand{display:flex;align-items:center;gap:12px;min-width:0}
+.logo{width:42px;height:42px;object-fit:contain;flex:none}
+h1{margin:0;font-size:1.1rem;font-weight:700;color:var(--brand-dark)}
+.sub{margin:2px 0 0;font-size:.8rem;color:var(--muted)}
+.tools{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.live{display:flex;align-items:center;gap:8px;font-size:.8rem;color:var(--muted)}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;flex:none}
+.btn{height:34px;padding:0 14px;border:0;border-radius:7px;background:var(--brand);color:#fff;font-size:.83rem;font-weight:600;text-decoration:none;display:inline-flex;align-items:center}
+.btn:hover{background:var(--brand-dark)}
+.btn:disabled{opacity:.5;cursor:default}
+.nav{display:flex;flex-wrap:wrap;gap:6px;padding:8px 20px;background:var(--surface);border-bottom:1px solid var(--border)}
+.nav a{font-size:.78rem;font-weight:600;color:var(--ink2);text-decoration:none;padding:6px 12px;border-radius:999px;background:var(--plane)}
+.nav a.on{background:var(--brand);color:#fff}
+.wrap{max-width:1320px;margin:0 auto;padding:20px 16px 48px}
+.bar{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
+.fld{display:flex;flex-direction:column;gap:4px;min-width:0}
+.fld>span{font-size:.78rem;color:var(--ink2)}
+.fld select,.fld input{height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface);padding:0 10px;min-width:0}
+.grow{flex:1 1 220px}.grow input{width:100%}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.chip{border:1px solid var(--border);border-radius:999px;background:var(--surface);padding:3px 11px;font-size:12.5px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:16px}
+.tile{background:var(--surface);border:1px solid var(--border);border-top:3px solid var(--s1);border-radius:12px;padding:14px 16px;box-shadow:0 1px 2px rgba(11,11,11,.04),0 1px 8px rgba(11,11,11,.04)}
+.tile:nth-child(1){border-top-color:var(--crit)}.tile:nth-child(2){border-top-color:var(--good)}.tile:nth-child(3){border-top-color:var(--serious)}.tile:nth-child(4){border-top-color:var(--crit)}.tile:nth-child(5){border-top-color:var(--good)}.tile:nth-child(6){border-top-color:var(--s1)}.tile:nth-child(7){border-top-color:var(--warn)}
+.tv{font-size:1.45rem;font-weight:700;font-variant-numeric:tabular-nums}
+.tl{font-size:.76rem;color:var(--muted)}
+.tile .ts{font-size:.72rem;font-weight:600;color:var(--brand-dark);margin-top:6px}
+.grid{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;margin-top:12px}
+@media (min-width:1000px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;min-width:0;box-shadow:0 1px 2px rgba(11,11,11,.04),0 1px 8px rgba(11,11,11,.04)}
+.card h2{margin:0;font-size:1.02rem;font-weight:700;display:flex;align-items:center;flex-wrap:wrap;gap:9px}
+.sec-badge{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:26px;padding:0 6px;border-radius:8px;background:var(--brand-dark);color:#fff;font-size:.72rem;font-weight:700}
+.hint{margin:4px 0 12px;font-size:12.5px;color:var(--ink2)}
+.tbox{max-height:none;overflow:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--grid);vertical-align:top}
+th{font-size:.7rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);border-bottom:2px solid var(--grid);white-space:nowrap}
+.tbox thead th{position:sticky;top:0;background:var(--surface);z-index:1}
+.tbox tfoot td{position:sticky;bottom:0;background:var(--surface);font-weight:700;border-top:2px solid var(--grid)}
+tbody tr:nth-child(even) td{background:rgba(128,128,128,.04)}
+tbody tr:hover td{background:rgba(28,173,228,.07)}
+tr.sel td{background:rgba(28,173,228,.12)!important}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.nw{white-space:nowrap}
+.empty{padding:28px 0;color:var(--ink2);text-align:center}
+.note{margin-top:16px;color:var(--ink2);font-size:12.5px;max-width:110ch}
+.footer{text-align:center;font-size:.72rem;color:var(--muted);padding:0 20px 24px}
+@media (max-width:700px){.top{position:static}}
+@media (max-width:480px){.sub{display:none}.card{padding:16px}}
+.seg{display:inline-flex;border-radius:8px;overflow:hidden;border:1px solid var(--brand);flex:none}
+.seg button{border:0;border-radius:0;background:transparent;color:var(--brand-dark);font-size:.83rem;font-weight:600;height:32px;padding:0 13px;cursor:pointer}
+.seg button.on{background:var(--brand);color:#fff}
+.seg button:not(.on):hover{background:rgba(28,173,228,.15)}
+.stick{position:sticky;top:0;z-index:20}
+.stick .top{position:static}
+@media (max-width:700px){.stick{position:static}}
+[hidden]{display:none!important}
+.lnk{border:0;background:none;padding:0;color:var(--brand-dark);font-weight:600;text-decoration:underline;text-align:left}
+.btn.alt{background:transparent;color:var(--brand-dark);border:1px solid var(--brand);height:32px}
+.btn.alt:hover{background:rgba(28,173,228,.12)}
+.topcard{margin-top:16px;border-top:3px solid var(--brand-red);scroll-margin-top:150px}
+.subh{margin:16px 0 6px;font-size:.85rem;font-weight:700;color:var(--ink2)}
+.pager{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:10px;font-size:.8rem;color:var(--muted)}
+.up{color:var(--crit);font-weight:700}
+.dn{color:var(--good);font-weight:700}
+.sm{font-size:.72rem;color:var(--muted);font-weight:400}
+.plist table{font-size:12.5px}
+.plist th,.plist td{padding:6px 8px;line-height:1.3}
+.plist th{font-size:.66rem;white-space:normal;vertical-align:bottom}
+.plist td.mn{width:100%}
+.mid{font-size:.72rem;color:var(--muted);margin-top:2px}
+.mvs{margin-top:4px}
+.mv{font-size:11.5px;line-height:1.35}
+.more{font-size:.7rem;color:var(--muted)}
+.pill{display:inline-block;padding:0 7px;border-radius:999px;font-size:.66rem;font-weight:600;margin-left:5px;white-space:nowrap}
+.pill.sup{color:var(--ink2);background:rgba(128,128,128,.18)}
+.pill.chk{color:#b87b00;background:rgba(250,178,25,.24)}
+.pill.cur{color:var(--s1);background:rgba(42,120,214,.15)}
+/* charts: drawn here as SVG, the colours follow Normal / Dark */
+.pvc{width:100%;height:auto;display:block}
+.pvc text{fill:var(--ink2);font-size:11px;font-family:inherit}
+.pvc .gl{stroke:var(--grid);stroke-width:1}
+.pvc .bl{fill:var(--crit)}.pvc .bg{fill:var(--good)}
+.pvc [data-mat]{cursor:pointer}
+.pvc [data-mat]:hover .bl,.pvc [data-mat]:hover .bg{opacity:.8}
+.pvc .vt{fill:var(--ink);font-weight:600}
+.leg{display:flex;gap:16px;flex-wrap:wrap;font-size:.76rem;color:var(--ink2);margin:0 0 6px}
+.leg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+/* group tabs, loss / profit pills, key points, jump links, trend lines, loading skeleton */
+.gtabs{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
+.gt{display:block;padding:12px 16px}
+.gt .gtn{font-weight:700;font-size:.92rem}
+.gt .gtv{font-size:.76rem;color:var(--muted);margin-top:2px}
+.gt .gtp{margin-top:8px}.gt .gtp .lpp{font-size:1.02rem;padding:2px 12px}
+.gt .gts{margin-top:5px}
+.lpp{display:inline-block;padding:1px 9px;border-radius:999px;font-weight:700;font-size:.8em;white-space:nowrap;font-variant-numeric:tabular-nums}
+.lpp.loss{color:var(--crit);background:rgba(208,59,59,.14)}
+.lpp.profit{color:var(--good);background:rgba(12,163,12,.14)}
+.lpp.zero{color:var(--muted);background:rgba(128,128,128,.14)}
+.lpbar{display:flex;height:6px;border-radius:99px;overflow:hidden;margin-top:9px;background:var(--grid)}
+.lpbar i.l{background:var(--crit)}.lpbar i.p{background:var(--good)}
+.kpc{margin-top:12px}
+.kp{margin:8px 0 0;padding:0;list-style:none;display:grid;gap:9px}
+.kp li{display:flex;gap:10px;align-items:flex-start;font-size:13.5px;line-height:1.5}
+.kp li::before{content:"";flex:none;width:8px;height:8px;margin-top:7px;border-radius:50%;background:var(--brand)}
+.kp li.l::before{background:var(--crit)}.kp li.p::before{background:var(--good)}
+.jump{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 0}
+.jump a{font-size:.78rem;font-weight:600;color:var(--brand-dark);text-decoration:none;border:1px solid var(--brand);border-radius:999px;padding:4px 12px;background:var(--surface)}
+.jump a:hover{background:rgba(28,173,228,.12)}
+section[id^="sec-"]{scroll-margin-top:150px}
+.spk{display:block;margin:0 0 3px auto}
+.tile.sk{min-height:84px;background:linear-gradient(90deg,var(--surface) 25%,rgba(128,128,128,.16) 50%,var(--surface) 75%);background-size:200% 100%;animation:skm 1.4s linear infinite}
+@keyframes skm{to{background-position:-200% 0}}
+@media (prefers-reduced-motion:reduce){.tile.sk{animation:none}}
+/* a material opened under its row: its numbers, its graph and every PO date */
+tr.tlrow>td{padding:4px 6px 14px!important;background:transparent!important}
+.mp{border:1px solid var(--brand);border-left-width:4px;border-radius:10px;background:rgba(28,173,228,.06);padding:10px 12px;margin:8px 0;scroll-margin-top:150px}
+.mph{display:flex;flex-wrap:wrap;align-items:center;gap:8px}.mph b{font-size:.95rem}.mph .btn{margin-left:auto;height:28px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:8px;margin:10px 0 4px}
+.stat{border:1px solid var(--border);border-radius:10px;padding:7px 10px;background:var(--surface)}
+.stat b{display:block;font-size:1rem;font-variant-numeric:tabular-nums}
+.pt{font-size:11.5px}.pt th,.pt td{padding:4px 6px}
+.mp .subh{margin:12px 0 4px}
+.stat span{font-size:.72rem;color:var(--muted)}
+.sumline{font-size:12.5px;color:var(--ink2);margin:8px 0}
+</style>
+<link rel="stylesheet" href="/ui.css">
+<script src="/live.js"></script>
+<script src="/pricevar.js"></script>
+</head>
+<body>
+<div class="stick"><header class="top">
+  <div class="brand"><img class="logo" src="/logo.png" alt="Mittal Group"><div>
+    <h1>Mittal Group</h1>
+    <p class="sub">Price Variance · when each material's purchase rate went up or down, and what it meant in profit and loss. Source: S/4HANA Cloud, YY1_PO_ITEM_SUPPLIER_CDS.</p>
+  </div></div>
+  <div class="tools">
+    <div class="live"><span class="dot" id="liveDot" style="background:var(--warn)"></span><span id="liveTxt">Connecting to SAP…</span></div>
+    <button id="refresh" class="btn" type="button">Refresh</button>
+    <div class="seg" id="themeSeg" role="group" aria-label="Colour mode"><button type="button" data-th="light" title="Normal (light) mode">Normal</button><button type="button" data-th="dark" title="Dark mode">Dark</button></div>
+  </div>
+</header>
+<nav class="nav"><a href="/summary">Summary</a><a href="/issue">Store Issue</a><a href="/stock">Store Stock</a><a href="/">Pending PR</a><a href="/po">Pending Purchase Orders</a><a href="/po-approval">PO Approval Pending</a><a href="/invoice">Pending Invoice Entry</a><a href="/purchase">Purchase</a><a href="/price" class="on">Price Variance</a><a href="/ageing">Payment Ageing</a></nav></div>
+<div class="wrap">
+  <section class="gtabs" id="gtabs" aria-label="RM, Store, Packing"><div class="tile sk"></div><div class="tile sk"></div><div class="tile sk"></div><div class="tile sk"></div></section>
+  <p class="hint" id="exNote" style="margin:8px 2px 4px"></p>
+  <details class="notebox" style="margin:0 0 14px"><summary>What are RM, Store and Packing?</summary><p class="note" style="margin-top:8px"><b>RM</b> = raw materials (material type ZRMA: copper, zinc, nickel, scrap, ingots), wherever they are delivered. <b>Packing</b> = the FG material: finished goods and trading goods (ZFGS, ZTRG, HAWA: coins, medals, trophies, gifts, jugs ...) and whatever comes into the packing / FG locations GS02, GS03 and MDFG. <b>Store</b> = the store materials (ZCON consumables, ZHMI tools, ZSPR spares, ZSRM, ZVRP packaging material), also when the PO line has no storage location, and every other purchase delivered to a store location of your list. <b>Others</b> = the rest; it is shown only when it holds a material. A line goes to the first group that fits, in this order: RM, Packing, Store, Others. The same filters apply to every tab. Click a tab again to go back to All.</p></details>
+  <section class="bar" aria-label="Filters">
+    <label class="fld"><span>Plant</span><select id="plantSel"></select></label>
+    <label class="fld"><span>Material type</span><select id="mtSel"></select></label>
+    <label class="fld"><span>Compare the purchases with</span><select id="basisSel"><option value="first">the first PO of the period</option><option value="prev">the PO before the latest</option></select></label>
+    <label class="fld"><span>Change of at least</span><select id="minSel"><option value="0.5">0.5 %</option><option value="1" selected>1 %</option><option value="2">2 %</option><option value="5">5 %</option><option value="10">10 %</option><option value="25">25 %</option></select></label>
+    <label class="fld"><span>PO date from</span><input id="dFrom" type="date"></label>
+    <label class="fld"><span>To</span><input id="dTo" type="date"></label>
+    <label class="fld"><span>Doubtful changes</span><select id="doubtSel"><option value="hide">Hide</option><option value="show">Show with the rest</option><option value="only">Only the doubtful</option></select></label>
+    <label class="fld"><span>Sort the two lists by</span><select id="sortSel"><option value="impact">Loss / profit (₹)</option><option value="pct">Change %</option><option value="recent">Latest PO date</option><option value="name">Material name</option></select></label>
+    <label class="fld grow"><span>Search</span><input id="q" type="search" placeholder="Material number or name, supplier"></label>
+  </section>
+  <div class="chips" id="chips"></div>
+  <section class="kpis" id="kpis"><div class="tile sk"></div><div class="tile sk"></div><div class="tile sk"></div><div class="tile sk"></div><div class="tile sk"></div><div class="tile sk"></div><div class="tile sk"></div></section>
+
+  <section class="card kpc" id="kpCard">
+    <h2>Key points</h2>
+    <ul class="kp" id="kp"></ul>
+  </section>
+  <nav class="jump" aria-label="Go to a section"><a href="#sec-charts">Graphs</a><a href="#sec-lists">Rising and falling</a><a href="#sec-top">Biggest losses and profits</a><a href="#sec-grp">By material group</a><a href="#sec-moves">Every price change</a><a href="#sec-months">Month by month</a></nav>
+
+  <section class="card topcard" id="tileCard" hidden>
+    <h2><span id="tileTitle"></span></h2>
+    <p class="hint" id="tileHint"></p>
+    <div class="tbox plist" id="tileBox"></div>
+  </section>
+
+  <section class="grid" id="sec-charts">
+    <article class="card">
+      <h2><span class="sec-badge">1</span>Profit and loss by month</h2>
+      <p class="hint">What the purchases of each month cost more (loss) or less (profit) than at the reference rate of the same material.</p>
+      <div class="leg"><span><i style="background:var(--crit)"></i>Loss: paid more than the reference rate</span><span><i style="background:var(--good)"></i>Profit: paid less</span></div>
+      <div id="chartPL"></div>
+    </article>
+    <article class="card">
+      <h2><span class="sec-badge">2</span>Price rises and falls by month</h2>
+      <p class="hint">How many materials changed their rate from one PO date to the next in that month (by the change filter above).</p>
+      <div class="leg"><span><i style="background:var(--crit)"></i>Rate rose</span><span><i style="background:var(--good)"></i>Rate fell</span></div>
+      <div id="chartMV"></div>
+    </article>
+  </section>
+
+  <section class="grid" id="sec-lists" data-keep-open>
+    <article class="card" data-detail>
+      <h2><span class="sec-badge">3</span>Price going UP · the rate rose</h2>
+      <p class="hint" id="upHint"></p>
+      <div class="tbox plist" id="upBox"></div>
+      <div class="pager"><span id="upInfo"></span><div><button class="btn" id="upAll" type="button" data-all="up" data-seeall="1">See all</button></div></div>
+    </article>
+    <article class="card" data-detail>
+      <h2><span class="sec-badge">4</span>Price going DOWN · the rate fell</h2>
+      <p class="hint" id="dnHint"></p>
+      <div class="tbox plist" id="dnBox"></div>
+      <div class="pager"><span id="dnInfo"></span><div><button class="btn" id="dnAll" type="button" data-all="down" data-seeall="1">See all</button></div></div>
+    </article>
+  </section>
+
+  <section class="grid" id="sec-top">
+    <article class="card">
+      <h2><span class="sec-badge">5</span>Biggest losses · 10 materials</h2>
+      <p class="hint">The materials where the purchases cost the most more than at the reference rate. Click a bar for the details.</p>
+      <div id="chartLoss"></div>
+      <div id="panLoss"></div>
+    </article>
+    <article class="card">
+      <h2><span class="sec-badge">6</span>Biggest profits · 10 materials</h2>
+      <p class="hint">The materials where the purchases cost the most less than at the reference rate.</p>
+      <div id="chartProfit"></div>
+      <div id="panProfit"></div>
+    </article>
+  </section>
+
+  <section class="card" style="margin-top:12px" id="sec-grp" data-foldable>
+    <h2><span class="sec-badge">7</span>Profit and loss by material group</h2>
+    <p class="hint">Net = loss − profit. A red bar is a net loss, a green bar a net profit. The biggest 12 groups are drawn, the table has every group.</p>
+    <div id="chartGrp"></div>
+    <div class="tbox" id="byGrp"></div>
+  </section>
+
+  <section class="card" style="margin-top:12px" id="sec-moves" data-foldable data-detail>
+    <h2><span class="sec-badge">8</span>Every price change · all the data
+      <span class="seg" id="mvSeg" style="margin-left:auto"><button type="button" data-mv="all" class="on">All changes</button><button type="button" data-mv="up">Rises</button><button type="button" data-mv="down">Falls</button></span></h2>
+    <p class="hint" id="mvHint"></p>
+    <div class="tbox" id="mvBox"></div>
+    <div class="pager"><span id="mvInfo"></span><div><button class="btn" id="mvAll" type="button" data-all="moves" data-seeall="1">See all</button></div></div>
+  </section>
+
+  <section class="card" style="margin-top:12px" id="sec-months" data-foldable>
+    <h2><span class="sec-badge">9</span>Month by month</h2>
+    <p class="hint">Click a month to filter the whole page to the PO dates of that month.</p>
+    <div class="tbox" id="byMonth"></div>
+  </section>
+  <details class="notebox"><summary>Notes about these figures</summary><p class="note">The rate of a material is the net value of its purchase order lines in rupees divided by the order quantity (the PO currency converted at the exchange rate of the PO), so it is the price per unit agreed on that PO date. One material and unit has one rate per PO date: lines of the same date are averaged by quantity, and a line worth less than 10% of the biggest line of that day (a free-of-charge item) is left out. The page shows the materials with at least two PO dates. <b>Profit and loss</b>: the reference rate is the rate of the first PO date of the period (or of the PO date before the latest, if you compare with that). Every later purchase is compared with it: (rate of that PO date − reference rate) × the quantity bought on that date. Above the reference rate is a <b>loss</b> (we paid more), below it a <b>profit</b> (we paid less); net = loss − profit. Nothing is sold on this page, so it is the purchase price variance and not a margin. <b>Current rate</b> is the rate of the latest PO date; <b>was</b> is the reference rate. In the table <b>Every price change</b> each change from one PO date to the next of at least the chosen % is one line, with the rate before (and its date), the rate after, the change, and the loss or profit against the PO before ((new rate − old rate) × the quantity of the later PO date). A click on a material opens its graph and the table of every PO date right under it in the list (any number at once; click again or Close to shut one). <b>Doubtful</b> changes are hidden by default: a change of more than +300% or below −75% (usually another item or another unit under the same material number, or a wrong PO price) and a change where the PO item text of the two dates has nothing in common (another size or make); the filter Doubtful changes shows them. <b>Supplier changed</b> means the first and the latest PO went to different suppliers, so a part of the change is the supplier and not the market. For import POs (USD, EUR ...) the rupee rate moves with the exchange rate of the PO as well; the currency pill shows them and the material card shows the rate in that currency. <b>RM, Store, Packing and Others</b>: every PO line goes to the first group that fits, in this order. RM = the lines of materials of material type ZRMA (raw materials), wherever they are delivered. Packing = the FG material: material types ZFGS (finished goods), ZTRG (trading goods) and HAWA, wherever delivered, and any other line delivered to the packing / FG locations GS02 (plant 1030), GS03 (1050) and MDFG (1040). Store = the store material types ZCON (consumables), ZHMI (tools), ZSPR (spares), ZSRM and ZVRP (packaging material), wherever they are delivered (many have no storage location on the PO line), and every other line delivered to one of the store locations of your list (the plant and the storage location of the PO line are in <code>backend/data/stock_locations.csv</code>, 221 locations). Others = every other line (the semi-finished job-work ZSFG, processed scrap). Each group is compared with its own lines, so a material bought in two groups appears in both. Not counted: stock transport orders (ZSTO, no purchase price), items without a material number, lines with zero or negative quantity or value, and the PO lines delivered to the storage locations PS01 to PS06, NPD1 and DROS (dross) of any plant. Only POs created from 1 Jan 2026 are in the data, so the first rate is the first 2026 PO. The data is read from SAP again every 30 seconds while this page is open.</p></details>
+</div>
+<footer class="footer">Mittal Group · Price Variance · Source: SAP S/4HANA Cloud, YY1_PO_ITEM_SUPPLIER_CDS</footer>
+
+<script id="mgs" type="application/json">__MGS__</script>
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const MG_NAMES=(()=>{try{return JSON.parse(document.getElementById('mgs').textContent);}catch(e){return {};}})();
+const mgName=c=>c?(MG_NAMES[c]||c):'(no material group)';
+const MT_NAMES={ZCON:'Consumable items',ZFGS:'Finished goods',ZHMI:'PRD tools',ZPRS:'Processed scrap',ZRMA:'Raw materials',ZSCP:'Scrap materials',ZSFG:'Semi finished goods',ZSPR:'Spare parts',ZSRM:'Raw materials stores',ZTOL:'Tool room',ZTRG:'Trading goods',ZUNB:'Non valuated material',ZVRP:'Packaging material'};
+const mtName=c=>c?(MT_NAMES[c]?c+' · '+MT_NAMES[c]:c):'(no material type)';
+const STORE_MT=PRICEVAR.STORE_MT;
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const PAGE=25,TOP=20;
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtN=n=>Math.round(n).toLocaleString('en-IN');
+function fmtINR(v){const a=Math.abs(v),s=v<-0.5?'-':'';if(a>=1e7)return s+'₹'+(a/1e7).toFixed(2)+' Cr';if(a>=1e5)return s+'₹'+(a/1e5).toFixed(2)+' L';return s+'₹'+Math.round(a).toLocaleString('en-IN');}
+const fmtRate=v=>'₹'+v.toLocaleString('en-IN',{minimumFractionDigits:0,maximumFractionDigits:2});
+const sgn=v=>(v>0?'+':v<0?'-':'')+fmtRate(Math.abs(v));
+const sgnPct=p=>(p>0?'+':p<0?'-':'')+(Math.abs(p)>=1000?fmtN(Math.abs(p)):Math.abs(p).toFixed(1))+'%';
+const fmtDay=d=>new Date(d*864e5).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric',timeZone:'UTC'});
+const fmtDayS=d=>new Date(d*864e5).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit',timeZone:'UTC'});
+const mName=k=>MON[k%12]+' '+Math.floor(k/12);
+const mShort=k=>MON[k%12]+" '"+String(Math.floor(k/12)).slice(2);
+const mIdx=d=>{const t=new Date(d*864e5);return t.getUTCFullYear()*12+t.getUTCMonth();};
+const dayOf=v=>v?Math.floor(Date.parse(v)/864e5):null;
+const iso=d=>new Date(d*864e5).toISOString().slice(0,10);
+// loss / profit text: a positive amount is a loss (paid more), a negative one a profit (paid less)
+const lp=v=>Math.abs(v)<0.5?'<span class="lpp zero">–</span>':v>0?`<span class="lpp loss">loss ${fmtINR(v)}</span>`:`<span class="lpp profit">profit ${fmtINR(-v)}</span>`;
+
+let D=null,CALC=null;
+const S={plant:'',mtype:'',grp:'',basis:'first',min:1,from:null,to:null,doubt:'hide',sort:'impact',q:'',tile:null,open:new Set(),mv:'all',all:{up:false,down:false,moves:false},reveal:null};
+
+// ---------------------------------------------------------------- the figures (frontend/pricevar.js), again whenever a filter that changes them changes
+let CMP=null;
+function calc(){
+  if(!D)return;
+  const base={plant:S.plant,mtype:S.mtype,from:S.from,to:S.to,basis:S.basis,min:S.min};
+  // RM, Store, Packing and Others are worked out apart (the side by side table); the page shows the one chosen, or all together
+  CMP={RM:PRICEVAR.compute(D,{...base,grp:'RM'}),STORE:PRICEVAR.compute(D,{...base,grp:'STORE'}),PACKING:PRICEVAR.compute(D,{...base,grp:'PACKING'}),OTHER:PRICEVAR.compute(D,{...base,grp:'OTHER'})};
+  CMP.ALL=PRICEVAR.compute(D,{...base,grp:''});
+  CALC=CMP[S.grp||'ALL'];
+  CALC.byKey=new Map(CALC.mats.map(r=>[r.key,r]));
+}
+const GRP_TXT={'':'All materials',RM:'RM (raw material)',STORE:'Store',PACKING:'Packing (FG material)',OTHER:'Others'};
+const GRP_BTN={RM:'RM · raw material',STORE:'Store',PACKING:'Packing · FG material',OTHER:'Others'};
+const GRP_TIP={'':'Every material',RM:'Raw materials: material type ZRMA (copper, zinc, nickel, scrap, ingots), wherever they are delivered',STORE:'The store materials (consumables, tools, spares, packaging material) and every other purchase delivered to a store location of your list',PACKING:'The FG material: finished goods, trading goods (coins, medals, trophies, gifts, jugs ...) and what comes into the packing / FG locations GS02, GS03, MDFG',OTHER:'Everything else'};
+const hay=r=>r._hay||(r._hay=(r.mat+' '+r.text+' '+r.days.map(d=>d.sups.join(' ')).join(' ')).toLowerCase());
+const reason=r=>r.big?'very large change':r.textDiff?'item text differs':'';
+const okM=r=>(S.doubt==='show'||(S.doubt==='hide'?!r.doubt:r.doubt))&&(!S.q||hay(r).includes(S.q));
+const pick=l=>l.filter(okM);
+function sorted(list,kind){
+  const a=list.slice();
+  if(S.sort==='impact')a.sort((x,y)=>kind==='down'?x.impact-y.impact:y.impact-x.impact);
+  if(S.sort==='pct')a.sort((x,y)=>kind==='down'?x.pct-y.pct:y.pct-x.pct);
+  if(S.sort==='recent')a.sort((x,y)=>y.last.day-x.last.day);
+  if(S.sort==='name')a.sort((x,y)=>(x.text||x.mat).localeCompare(y.text||y.mat));
+  return a;
+}
+
+// ---------------------------------------------------------------- the graphs (SVG)
+function niceMax(v){if(!(v>0))return 1;const p=Math.pow(10,Math.floor(Math.log10(v))),f=v/p;return (f<=1?1:f<=2?2:f<=2.5?2.5:f<=5?5:10)*p;}
+// grouped columns: items [{label,a,b,tip}], a red, b green
+function groupedBars(items,fmt,wd){
+  if(!items.length)return '<div class="empty">Nothing to draw for the filters.</div>';
+  const W=wd||600,H=240,L=62,R=10,T=14,B=32,pw=W-L-R,ph=H-T-B,n=items.length;
+  const mx=niceMax(Math.max(...items.map(i=>Math.max(i.a,i.b))));
+  const Y=v=>T+ph-v/mx*ph,gw=pw/n,bw=Math.min(28,gw*.36);
+  let g='';
+  for(let k=0;k<=4;k++){const v=mx*k/4,y=Y(v);g+=`<line class="gl" x1="${L}" x2="${W-R}" y1="${y}" y2="${y}"/><text x="${L-6}" y="${y+3.5}" text-anchor="end">${esc(fmt(v))}</text>`;}
+  items.forEach((it,i)=>{
+    const cx=L+gw*(i+.5),ya=Y(it.a),yb=Y(it.b);
+    g+=`<g><title>${esc(it.tip)}</title>`+
+      `<rect class="bl" x="${cx-bw-1}" y="${ya}" width="${bw}" height="${Math.max(0,T+ph-ya)}" rx="2"/>`+
+      `<rect class="bg" x="${cx+1}" y="${yb}" width="${bw}" height="${Math.max(0,T+ph-yb)}" rx="2"/>`+
+      `<text x="${cx}" y="${H-12}" text-anchor="middle">${esc(it.label)}</text></g>`;
+  });
+  return `<svg class="pvc" viewBox="0 0 ${W} ${H}" role="img" aria-label="Chart">${g}</svg>`;
+}
+// horizontal bars: items [{label,value,tip,key,cls}], bar length = value (positive)
+function hbars(items,fmt,wd,lw){
+  if(!items.length)return '<div class="empty">Nothing to draw for the filters.</div>';
+  const W=wd||600,LW=lw||230,RW=84,rowH=26,H=items.length*rowH+8,mx=Math.max(...items.map(i=>i.value))||1,bw=W-LW-RW;
+  let g='';
+  items.forEach((it,i)=>{
+    const y=4+i*rowH,w=Math.max(2,it.value/mx*bw);
+    g+=`<g ${it.key?`data-mat="${esc(it.key)}" data-ctx="${esc(it.ctx||'')}"`:''}><title>${esc(it.tip||it.label)}</title>`+
+      `<text x="${LW-8}" y="${y+16}" text-anchor="end">${esc(it.label.length>Math.floor((LW-12)/6.2)?it.label.slice(0,Math.floor((LW-12)/6.2)-1)+'…':it.label)}</text>`+
+      `<rect class="${it.cls||'bl'}" x="${LW}" y="${y+4}" width="${w}" height="${rowH-9}" rx="3"/>`+
+      `<text class="vt" x="${LW+w+6}" y="${y+16}">${esc(fmt(it.value))}</text></g>`;
+  });
+  return `<svg class="pvc" viewBox="0 0 ${W} ${H}" role="img" aria-label="Chart">${g}</svg>`;
+}
+// the rate of one material on every PO date, with the reference rate as a dashed line
+function lineChart(r,Wd,Hd){
+  const W=Wd||1150,H=Hd||300,L=70,R=26,T=22,B=34,pts=r.days,x0=pts[0].day,x1=pts[pts.length-1].day,span=Math.max(1,x1-x0);
+  let lo=Math.min(...pts.map(p=>p.rate)),hi=Math.max(...pts.map(p=>p.rate));
+  const pad=(hi-lo)*.14||hi*.06;lo=Math.max(0,lo-pad);hi=hi+pad;
+  const X=d=>L+(d-x0)/span*(W-L-R),Y=v=>T+(hi-v)/(hi-lo)*(H-T-B);
+  let g='';
+  for(let k=0;k<=4;k++){const v=lo+(hi-lo)*k/4,y=Y(v);g+=`<line class="gl" x1="${L}" x2="${W-R}" y1="${y}" y2="${y}"/><text x="${L-6}" y="${y+3.5}" text-anchor="end">${esc(fmtRate(v))}</text>`;}
+  // month marks along the bottom (every k-th when they are many)
+  const m0=mIdx(x0),m1=mIdx(x1),ms=[];for(let m=m0;m<=m1+1;m++){const d=Date.UTC(Math.floor(m/12),m%12,1)/864e5;if(d>=x0-1&&d<=x1+1)ms.push([m,d]);}
+  const stepM=Math.max(1,Math.ceil(ms.length/(W>800?9:6)));
+  ms.forEach(([m,d],i)=>{if(i%stepM)return;g+=`<line class="gl" x1="${X(d)}" x2="${X(d)}" y1="${T}" y2="${H-B}" style="stroke-dasharray:2 4"/><text x="${X(d)}" y="${H-12}" text-anchor="middle">${esc(mShort(m))}</text>`;});
+  // the reference rate
+  const yr=Y(r.ref.rate);g+=`<line x1="${L}" x2="${W-R}" y1="${yr}" y2="${yr}" style="stroke:var(--muted);stroke-width:1.2;stroke-dasharray:6 4"/><text x="${W-R}" y="${yr-5}" text-anchor="end">reference rate ${esc(fmtRate(r.ref.rate))}</text>`;
+  g+=`<polyline points="${pts.map(p=>X(p.day).toFixed(1)+','+Y(p.rate).toFixed(1)).join(' ')}" style="fill:none;stroke:var(--brand);stroke-width:2.2;stroke-linejoin:round"/>`;
+  const last=pts.length-1;
+  pts.forEach((p,i)=>{
+    const col=i===0?'var(--s1)':p.step>0?'var(--crit)':p.step<0?'var(--good)':'var(--muted)';
+    const tip=fmtDay(p.day)+': '+fmtRate(p.rate)+(p.step!==null?' ('+sgn(p.step)+', '+sgnPct(p.stepPct)+' from the PO before)':' (first PO)')+' · '+p.qty.toLocaleString('en-IN',{maximumFractionDigits:3})+' '+r.unit+' · '+p.sups.join(', ');
+    g+=`<circle cx="${X(p.day)}" cy="${Y(p.rate)}" r="${i===last?6:4.5}" style="fill:${col};stroke:var(--surface);stroke-width:1.5"><title>${esc(tip)}</title></circle>`;
+  });
+  // the first and the latest value written on the line, the highest and the lowest too
+  const hiP=pts.reduce((a,b)=>b.rate>a.rate?b:a),loP=pts.reduce((a,b)=>b.rate<a.rate?b:a),lab=new Set([pts[0],pts[last],hiP,loP]);
+  for(const p of lab){const x=X(p.day),right=x>W-R-80;g+=`<text class="vt" x="${right?x-8:x+8}" y="${Y(p.rate)-8}" text-anchor="${right?'end':'start'}">${esc(fmtRate(p.rate))}</text>`;}
+  return `<div class="leg"><span><i style="background:var(--s1)"></i>First PO</span><span><i style="background:var(--crit)"></i>Rate rose</span><span><i style="background:var(--good)"></i>Rate fell</span><span><i style="background:var(--muted)"></i>No change</span></div><svg class="pvc" viewBox="0 0 ${W} ${H}" role="img" aria-label="Rate of the material on every PO date">${g}</svg>`;
+}
+
+// ---------------------------------------------------------------- one material: its row in the lists, and its card
+const pills=r=>(r.supDiff?'<span class="pill sup" title="The first and the latest PO went to different suppliers, so a part of the change is the supplier">supplier changed</span>':'')+(r.doubt?`<span class="pill chk" title="Doubtful change: ${esc(r.big?'more than +300% or below -75%, usually another item or unit under the same material number, or a wrong PO price':'the PO item text of the two dates has nothing in common (another size or make)')}">${esc(reason(r))}</span>`:'')+(r.last.cur&&r.last.cur!=='INR'?`<span class="pill cur" title="Import PO: the rupee rate moves with the exchange rate as well, the material card shows the rate in ${esc(r.last.cur)}">${esc(r.last.cur)}</span>`:'');
+function movesCell(r){
+  if(!r.moves.length)return '<span class="sm">no change of that size</span>';
+  const mv=r.moves.slice(-3).reverse();
+  return mv.map(m=>`<div class="mv" title="${sgnPct(m.pct)} on ${fmtDay(m.day)}"><span class="${m.pct>0?'up':'dn'}">${m.pct>0?'▲':'▼'}</span> ${fmtDayS(m.day)}: ${fmtRate(m.from)} → <b>${fmtRate(m.to)}</b></div>`).join('')+(r.moves.length>3?`<div class="more">+${r.moves.length-3} earlier · click the material for all</div>`:'');
+}
+// a small trend line of the rate on every PO date (the dashed line is the reference rate; red = the rate is above it now, green = below)
+function spark(r){
+  const w=92,h=26,pts=r.days,x0=pts[0].day,sp=Math.max(1,r.last.day-x0);
+  let lo=Math.min(...pts.map(p=>p.rate)),hi=Math.max(...pts.map(p=>p.rate));if(hi===lo){hi+=1;lo-=1;}
+  const X=d=>2+(d-x0)/sp*(w-4),Y=v=>3+(hi-v)/(hi-lo)*(h-6),col=r.pct>=0?'var(--crit)':'var(--good)',ry=Y(r.ref.rate);
+  return `<svg class="spk" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" role="img" aria-label="Rate trend"><title>${esc(pts.length+' PO dates: '+fmtRate(pts[0].rate)+' → '+fmtRate(r.last.rate))}</title><line x1="2" x2="${w-2}" y1="${ry}" y2="${ry}" style="stroke:var(--muted);stroke-width:.8;stroke-dasharray:3 3;opacity:.75"/><polyline points="${pts.map(p=>X(p.day).toFixed(1)+','+Y(p.rate).toFixed(1)).join(' ')}" style="fill:none;stroke:${col};stroke-width:1.6;stroke-linejoin:round"/><circle cx="${X(r.last.day)}" cy="${Y(r.last.rate)}" r="2.6" style="fill:${col}"/></svg>`;
+}
+// every place where a material can be clicked has its own context (ctx = place|material key[|day]): the panel opens under that row and stays open
+// until it is closed, any number of them at once, so the next material is a click on the list, not a trip to the top of the page
+const panId=c=>'mp-'+c.replace(/[^A-Za-z0-9]/g,'_');
+const OPEN_W={up:560,down:560,loss:560,profit:560};
+function matPanel(r,ctx){
+  const W=OPEN_W[ctx.split('|')[0]]||1100;
+  const nUp=r.days.filter(d=>d.stepPct!==null&&d.stepPct>=S.min).length,nDn=r.days.filter(d=>d.stepPct!==null&&d.stepPct<=-S.min).length;
+  const mUp=r.days.filter(d=>d.step>0).sort((a,b)=>b.step-a.step)[0],mDn=r.days.filter(d=>d.step<0).sort((a,b)=>a.step-b.step)[0];
+  const hi=r.days.reduce((a,b)=>b.rate>a.rate?b:a),lo=r.days.reduce((a,b)=>b.rate<a.rate?b:a),T=PRICEVAR.totals([r]);
+  const st=[[fmtRate(r.ref.rate),'Reference rate · '+fmtDayS(r.ref.day)],[fmtRate(r.last.rate),'Current rate · '+fmtDayS(r.last.day)],[`<span class="${r.pct>=0?'up':'dn'}">${sgn(r.chg)}<br>${sgnPct(r.pct)}</span>`,'Change from the reference rate'],
+    [lp(r.impact),'Profit / loss since then'],[`<span class="up">${fmtINR(r.loss)}</span> / <span class="dn">${fmtINR(r.profit)}</span>`,'Loss / profit separately'],
+    [fmtRate(hi.rate),'Highest · '+fmtDayS(hi.day)],[fmtRate(lo.rate),'Lowest · '+fmtDayS(lo.day)]];
+  const rows=r.days.map((d,i)=>{const cls=d.step===null||Math.abs(d.stepPct)<0.05?'':d.step>0?'up':'dn',cur=d.cur&&d.cur!=='INR'&&d.doc!==null?`<div class="sm">${esc(d.cur)} ${d.doc.toLocaleString('en-IN',{maximumFractionDigits:2})}</div>`:'',isRef=d===r.ref;
+    return `<tr><td class="nw">${fmtDay(d.day)}${i===r.days.length-1?' <span class="sm">current</span>':''}${isRef?' <span class="sm">reference</span>':''}<div class="sm">PO ${esc(d.pos.join(', '))}</div></td><td>${esc(d.sups.join(', '))}</td><td class="num nw">${d.qty.toLocaleString('en-IN',{maximumFractionDigits:3})} ${esc(r.unit)}<div class="sm">${fmtINR(d.value)}</div></td><td class="num nw"><b>${fmtRate(d.rate)}</b>${cur}</td><td class="num nw ${cls}">${d.step===null?'<span class="sm">first PO</span>':Math.abs(d.stepPct)<0.05?'no change':`${sgn(d.step)}<div>${sgnPct(d.stepPct)}</div>`}</td><td class="num nw">${d.vsRef===null?'<span class="sm">'+(isRef?'reference':'before')+'</span>':lp(d.vsRef)}</td></tr>`;}).join('');
+  return `<div class="mp" id="${panId(ctx)}"><div class="mph"><b>${esc(r.text||r.mat)}</b><span class="sm">${esc(r.mat)} · per ${esc(r.unit)} · ${r.days.length} PO dates, ${fmtDay(r.days[0].day)} – ${fmtDay(r.last.day)}</span><button type="button" class="btn alt" data-closectx="${esc(ctx)}">Close</button></div>`+
+    `<div class="stats">${st.map(s=>`<div class="stat"><b>${s[0]}</b><span>${esc(s[1])}</span></div>`).join('')}</div>`+
+    `<div class="sumline">The rate <b class="up">rose ${nUp} time${nUp===1?'':'s'}</b>${mUp?` (the biggest rise ${sgn(mUp.step)} on ${fmtDay(mUp.day)})`:''} and <b class="dn">fell ${nDn} time${nDn===1?'':'s'}</b>${mDn?` (the biggest fall ${sgn(mDn.step)} on ${fmtDay(mDn.day)})`:''}, by changes of ${S.min}% or more from one PO date to the next. The reference rate is ${S.basis==='prev'?'the rate of the PO date before the latest':'the rate of the first PO date'}.</div>`+
+    lineChart(r,W,W>800?290:235)+
+    `<div class="tbox"><table class="pt"><thead><tr><th>PO date</th><th>Supplier</th><th class="num">Quantity</th><th class="num">Rate</th><th class="num" title="Change from the PO before">Change</th><th class="num" title="Loss / profit of that purchase against the reference rate">Loss / profit</th></tr></thead><tbody>${rows}</tbody><tfoot><tr><td colspan="2">Total · ${r.days.length} PO dates</td><td class="num nw">${fmtINR(r.days.reduce((s,d)=>s+d.value,0))}</td><td colspan="2"></td><td class="num nw">${lp(T.net)}</td></tr></tfoot></table></div></div>`;
+}
+// the panels of the materials of a bar chart that are open
+function panelsFor(kind,list){let h='';for(const r of list){const c=kind+'|'+r.key;if(S.open.has(c))h+=matPanel(r,c);}return h;}
+function listTable(list,empty,full,place){
+  if(!list.length)return `<div class="empty">${empty||'No material matches the filters.'}</div>`;
+  full=full||list;
+  const T=PRICEVAR.totals(full);
+  return `<table><thead><tr><th class="num">#</th><th>Material and its last price moves</th><th class="num">Rate trend</th><th class="num">Change · loss / profit</th></tr></thead><tbody>`+
+    list.map((r,i)=>{const cls=r.pct>0?'up':'dn',ctx=(place||'tile')+'|'+r.key,open=S.open.has(ctx);
+      return `<tr class="${open?'sel':''}"><td class="num">${i+1}</td><td class="mn"><button type="button" class="lnk" data-mat="${esc(r.key)}" data-ctx="${esc(ctx)}" aria-expanded="${open}" title="Click to open the graph, every PO date and the profit / loss of this material right here">${open?'▾':'▸'} ${esc(r.text||r.mat)}</button><div class="mid">${esc(r.mat)} · per ${esc(r.unit)}${pills(r)}</div><div class="mvs">${movesCell(r)}</div></td><td class="num nw">${spark(r)}<b>${fmtRate(r.last.rate)}</b> <span class="sm">${fmtDayS(r.last.day)}</span><div class="sm">was ${fmtRate(r.ref.rate)} · ${fmtDayS(r.ref.day)}</div></td><td class="num nw ${cls}">${sgn(r.chg)}<div>${sgnPct(r.pct)}</div><div style="margin-top:4px">${lp(r.impact)}</div></td></tr>`+(open?`<tr class="tlrow subrow"><td></td><td colspan="3">${matPanel(r,ctx)}</td></tr>`:'');}).join('')+
+    `</tbody><tfoot><tr><td></td><td>Total (${fmtN(full.length)} materials)</td><td class="num nw" colspan="2" title="Loss: purchases above the reference rate; profit: below it">${lp(T.net)}</td></tr></tfoot></table>`;
+}
+
+// ---------------------------------------------------------------- the details of a tile
+const TILE_INFO={
+  loss:['Biggest losses','The 20 materials where the purchases since the reference date cost the most more than at the reference rate.'],
+  profit:['Biggest profits','The 20 materials where the purchases cost the most less than at the reference rate.'],
+  net:['Profit and loss by material group','Loss and profit of the purchases against the reference rate, by material group (the doubtful changes follow the filter).'],
+  up:['Price going up: by material group','The materials whose rate rose, by material group.'],
+  down:['Price going down: by material group','The materials whose rate fell, by material group.'],
+  comp:['Materials compared: by material type','Every material with at least two PO dates inside the filters, by material type, and what its rate did.'],
+  doubt:['Doubtful changes','Changes of more than +300% or below -75%, or where the PO item text of the two dates has nothing in common: check the unit, the item and the PO price before trusting them.']
+};
+function groupAgg(list){
+  const m=new Map();
+  for(const r of list){let x=m.get(r.grp);if(!x)m.set(r.grp,x={n:0,loss:0,profit:0,ps:0});x.n++;x.loss+=r.loss;x.profit+=r.profit;x.ps+=r.pct;}
+  return m;
+}
+function groupTable(list,kind){
+  const net=x=>x.loss-x.profit;
+  const rows=[...groupAgg(list).entries()].sort((a,b)=>kind==='up'?net(b[1])-net(a[1]):kind==='down'?net(a[1])-net(b[1]):Math.abs(net(b[1]))-Math.abs(net(a[1])));
+  if(!rows.length)return '<div class="empty">Nothing matches the filters.</div>';
+  const T=PRICEVAR.totals(list);
+  return `<table><thead><tr><th>Material group</th><th class="num">Materials</th><th class="num">Average change</th><th class="num">Loss</th><th class="num">Profit</th><th class="num">Net</th></tr></thead><tbody>`+
+    rows.map(([g,x])=>`<tr><td>${esc(mgName(g))}</td><td class="num">${fmtN(x.n)}</td><td class="num nw ${x.ps>=0?'up':'dn'}">${sgnPct(x.ps/x.n)}</td><td class="num nw up">${fmtINR(x.loss)}</td><td class="num nw dn">${fmtINR(x.profit)}</td><td class="num nw"><b>${lp(net(x))}</b></td></tr>`).join('')+
+    `</tbody><tfoot><tr><td>Total (${fmtN(rows.length)} groups)</td><td class="num">${fmtN(list.length)}</td><td></td><td class="num nw">${fmtINR(T.loss)}</td><td class="num nw">${fmtINR(T.profit)}</td><td class="num nw">${lp(T.net)}</td></tr></tfoot></table>`;
+}
+function renderTile(mats,ups,downs){
+  const k=S.tile;
+  if(!k||!CALC||!TILE_INFO[k]){$('tileCard').hidden=true;return;}
+  $('tileCard').hidden=false;$('tileTitle').textContent=TILE_INFO[k][0];$('tileHint').textContent=TILE_INFO[k][1];
+  let html='';
+  if(k==='loss')html=listTable(mats.filter(r=>r.impact>0.5).sort((a,b)=>b.impact-a.impact).slice(0,TOP),'No material with a loss for the filters.',null,'tile');
+  else if(k==='profit')html=listTable(mats.filter(r=>r.impact<-0.5).sort((a,b)=>a.impact-b.impact).slice(0,TOP),'No material with a profit for the filters.',null,'tile');
+  else if(k==='net')html=groupTable(mats,'net');
+  else if(k==='up')html=groupTable(ups,'up');
+  else if(k==='down')html=groupTable(downs,'down');
+  else if(k==='doubt'){const l=CALC.mats.filter(r=>r.doubt&&(r.pct>=S.min||r.pct<=-S.min)&&(!S.q||hay(r).includes(S.q))).sort((a,b)=>Math.abs(b.pct)-Math.abs(a.pct));html=listTable(l.slice(0,100),'No doubtful change.',l,'tile');}
+  else if(k==='comp'){
+    const m=new Map();
+    for(const r of CALC.mats){let x=m.get(r.mtype);if(!x)m.set(r.mtype,x={n:0,u:0,d:0});x.n++;if(r.pct>=S.min)x.u++;else if(r.pct<=-S.min)x.d++;}
+    const rows=[...m.entries()].sort((a,b)=>b[1].n-a[1].n);
+    html=`<table><thead><tr><th>Material type</th><th class="num">Materials compared</th><th class="num">Rate went up</th><th class="num">Rate went down</th><th class="num">About the same</th></tr></thead><tbody>`+
+      rows.map(([t,x])=>`<tr><td>${esc(mtName(t))}</td><td class="num">${fmtN(x.n)}</td><td class="num up">${fmtN(x.u)}</td><td class="num dn">${fmtN(x.d)}</td><td class="num">${fmtN(x.n-x.u-x.d)}</td></tr>`).join('')+`</tbody></table>`;
+  }
+  $('tileBox').innerHTML=html;
+}
+const reveal=id=>{const el=$(id);if(el&&!el.hidden)el.scrollIntoView({behavior:'smooth',block:'start'});};
+
+// ---------------------------------------------------------------- the page
+function monthAgg(mats){
+  const m=new Map(),get=k=>{let x=m.get(k);if(!x)m.set(k,x={up:0,down:0,loss:0,profit:0});return x;};
+  for(const r of mats){
+    for(const e of r.vs){const x=get(mIdx(e.day));if(e.v>0)x.loss+=e.v;else x.profit-=e.v;}
+    for(const mv of r.moves){const x=get(mIdx(mv.day));if(mv.pct>0)x.up++;else x.down++;}
+  }
+  return m;
+}
+function render(){
+  if(!D||!CALC)return;
+  const mats=pick(CALC.mats),ups=pick(CALC.ups),downs=pick(CALC.downs);
+  const T=PRICEVAR.totals(mats),doubtN=CALC.mats.filter(r=>r.doubt&&(r.pct>=S.min||r.pct<=-S.min)).length;
+  const tiles=[[fmtINR(T.loss),'Loss · purchases above the reference rate','loss'],[fmtINR(T.profit),'Profit · purchases below the reference rate','profit'],
+    [fmtINR(Math.abs(T.net)),T.net>0.5?'Net loss':T.net<-0.5?'Net profit':'Net profit / loss','net',(T.loss+T.profit>0?`<div class="lpbar" title="Loss ${fmtINR(T.loss)} against profit ${fmtINR(T.profit)}"><i class="l" style="width:${(T.loss/(T.loss+T.profit)*100).toFixed(1)}%"></i><i class="p" style="width:${(T.profit/(T.loss+T.profit)*100).toFixed(1)}%"></i></div>`:'')],
+    [fmtN(ups.length),'Price going up (materials)','up'],[fmtN(downs.length),'Price going down (materials)','down'],[fmtN(CALC.mats.length),'Materials compared (2+ PO dates)','comp'],[fmtN(doubtN),'Doubtful changes'+(S.doubt==='hide'?' (hidden)':''),'doubt']];
+  $('kpis').innerHTML=tiles.map(t=>`<button type="button" class="tile tilebtn" data-tile="${t[2]}" aria-expanded="${S.tile===t[2]}"><div class="tv">${t[0]}</div><div class="tl">${esc(t[1])}</div>${t[3]||''}${S.tile===t[2]?'<div class="ts">click to hide</div>':''}</button>`).join('');
+  const c=[];
+  if(S.plant)c.push(['plant','Plant '+S.plant]);
+  if(S.grp)c.push(['grp',GRP_TXT[S.grp]]);
+  if(S.mtype)c.push(['mtype','Material type: '+mtName(S.mtype)]);
+  if(S.from!==null||S.to!==null)c.push(['date','PO date '+(S.from!==null?fmtDay(S.from):'start')+' – '+(S.to!==null?fmtDay(S.to):'today')]);
+  if(S.doubt!=='hide')c.push(['doubt',S.doubt==='show'?'Doubtful changes shown':'Only the doubtful changes']);
+  if(S.q)c.push(['q','Search: '+S.q]);
+  $('chips').innerHTML=c.map(x=>`<button type="button" class="chip" data-clr="${x[0]}">${esc(x[1])} ×</button>`).join('')+(c.length?'<button type="button" class="chip" data-clr="all">Reset filters</button>':'');
+  {
+    // the group tabs: every group with its own numbers; Others only when it holds a material (or is the chosen group)
+    const showOther=CMP.OTHER.mats.length>0||S.grp==='OTHER';
+    const defs=[['','All materials',CMP.ALL],['RM',GRP_BTN.RM,CMP.RM],['STORE',GRP_BTN.STORE,CMP.STORE],['PACKING',GRP_BTN.PACKING,CMP.PACKING],...(showOther?[['OTHER',GRP_BTN.OTHER,CMP.OTHER]]:[])];
+    $('gtabs').innerHTML=defs.map(([g,label,cm])=>{const ms=pick(cm.mats),u=pick(cm.ups).length,d=pick(cm.downs).length,tt=PRICEVAR.totals(ms);
+      return `<button type="button" class="tile tilebtn gt" data-grp="${g}" aria-pressed="${S.grp===g}" title="${esc(GRP_TIP[g])}"><div class="gtn">${esc(label)}</div><div class="gtv">${fmtN(ms.length)} materials · <span class="up">▲ ${fmtN(u)}</span> <span class="dn">▼ ${fmtN(d)}</span></div><div class="gtp">${lp(tt.net)}</div><div class="gts sm">loss ${fmtINR(tt.loss)} · profit ${fmtINR(tt.profit)}</div></button>`;}).join('');
+  }
+  {
+    // the key points, in plain words
+    const lossS=mats.filter(r=>r.impact>0.5).sort((a,b)=>b.impact-a.impact),profS=mats.filter(r=>r.impact<-0.5).sort((a,b)=>a.impact-b.impact);
+    const mmK=monthAgg(mats),msK=[...mmK.entries()].map(([k,x])=>({k,net:x.loss-x.profit})).sort((a,b)=>b.net-a.net);
+    const nm=r=>`<b>${esc(r.text||r.mat)}</b>`,li=(c,h)=>`<li class="${c}"><span>${h}</span></li>`,pts=[];
+    pts.push(li(T.net>0.5?'l':T.net<-0.5?'p':'',`<b>${esc(S.grp?GRP_TXT[S.grp]:'All materials')}:</b> net ${T.net>=0?'loss':'profit'} <b>${fmtINR(Math.abs(T.net))}</b>. On some materials the purchases cost ${fmtINR(T.loss)} more than at the reference rate, on others ${fmtINR(T.profit)} less.`));
+    if(lossS.length){const r=lossS[0],top5=lossS.slice(0,5).reduce((s,x)=>s+x.impact,0);pts.push(li('l',`Biggest loss: ${nm(r)}, ${fmtINR(r.impact)} (${T.loss>0?(r.impact/T.loss*100).toFixed(0):0}% of all the loss), rate ${fmtRate(r.ref.rate)} → ${fmtRate(r.last.rate)}. The 5 biggest losses together: ${fmtINR(top5)}.`));}
+    if(profS.length){const r=profS[0];pts.push(li('p',`Biggest profit: ${nm(r)}, ${fmtINR(-r.impact)}, rate ${fmtRate(r.ref.rate)} → ${fmtRate(r.last.rate)}.`));}
+    if(msK.length>1){const w=msK[0],b=msK[msK.length-1];pts.push(li(w.net>0?'l':'p',`Worst month: <b>${mName(w.k)}</b> (net ${w.net>=0?'loss':'profit'} ${fmtINR(Math.abs(w.net))}); best month: <b>${mName(b.k)}</b> (net ${b.net>=0?'loss':'profit'} ${fmtINR(Math.abs(b.net))}).`));}
+    const upS=ups.slice().sort((a,b)=>b.pct-a.pct)[0],dnS=downs.slice().sort((a,b)=>a.pct-b.pct)[0];
+    pts.push(li('',`The rate rose on <b class="up">${fmtN(ups.length)}</b> materials and fell on <b class="dn">${fmtN(downs.length)}</b> (change of ${S.min}% or more)${upS?`; the sharpest rise is ${nm(upS)} ${sgnPct(upS.pct)}`:''}${dnS?`, the sharpest fall ${nm(dnS)} ${sgnPct(dnS.pct)}`:''}.`));
+    $('kp').innerHTML=mats.length?pts.join(''):'<li><span>No material for these filters.</span></li>';
+  }
+  $('exNote').textContent=CMP.RM.excluded?`Left out of everything on this page: ${fmtN(CMP.RM.excluded)} PO lines delivered to the storage locations PS01 to PS06, NPD1 and DROS (dross), of any plant (production and job-work stores, not purchases for stock).`:'';
+  renderTile(mats,ups,downs);
+
+  // the graphs by month
+  const mm=monthAgg(mats),mk=[...mm.keys()].sort((a,b)=>a-b),months=mk.map(k=>[k,mm.get(k)]);
+  $('chartPL').innerHTML=groupedBars(months.map(([k,x])=>({label:mShort(k),a:x.loss,b:x.profit,tip:`${mName(k)}: loss ${fmtINR(x.loss)}, profit ${fmtINR(x.profit)}, net ${x.loss-x.profit>=0?'loss':'profit'} ${fmtINR(Math.abs(x.loss-x.profit))}`})),fmtINR);
+  $('chartMV').innerHTML=groupedBars(months.map(([k,x])=>({label:mShort(k),a:x.up,b:x.down,tip:`${mName(k)}: ${x.up} materials with a rise, ${x.down} with a fall`})),v=>fmtN(v));
+  // the two lists
+  const basisTxt=S.basis==='prev'?'the PO before the latest':'the first PO of the period';
+  const hid=S.doubt==='hide'?CALC.mats.filter(r=>r.doubt&&(r.pct>=S.min||r.pct<=-S.min)).length:0;
+  const note=(hid?` ${fmtN(hid)} doubtful change${hid===1?' is':'s are'} hidden (the tile Doubtful changes shows them).`:'')+' Loss / profit counts every purchase since the reference date (a material that is cheaper now can still show a loss).';
+  const gt=S.grp?GRP_TXT[S.grp]+': ':'';
+  $('upHint').textContent=`${gt}${fmtN(ups.length)} materials whose latest rate is at least ${S.min}% above ${basisTxt}.${note}`;
+  $('dnHint').textContent=`${gt}${fmtN(downs.length)} materials whose latest rate is at least ${S.min}% below ${basisTxt}.${note}`;
+  for(const [key,box,info,btn,list,kind] of [['up','upBox','upInfo','upAll',ups,'up'],['down','dnBox','dnInfo','dnAll',downs,'down']]){
+    const s=sorted(list,kind),shown=S.all[key]?s:s.slice(0,PAGE);
+    $(box).innerHTML=listTable(shown,'No material in this list for the filters.',s,kind);
+    $(info).textContent=!s.length?'':(S.all[key]||s.length<=PAGE)?`All ${fmtN(s.length)} shown`:`Showing the first ${PAGE} of ${fmtN(s.length)}`;
+    $(btn).hidden=s.length<=PAGE;$(btn).textContent=S.all[key]?'Show first '+PAGE:'See all '+fmtN(s.length);
+  }
+  // the biggest losses and profits, by material group
+  const lossL=mats.filter(r=>r.impact>0.5).sort((a,b)=>b.impact-a.impact).slice(0,10),profL=mats.filter(r=>r.impact<-0.5).sort((a,b)=>a.impact-b.impact).slice(0,10);
+  const item=(r,cls,cx)=>({label:(r.text||r.mat),value:Math.abs(r.impact),key:r.key,ctx:cx+'|'+r.key,cls,tip:`${r.text||r.mat} (${r.mat}): ${r.impact>0?'loss':'profit'} ${fmtINR(Math.abs(r.impact))} · rate ${fmtRate(r.ref.rate)} → ${fmtRate(r.last.rate)} (${sgnPct(r.pct)})`});
+  $('chartLoss').innerHTML=hbars(lossL.map(r=>item(r,'bl','loss')),fmtINR);
+  $('panLoss').innerHTML=panelsFor('loss',lossL);
+  $('chartProfit').innerHTML=hbars(profL.map(r=>item(r,'bg','profit')),fmtINR);
+  $('panProfit').innerHTML=panelsFor('profit',profL);
+  const ga=[...groupAgg(mats).entries()].sort((a,b)=>Math.abs(b[1].loss-b[1].profit)-Math.abs(a[1].loss-a[1].profit));
+  $('chartGrp').innerHTML=hbars(ga.slice(0,12).map(([g,x])=>({label:mgName(g),value:Math.abs(x.loss-x.profit),cls:x.loss-x.profit>=0?'bl':'bg',tip:`${mgName(g)}: loss ${fmtINR(x.loss)}, profit ${fmtINR(x.profit)}, net ${x.loss-x.profit>=0?'loss':'profit'} ${fmtINR(Math.abs(x.loss-x.profit))} · ${x.n} materials`})),fmtINR,1150,300);
+  $('byGrp').innerHTML=groupTable(mats,'net');
+  // every price change
+  const all=[];for(const r of mats)for(const mv of r.moves)all.push(mv);
+  const mvs=all.filter(m=>S.mv==='all'||(S.mv==='up'?m.pct>0:m.pct<0)).sort((a,b)=>b.day-a.day||Math.abs(b.amt)-Math.abs(a.amt));
+  for(const b of document.querySelectorAll('#mvSeg button'))b.classList.toggle('on',b.dataset.mv===S.mv);
+  const nUpM=all.filter(m=>m.pct>0).length,nDnM=all.length-nUpM,sumL=all.reduce((s,m)=>s+(m.amt>0?m.amt:0),0),sumP=all.reduce((s,m)=>s+(m.amt<0?-m.amt:0),0);
+  $('mvHint').textContent=`${fmtN(all.length)} price changes of ${S.min}% or more from one PO date to the next, ${fmtN(nUpM)} rises and ${fmtN(nDnM)} falls, the newest first. Loss / profit = (new rate − old rate) × the quantity of the later PO date: what that purchase cost more or less than at the rate before. Together: loss ${fmtINR(sumL)}, profit ${fmtINR(sumP)}.`;
+  const shownM=S.all.moves?mvs:mvs.slice(0,PAGE);
+  $('mvBox').innerHTML=mvs.length?`<table><thead><tr><th>PO date</th><th>Material</th><th>PO</th><th>Supplier</th><th class="num">Quantity</th><th class="num">Rate before</th><th class="num">Rate after</th><th class="num">Change</th><th class="num">Loss / profit</th></tr></thead><tbody>`+
+    shownM.map(m=>{const r=m.rec,cls=m.pct>0?'up':'dn',ctx='mv|'+r.key+'|'+m.day,open=S.open.has(ctx);return `<tr class="${open?'sel':''}"><td class="nw">${fmtDay(m.day)}</td><td><button type="button" class="lnk" data-mat="${esc(r.key)}" data-ctx="${esc(ctx)}" aria-expanded="${open}" title="Click to open the graph and every PO date of this material right here">${open?'▾':'▸'} ${esc(r.text||r.mat)}</button><div class="mid">${esc(r.mat)} · per ${esc(r.unit)}</div></td><td class="nw">${esc(m.po||'')}</td><td>${esc(m.sup||'')}</td><td class="num nw">${m.qty.toLocaleString('en-IN',{maximumFractionDigits:3})} ${esc(r.unit)}</td><td class="num nw">${fmtRate(m.from)}<div class="sm">${fmtDayS(m.fromDay)}</div></td><td class="num nw"><b>${fmtRate(m.to)}</b></td><td class="num nw ${cls}">${m.pct>0?'▲':'▼'} ${sgn(m.to-m.from)}<div>${sgnPct(m.pct)}</div></td><td class="num nw">${lp(m.amt)}</td></tr>`+(open?`<tr class="tlrow subrow"><td colspan="9">${matPanel(r,ctx)}</td></tr>`:'');}).join('')+
+    `</tbody><tfoot><tr><td colspan="8">Total (${fmtN(mvs.length)} changes)</td><td class="num nw">${lp(mvs.reduce((s,m)=>s+m.amt,0))}</td></tr></tfoot></table>`:'<div class="empty">No price change for the filters.</div>';
+  $('mvInfo').textContent=!mvs.length?'':(S.all.moves||mvs.length<=PAGE)?`All ${fmtN(mvs.length)} shown`:`Showing the newest ${PAGE} of ${fmtN(mvs.length)}`;
+  $('mvAll').hidden=mvs.length<=PAGE;$('mvAll').textContent=S.all.moves?'Show newest '+PAGE:'See all '+fmtN(mvs.length);
+  // month by month
+  const ms=[...months].reverse();
+  $('byMonth').innerHTML=ms.length?`<table><thead><tr><th>Month</th><th class="num">Materials with a rise</th><th class="num">Materials with a fall</th><th class="num">Loss</th><th class="num">Profit</th><th class="num">Net</th></tr></thead><tbody>`+ms.map(([k,x])=>`<tr><td><button type="button" class="lnk" data-mon="${k}">${mName(k)}</button></td><td class="num up">${fmtN(x.up)}</td><td class="num dn">${fmtN(x.down)}</td><td class="num nw up">${fmtINR(x.loss)}</td><td class="num nw dn">${fmtINR(x.profit)}</td><td class="num nw"><b>${lp(x.loss-x.profit)}</b></td></tr>`).join('')+`</tbody><tfoot><tr><td>Total</td><td class="num">${fmtN(ms.reduce((s,e)=>s+e[1].up,0))}</td><td class="num">${fmtN(ms.reduce((s,e)=>s+e[1].down,0))}</td><td class="num nw">${fmtINR(T.loss)}</td><td class="num nw">${fmtINR(T.profit)}</td><td class="num nw">${lp(T.net)}</td></tr></tfoot></table>`:'<div class="empty">No price move for the filters.</div>';
+}
+
+document.addEventListener('click',e=>{
+  const cl=e.target.closest('[data-closectx]');
+  if(cl){S.open.delete(cl.dataset.closectx);render();return;}
+  const mt=e.target.closest('[data-mat]');
+  if(mt){const c=mt.dataset.ctx;if(S.open.has(c))S.open.delete(c);else S.open.add(c);render();if(S.open.has(c)){const el=document.getElementById(panId(c));if(el)el.scrollIntoView({behavior:'smooth',block:'nearest'});}return;}
+  const t=e.target.closest('button');if(!t)return;
+  if(t.dataset.tile!==undefined){const k=t.dataset.tile;S.tile=S.tile===k?null:k;render();if(S.tile)reveal('tileCard');return;}
+  if(t.dataset.all!==undefined){S.all[t.dataset.all]=!S.all[t.dataset.all];render();return;}
+  if(t.dataset.mv!==undefined){S.mv=t.dataset.mv;S.all.moves=false;render();return;}
+  if(t.dataset.grp!==undefined){setGrp(S.grp===t.dataset.grp?'':t.dataset.grp);return;}
+  if(t.dataset.mon!==undefined){const k=+t.dataset.mon,a=Date.UTC(Math.floor(k/12),k%12,1)/864e5,b=Date.UTC(Math.floor(k/12),k%12+1,0)/864e5;S.from=a;S.to=b;$('dFrom').value=iso(a);$('dTo').value=iso(b);calc();render();return;}
+  if(t.dataset.clr){const c=t.dataset.clr;
+    if(c==='plant'||c==='all'){S.plant='';$('plantSel').value='';}
+    if(c==='grp'||c==='all'){S.grp='';fillMt();}
+    if(c==='mtype'||c==='all'){S.mtype='';$('mtSel').value='';}
+    if(c==='date'||c==='all'){S.from=S.to=null;$('dFrom').value=$('dTo').value='';}
+    if(c==='doubt'||c==='all'){S.doubt='hide';$('doubtSel').value='hide';}
+    if(c==='q'||c==='all'){S.q='';$('q').value='';}
+    calc();render();}
+});
+$('plantSel').addEventListener('change',e=>{S.plant=e.target.value;calc();render();});
+$('mtSel').addEventListener('change',e=>{S.mtype=e.target.value;calc();render();});
+function setGrp(g){S.grp=g;S.open.clear();fillMt();calc();render();}
+$('basisSel').addEventListener('change',e=>{S.basis=e.target.value;calc();render();});
+$('minSel').addEventListener('change',e=>{S.min=+e.target.value;calc();render();});
+$('dFrom').addEventListener('change',e=>{S.from=dayOf(e.target.value);calc();render();});
+$('dTo').addEventListener('change',e=>{S.to=dayOf(e.target.value);calc();render();});
+$('doubtSel').addEventListener('change',e=>{S.doubt=e.target.value;render();});
+$('sortSel').addEventListener('change',e=>{S.sort=e.target.value;render();});
+let qT;$('q').addEventListener('input',e=>{clearTimeout(qT);qT=setTimeout(()=>{S.q=e.target.value.trim().toLowerCase();render();},200);});
+
+const root=document.documentElement;
+function setTheme(t,save){root.dataset.theme=t;for(const b of document.querySelectorAll('#themeSeg button'))b.classList.toggle('on',b.dataset.th===t);if(save){try{localStorage.setItem('spr-theme',t);}catch(e){}}}
+let savedTheme='dark';try{savedTheme=localStorage.getItem('spr-theme')||'dark';}catch(e){}
+setTheme(savedTheme==='light'?'light':'dark',false);
+document.getElementById('themeSeg').addEventListener('click',e=>{const b=e.target.closest('button[data-th]');if(b)setTheme(b.dataset.th,true);});
+
+// ---------------------------------------------------------------- data (the PO items of /api/po)
+function setData(d){
+  D=d;
+  const pl=[...new Set(d.rows.map(a=>d.plants[a[6]]))].filter(Boolean).sort();
+  $('plantSel').innerHTML='<option value="">All plants</option>'+pl.map(p=>`<option value="${esc(p)}">${esc(p)}</option>`).join('');
+  $('plantSel').value=S.plant;
+  fillMt();
+  calc();
+}
+// the material types of the PO lines of the chosen group
+function fillMt(){
+  if(!D)return;
+  const gOf=PRICEVAR.classifier(D);
+  const mt=[...new Set(D.rows.filter(a=>S.grp===''||gOf(a)===S.grp).map(a=>D.mtypes[a[11]]))].filter(Boolean).sort();
+  $('mtSel').innerHTML='<option value="">All material types'+(S.grp?' of '+{RM:'RM',STORE:'Store',PACKING:'Packing',OTHER:'Others'}[S.grp]:'')+'</option>'+mt.map(t=>`<option value="${esc(t)}">${esc(mtName(t))}</option>`).join('');
+  if(S.mtype&&!mt.includes(S.mtype))S.mtype='';
+  $('mtSel').value=S.mtype;
+}
+// a link from the Summary page: ?tile=KEY&plant=1010&grp=RM or ?mat=1100000151|G (used once, on the first load)
+let LINK=(()=>{try{const q=new URLSearchParams(location.search);return q.has('tile')||q.has('plant')||q.has('mtype')||q.has('mat')||q.has('grp')?q:null;}catch(e){return null;}})();
+function applyLink(){
+  if(!LINK)return;const q=LINK;LINK=null;
+  if(q.has('plant')){S.plant=q.get('plant')||'';if(![...$('plantSel').options].some(o=>o.value===S.plant))S.plant='';$('plantSel').value=S.plant;}
+  if(q.has('grp')&&['RM','STORE','PACKING','OTHER'].includes(q.get('grp'))){S.grp=q.get('grp');fillMt();}
+  if(q.has('mtype')){S.mtype=q.get('mtype')||'';if(![...$('mtSel').options].some(o=>o.value===S.mtype))S.mtype='';$('mtSel').value=S.mtype;}
+  const k=q.get('tile');if(k&&TILE_INFO[k]){S.tile=k;S.reveal='tileCard';}
+  calc();
+  // ?mat=MATERIAL|UNIT opens that material under its row in the list
+  if(q.has('mat')&&CALC.byKey.has(q.get('mat'))){const r=CALC.byKey.get(q.get('mat')),kind=r.pct>=S.min?'up':r.pct<=-S.min?'down':'';if(kind){S.open.add(kind+'|'+r.key);S.all[kind]=true;S.reveal=panId(kind+'|'+r.key);}}
+}
+function setLive(kind,text){$('liveDot').style.background=kind==='ok'?'var(--good)':kind==='err'?'var(--crit)':'var(--warn)';$('liveTxt').textContent=text;$('refresh').disabled=kind==='busy';}
+const hhmm=ms=>new Date(ms).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+let loading=false;
+const liveTxt=stamp=>'Live from SAP · updated '+hhmm(stamp)+' · '+fmtN(CALC?CALC.mats.length:0)+' materials compared';
+async function load(force,auto){
+  if(loading)return;loading=true;
+  if(!auto||!D)setLive('busy',D?'Refreshing from SAP…':'Loading purchase order data from SAP (first load can take a minute)…');
+  try{
+    const g=await LIVE.get('/api/po',force),res=g.res,j=g.j;
+    if(g.same){setLive('ok',liveTxt(g.stamp));return;}
+    if(!res.ok)throw new Error(j.error||('HTTP '+res.status));
+    setData(j);applyLink();render();
+    if(S.reveal){const id=S.reveal;S.reveal=null;setTimeout(()=>reveal(id),150);}
+    setLive('ok',liveTxt(j.fetchedAt));
+  }catch(e){
+    const msg=e.message==='Failed to fetch'?'The dashboard server is not running. Start it again with Start_Live_Dashboard.bat.':e.message;
+    setLive('err',msg);
+  }finally{loading=false;}
+}
+$('refresh').addEventListener('click',()=>load(true));
+load(false);
+setInterval(()=>{if(!document.hidden)load(false,true);},LIVE.every);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)load(false,true);});
+})();
+</script>
+<script src="/ui.js" defer></script>
+</body>
+</html>

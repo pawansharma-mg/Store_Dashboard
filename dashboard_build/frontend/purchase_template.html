@@ -52,7 +52,6 @@ h1{margin:0;font-size:1.1rem;font-weight:700;color:var(--brand-dark)}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;min-width:0;box-shadow:0 1px 2px rgba(11,11,11,.04),0 1px 8px rgba(11,11,11,.04)}
 .card h2{margin:0;font-size:1.02rem;font-weight:700;display:flex;align-items:center;flex-wrap:wrap;gap:9px}
 .sec-badge{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:26px;padding:0 6px;border-radius:8px;background:var(--brand-dark);color:#fff;font-size:.72rem;font-weight:700}
-.badge-live{margin-left:auto;padding:3px 8px;border-radius:999px;font-size:.62rem;font-weight:700;letter-spacing:.04em;color:var(--good);background:rgba(12,163,12,.16)}
 .hint{margin:4px 0 12px;font-size:12.5px;color:var(--ink2)}
 .tbox{max-height:440px;overflow:auto}
 table{width:100%;border-collapse:collapse;font-size:13px}
@@ -100,6 +99,7 @@ tr.sel td{background:rgba(28,173,228,.14)!important}
 .qmore{font-size:.72rem;font-weight:600;color:var(--muted);cursor:help}
 </style>
 <link rel="stylesheet" href="/ui.css">
+<script src="/live.js"></script>
 </head>
 <body>
 <div class="stick"><header class="top">
@@ -113,7 +113,7 @@ tr.sel td{background:rgba(28,173,228,.14)!important}
     <div class="seg" id="themeSeg" role="group" aria-label="Colour mode"><button type="button" data-th="light" title="Normal (light) mode">Normal</button><button type="button" data-th="dark" title="Dark mode">Dark</button></div>
   </div>
 </header>
-<nav class="nav"><a href="/summary">Summary</a><a href="/issue">Store Issue</a><a href="/stock">Store Stock</a><a href="/">Pending PR</a><a href="/po">Pending Purchase Orders</a><a href="/po-approval">PO Approval Pending</a><a href="/purchase" class="on">Purchase</a></nav></div>
+<nav class="nav"><a href="/summary">Summary</a><a href="/issue">Store Issue</a><a href="/stock">Store Stock</a><a href="/">Pending PR</a><a href="/po">Pending Purchase Orders</a><a href="/po-approval">PO Approval Pending</a><a href="/invoice">Pending Invoice Entry</a><a href="/purchase" class="on">Purchase</a><a href="/price">Price Variance</a><a href="/ageing">Payment Ageing</a></nav></div>
 <div class="wrap">
   <section class="bar" aria-label="Filters">
     <label class="fld"><span>Plant</span><select id="plantSel"></select></label>
@@ -129,7 +129,7 @@ tr.sel td{background:rgba(28,173,228,.14)!important}
   <section class="kpis" id="kpis"></section>
 
   <section class="card topcard" id="tileCard" hidden>
-    <h2><span id="tileTitle"></span><span class="badge-live">LIVE</span></h2>
+    <h2><span id="tileTitle"></span></h2>
     <p class="hint" id="tileHint"></p>
     <div class="tbox" id="tileBox"></div>
     <div class="pager"><span id="tileInfo"></span><div><button class="btn" id="tileAll" type="button">See all</button></div></div>
@@ -137,44 +137,44 @@ tr.sel td{background:rgba(28,173,228,.14)!important}
 
   <section class="grid">
     <article class="card">
-      <h2><span class="sec-badge">1</span>Department wise purchase<span class="badge-live">LIVE</span></h2>
+      <h2><span class="sec-badge">1</span>Department wise purchase</h2>
       <p class="hint" id="deptHint">Department = purchasing group of the PO (the view's own Department field is empty). Purchases (101), reversals (102) and the net value. Click a department to filter everything.</p>
       <div class="tbox" id="byDept"></div>
     </article>
     <article class="card">
-      <h2><span class="sec-badge">2</span>Plant wise<span class="badge-live">LIVE</span></h2>
+      <h2><span class="sec-badge">2</span>Plant wise</h2>
       <p class="hint">Click a plant to filter everything.</p>
       <div class="tbox" id="byPlant"></div>
     </article>
     <article class="card">
-      <h2><span class="sec-badge">3</span>Storage location wise<span class="badge-live">LIVE</span></h2>
+      <h2><span class="sec-badge">3</span>Storage location wise</h2>
       <p class="hint">The store locations of your list. Click a location to filter everything.</p>
       <div class="tbox" id="bySloc"></div>
     </article>
     <article class="card">
-      <h2><span class="sec-badge">4</span>Supplier wise<span class="badge-live">LIVE</span></h2>
+      <h2><span class="sec-badge">4</span>Supplier wise</h2>
       <p class="hint" id="supHint">Top 50 by net value for the current filters. Click a supplier to filter everything.</p>
       <div class="tbox" id="bySup"></div>
     </article>
     <article class="card">
-      <h2><span class="sec-badge">5</span>Month-wise purchase<span class="badge-live">LIVE</span></h2>
+      <h2><span class="sec-badge">5</span>Month-wise purchase</h2>
       <p class="hint">By posting date. Click a month to see it day by day.</p>
       <div class="tbox" id="byMonth"></div>
     </article>
     <article class="card">
-      <h2><span class="sec-badge">6</span><span id="dayTitle">Day-wise purchase</span><span class="badge-live">LIVE</span></h2>
+      <h2><span class="sec-badge">6</span><span id="dayTitle">Day-wise purchase</span></h2>
       <p class="hint">Click a date to filter everything to that day.</p>
       <div class="tbox" id="byDay"></div>
     </article>
   </section>
 
   <section class="card tablecard">
-    <h2><span class="sec-badge">7</span>Purchase lines<span class="badge-live">LIVE</span></h2>
+    <h2><span class="sec-badge">7</span>Purchase lines</h2>
     <p class="hint" id="tcount"></p>
     <div class="tscroll"><table id="tbl"></table></div>
     <div class="pager"><span id="pinfo"></span><div><button class="btn" id="seeAll" type="button">See all</button></div></div>
   </section>
-  <p class="note">Movement type 101 is the goods receipt against a purchase order (stock in), 102 reverses it (stock out) and counts as minus; the net value is 101 minus 102. Only the store locations of your list (backend/data/stock_locations.csv) are read. The department is the purchasing group of the PO (matched through PO number and item with the Pending Purchase Orders data, which starts at 1 Jan 2026, so a receipt for an older PO shows "PO not in the 2026 PO data"). A 101 line marked "reversed" is one SAP says has been cancelled; its 102 line is counted too, so the net is right. The posting date starts as the whole current month and moves on by itself; change it, or clear it with the x on its chip, to see older receipts. Data is refreshed from SAP at most every 30 minutes, or with the Refresh button.</p>
+  <details class="notebox"><summary>Notes about these figures</summary><p class="note">Movement type 101 is the goods receipt against a purchase order (stock in), 102 reverses it (stock out) and counts as minus; the net value is 101 minus 102. Only the store locations of your list (backend/data/stock_locations.csv) are read. The department is the purchasing group of the PO (matched through PO number and item with the Pending Purchase Orders data, which starts at 1 Jan 2026, so a receipt for an older PO shows "PO not in the 2026 PO data"). A 101 line marked "reversed" is one SAP says has been cancelled; its 102 line is counted too, so the net is right. The posting date starts as the whole current month and moves on by itself; change it, or clear it with the x on its chip, to see older receipts. Data is refreshed from SAP at most every 30 minutes, or with the Refresh button.</p></details>
 </div>
 <footer class="footer">Mittal Group · Purchase · Source: SAP S/4HANA Cloud, YY1_STORE_RESERVATION_CDS</footer>
 
@@ -304,7 +304,7 @@ function render(){
   CUR={rows,v1,v2};
   // every tile opens its details under the tiles
   $('kpis').innerHTML=[[fmtINR(v1),`Purchase value (101) · ${fmtN(n1)} lines`,'buy'],[fmtINR(v2),`Reversal value (102) · ${fmtN(n2)} lines`,'rev'],[fmtINR(v1-v2),'Net purchase value (101 − 102)','net'],[fmtN(pos.size),'Purchase orders','pos'],[fmtN(sups.size),'Suppliers','sups'],[fmtN(mats.size),'Materials','mats']]
-    .map(t=>`<button type="button" class="tile tilebtn" data-tile="${t[2]}" aria-expanded="${S.tile===t[2]}"><div class="tv">${t[0]}</div><div class="tl">${t[1]}</div><div class="ts">${S.tile===t[2]?'click to hide':'click for details'}</div></button>`).join('');
+    .map(t=>`<button type="button" class="tile tilebtn" data-tile="${t[2]}" aria-expanded="${S.tile===t[2]}"><div class="tv">${t[0]}</div><div class="tl">${t[1]}</div>${S.tile===t[2]?'<div class="ts">click to hide</div>':''}</button>`).join('');
   renderTile();
   // chips
   const c=[];
@@ -444,14 +444,14 @@ function applyLink(){
 function setLive(kind,text){$('liveDot').style.background=kind==='ok'?'var(--good)':kind==='err'?'var(--crit)':'var(--warn)';$('liveTxt').textContent=text;$('refresh').disabled=kind==='busy';}
 const hhmm=ms=>new Date(ms).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
 let loading=false;
-async function load(force){
+async function load(force,auto){
   if(loading)return;loading=true;
-  setLive('busy',D?'Refreshing from SAP…':'Loading purchases from SAP (first load can take a minute)…');
+  if(!auto||!D)setLive('busy',D?'Refreshing from SAP…':'Loading purchases from SAP (first load can take a minute)…');
   // the PO data (for the department) is fetched in parallel; the page is drawn as soon as the purchases are there
-  const poP=fetch('/api/po'+(force?'?refresh=1':''),{cache:'no-store'}).then(r=>r.ok?r.json():null).catch(()=>null);
+  const poP=LIVE.get('/api/po',force).then(g=>g.same||!g.res.ok?null:g.j).catch(()=>null);
   try{
-    const res=await fetch('/api/purchase'+(force?'?refresh=1':''),{cache:'no-store'});
-    const j=await res.json().catch(()=>({}));
+    const g=await LIVE.get('/api/purchase',force),res=g.res,j=g.j;
+    if(g.same){setLive('ok','Live from SAP · updated '+hhmm(g.stamp)+' · '+fmtN(R.length)+' lines');poP.then(p=>{if(p)setPO(p);});return;}
     if(!res.ok)throw new Error(j.error||('HTTP '+res.status));
     setData(j);if(!S.dInit){S.dInit=true;setMonthDates();applyLink();}render();
     if(S.reveal){S.reveal=false;setTimeout(()=>reveal('tileCard'),150);}
@@ -464,7 +464,8 @@ async function load(force){
 }
 $('refresh').addEventListener('click',()=>load(true));
 load(false);
-setInterval(()=>{if(!document.hidden)load(false);},1800000);
+setInterval(()=>{if(!document.hidden)load(false,true);},LIVE.every);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)load(false,true);});
 })();
 </script>
 <script src="/ui.js" defer></script>

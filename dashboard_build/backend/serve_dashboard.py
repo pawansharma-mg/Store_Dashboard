@@ -11,7 +11,9 @@ import argparse
 import base64
 import csv
 import getpass
+import datetime as _dt
 import gzip
+import hashlib
 import json
 import os
 import re
@@ -27,9 +29,9 @@ import webbrowser
 from concurrent.futures import ThreadPoolExecutor
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from pr_data import (CONSUME_FIELDS, CONSUME_MVTS, FIELDS, ISSUE_DATE_FILTER, ISSUE_FIELDS, ISSUE_FILTER, PURCHASE_FIELDS, PURCHASE_FILTER, PO_DATE_FILTER, PO_FIELDS, PO_STATUS_FIELDS, STOCK_FIELDS, STOCK_ORDER,
+from pr_data import (AGEING_FIELDS, AGEING_FILTER, CONSUME_FIELDS, CONSUME_MVTS, FIELDS, INVOICE_FIELDS, INVOICE_FILTER, ISSUE_DATE_FILTER, ISSUE_FIELDS, ISSUE_FILTER, PURCHASE_FIELDS, PURCHASE_FILTER, PO_DATE_FILTER, PO_FIELDS, PO_STATUS_FIELDS, STOCK_FIELDS, STOCK_ORDER,
                      MG_NAMES, PG_NAMES, USER_NAMES,
-                     consume_fold, issue_compact, po_compact, purchase_compact, stock_compact, to_compact)
+                     ageing_compact, consume_fold, invoice_compact, issue_compact, po_compact, purchase_compact, stock_compact, to_compact)
 
 HERE = os.path.dirname(os.path.abspath(__file__))  # backend/
 FRONTEND = os.path.join(os.path.dirname(HERE), 'frontend')  # the pages and the logo
@@ -40,16 +42,23 @@ PO_TPL = os.path.join(FRONTEND, 'po_template.html')
 STOCK_TPL = os.path.join(FRONTEND, 'stock_template.html')
 SUMMARY_TPL = os.path.join(FRONTEND, 'summary_template.html')
 PURCHASE_TPL = os.path.join(FRONTEND, 'purchase_template.html')
+INVOICE_TPL = os.path.join(FRONTEND, 'invoice_template.html')
+AGEING_TPL = os.path.join(FRONTEND, 'ageing_template.html')
+PRICE_TPL = os.path.join(FRONTEND, 'price_template.html')
 PO_APPROVAL_TPL = os.path.join(FRONTEND, 'po_approval_template.html')
 LOGO = os.path.join(FRONTEND, 'logo.png')
 # the look and the small helpers shared by every page (frontend/ui.css, frontend/ui.js)
 STATIC = {'/ui.css': (os.path.join(FRONTEND, 'ui.css'), 'text/css; charset=utf-8'),
-          '/ui.js': (os.path.join(FRONTEND, 'ui.js'), 'application/javascript; charset=utf-8')}
+          '/ui.js': (os.path.join(FRONTEND, 'ui.js'), 'application/javascript; charset=utf-8'),
+          '/live.js': (os.path.join(FRONTEND, 'live.js'), 'application/javascript; charset=utf-8'),
+          '/pricevar.js': (os.path.join(FRONTEND, 'pricevar.js'), 'application/javascript; charset=utf-8')}
 DEFAULT_BASE = 'https://my413077-api.s4hana.cloud.sap/sap/opu/odata/sap/YY1_STORE_PENDING_PR_CDS'
 ISSUE_BASE = 'https://my413077-api.s4hana.cloud.sap/sap/opu/odata/sap/YY1_STORE_RESERVATION_CDS'
 PO_BASE = 'https://my413077-api.s4hana.cloud.sap/sap/opu/odata/sap/YY1_PO_ITEM_SUPPLIER_CDS'
 PO_STATUS_BASE = 'https://my413077-api.s4hana.cloud.sap/sap/opu/odata/sap/YY1_PO_ITEM_STATUS_CDS'
 STOCK_BASE = 'https://my413077-api.s4hana.cloud.sap/sap/opu/odata/sap/YY1_STORE_STOCK_CDS'
+INVOICE_BASE = 'https://my413077-api.s4hana.cloud.sap/sap/opu/odata/sap/YY1_STORE_INVOICE_VL06_CDS'
+AGEING_BASE = 'https://my413077-api.s4hana.cloud.sap/sap/opu/odata/sap/YY1_STORE_VENDOR_AGEING_CDS'
 # the view has a parameter (display currency); the result set is read through it
 STOCK_ENTITY = "YY1_Store_Stock(P_DisplayCurrency='INR')/Results"
 PR_QUERY = {'$select': ','.join(FIELDS), '$orderby': 'PurchaseRequisition,PurchaseRequisitionItem'}
@@ -64,9 +73,29 @@ ISSUE_QUERY = [
 PO_QUERY = {'$select': ','.join(PO_FIELDS), '$filter': PO_DATE_FILTER, '$orderby': 'PurchaseOrder,PurchaseOrderItem'}
 PO_STATUS_QUERY = {'$select': ','.join(PO_STATUS_FIELDS), '$orderby': 'PurchaseOrder,PurchaseOrderItem'}
 STOCK_QUERY = {'$select': ','.join(STOCK_FIELDS), '$orderby': STOCK_ORDER}
+# pending invoice entries: the key of the delivery items is the sort; if SAP refuses the status filter, all rows are read and invoice_compact keeps the pending ones
+_INV_ORDER = 'InboundDelivery,InboundDeliveryItem'
+INVOICE_QUERY = [{'$select': ','.join(INVOICE_FIELDS), '$filter': INVOICE_FILTER, '$orderby': _INV_ORDER},
+                 {'$select': ','.join(INVOICE_FIELDS), '$orderby': _INV_ORDER}]
+# payment ageing: the open vendor items (about 25,000 of 82,000 rows); if SAP refuses the filter all rows are read and ageing_compact drops the cleared ones
+_AGE_ORDER = 'CompanyCode,AccountingDocument,FiscalYear,AccountingDocumentItem'
+AGEING_QUERY = [{'$select': ','.join(AGEING_FIELDS), '$filter': AGEING_FILTER, '$orderby': _AGE_ORDER},
+                {'$select': ','.join(AGEING_FIELDS), '$orderby': _AGE_ORDER}]
 # goods issues (stock out) since 1 Jan 2026, read together with the stock to find the last use of each material
 CONSUME_QUERY = {'$select': ','.join(CONSUME_FIELDS), '$orderby': _ORDER,
                  '$filter': ISSUE_DATE_FILTER + " and DebitCreditCode eq 'H' and (" + ' or '.join(f"GoodsMovementType_1 eq '{m}'" for m in CONSUME_MVTS) + ')'}
+
+
+def consume_recent_query(days=7):
+    """The same query for the last `days` days only (about 1 call instead of 60): the frequent refreshes read this and add it to the state of
+    the last full read; a full read still happens every FULL_EVERY seconds."""
+    since = (_dt.datetime.utcfromtimestamp(time.time() + 5.5 * 3600) - _dt.timedelta(days=days)).date().isoformat()
+    return {**CONSUME_QUERY, '$filter': CONSUME_QUERY['$filter'].replace(ISSUE_DATE_FILTER, f"PostingDate ge datetime'{since}T00:00:00'")}
+
+
+FULL_EVERY = 1800  # seconds between two full reads of an incremental extra (the 30-second refreshes read only the recent days)
+MIN_REFRESH = 10   # the Refresh button reads SAP again at once, but not more often than this many seconds
+WAIT_FRESH = 6     # a request that finds old data waits this long for the new data (small views are ready by then), else it answers with the old data
 DEFAULT_USER = 'POWERBI_USER_PRD'
 PAGE = 5000
 CLOUD = bool(os.environ.get('K_SERVICE'))
@@ -158,7 +187,9 @@ class Sap:
         self._auth = 'Basic ' + token
         self.ttl, self.min_refresh = ttl, min_refresh
         self.busy = threading.Lock()  # held while an SAP fetch runs, so only one runs at a time
-        self.cache = None          # (fetched_at, raw_json_bytes, gzipped_bytes)
+        self.cache = None          # (fetched_at, raw_json_bytes, gzipped_bytes, digest of the data, fetched_at in ms)
+        self._done = None          # set when the running background refresh has finished
+        self._xstate = {}          # extra index -> (state of the last read, time of the last full read), for the incremental extras
 
     def _get(self, url):
         """One SAP call. A network hiccup (timeout, connection reset) or a 502 / 503 / 504 is tried again up to 3 times; the login and
@@ -204,8 +235,9 @@ class Sap:
             err.transient = True
             raise err
 
-    def _fetch_rows(self, base=None, entity=None, queries=None, fold=None):
+    def _fetch_rows(self, base=None, entity=None, queries=None, fold=None, init=None):
         # fold(state, rows) -> state, called page by page when given: for views with too many rows to keep in memory
+        # (init is the state to start from: the incremental reads add the recent rows to the state of the last full read)
         base, entity = (base or self.base).rstrip('/'), entity or self.entity
         queries = self.queries if queries is None else queries
 
@@ -225,7 +257,7 @@ class Sap:
         rows = d.get('results', [])
         total = int(d['__count']) if d.get('__count') is not None else None
         step, n = len(rows), len(rows)
-        state = fold(None, rows) if fold else None
+        state = fold(init, rows) if fold else None
         if fold:
             rows = []
         if total is not None and step and total > step:
@@ -258,9 +290,19 @@ class Sap:
     def _refresh(self):
         rows = self._fetch_rows()
         extra, used = [], []
-        for x in self.extra:
+        for i, x in enumerate(self.extra):
             try:
-                extra.append(self._fetch_rows(x[0], x[1], [x[2]], x[3] if len(x) > 3 else None))
+                recent = x[5] if len(x) > 5 else None  # builds the query of the recent days; with it the extra is read incrementally
+                prev = self._xstate.get(i)
+                if recent and prev and time.time() - prev[1] < FULL_EVERY:
+                    res = self._fetch_rows(x[0], x[1], [recent()], x[3], init=dict(prev[0]))
+                    full_at = prev[1]
+                else:
+                    res = self._fetch_rows(x[0], x[1], [x[2]], x[3] if len(x) > 3 else None)
+                    full_at = time.time()
+                if recent:
+                    self._xstate[i] = (res.state, full_at)
+                extra.append(res)
                 used.append(x)
             except SapError as e:
                 if len(x) > 4 and x[4] and e.status not in (401, 403):
@@ -270,13 +312,16 @@ class Sap:
         # Today's date in India: Cloud Run runs on UTC, which is still yesterday until 05:30 IST.
         asof_day = int((time.time() + 5.5 * 3600) // 86400)
         data = self.compact(rows, asof_day, *extra)
-        data['fetchedAt'] = int(time.time() * 1000)
-        raw = json.dumps(data, separators=(',', ':'), ensure_ascii=False).encode('utf-8')
-        self.cache = (time.time(), raw, gzip.compress(raw, 6))
+        body = json.dumps(data, separators=(',', ':'), ensure_ascii=False).encode('utf-8')
+        # the digest says whether the data changed (the time of the read is not part of it): an unchanged view is answered with 304 and not redrawn
+        digest = hashlib.sha1(body).hexdigest()[:20]
+        stamp = int(time.time() * 1000)
+        raw = body[:-1] + b',"fetchedAt":' + str(stamp).encode('ascii') + b'}'
+        self.cache = (time.time(), raw, gzip.compress(raw, 6), digest, stamp)
         log(f'fetched {len(rows):,} rows from SAP ({self.entity})' + ''.join(f' + {len(x):,} ({e})' for x, (_, e, *_) in zip(extra, used)))
-        return self.cache[1], self.cache[2]
+        return self.cache[1:]
 
-    def _refresh_in_background(self):
+    def _refresh_in_background(self, done):
         try:
             self._refresh()
         except SapError as e:
@@ -285,24 +330,31 @@ class Sap:
             log(f'background refresh of {self.entity} failed: {e}\n{traceback.format_exc()}')
         finally:
             self.busy.release()
+            done.set()
 
     def payload(self, force=False):
-        """Returns (raw_json, gzipped_json).
-        Fresh cache: returned as is. Older than the TTL: returned at once while SAP is asked again in the
-        background, so nobody waits for SAP. Refresh button (force) or no data yet: waits for SAP."""
+        """Returns (raw_json, gzipped_json, digest, fetched_at_ms).
+        Fresh cache: returned as is. Older than the TTL: SAP is asked again in the background and the request waits a few seconds for the
+        new data (a small view is ready by then); if SAP is slower the old data is returned at once, so nobody waits for SAP.
+        Refresh button (force) or no data yet: waits for SAP."""
         if self.auth_failed:
             raise SapError('SAP login failed earlier. Fix the SAP user or password and restart the dashboard.', 401)
         c = self.cache
         if c and time.time() - c[0] < (self.min_refresh if force else self.ttl):
-            return c[1], c[2]
+            return c[1:]
         if c and not force:
             if self.busy.acquire(blocking=False):
-                threading.Thread(target=self._refresh_in_background, daemon=True).start()
-            return c[1], c[2]
+                done = self._done = threading.Event()
+                threading.Thread(target=self._refresh_in_background, args=(done,), daemon=True).start()
+            else:
+                done = self._done  # a refresh is already running
+            if done is not None:
+                done.wait(WAIT_FRESH)
+            return self.cache[1:]
         with self.busy:
             c = self.cache  # another request may have fetched while this one waited
             if c and time.time() - c[0] < self.min_refresh:
-                return c[1], c[2]
+                return c[1:]
             return self._refresh()
 
 
@@ -402,6 +454,44 @@ def load_stock_locations():
     return out or None
 
 
+# Payment Ageing: the type of a party (Store, RM, Employees, Group companies, Others) is worked out by the page from the account group, the name and the POs of the
+# party; this optional file sets it by hand for the parties that come out wrong: columns Supplier (the number) and Type (Store, RM, Employees, Group or Others).
+# It is read again at every refresh from SAP.
+PARTY_TYPES_FILE = os.path.join(DATA, 'party_types.csv')
+PARTY_TYPE_NAMES = {'store': 'Store', 'rm': 'RM', 'raw material': 'RM', 'employee': 'Employees', 'employees': 'Employees', 'group': 'Group',
+                    'group company': 'Group', 'group companies': 'Group', 'other': 'Others', 'others': 'Others'}
+
+
+def load_party_types():
+    out = {}
+    try:
+        with open(PARTY_TYPES_FILE, newline='', encoding='utf-8-sig') as f:
+            for r in csv.DictReader(f):
+                sid = (r.get('Supplier') or '').strip().lstrip('0')
+                ty = PARTY_TYPE_NAMES.get((r.get('Type') or '').strip().lower())
+                if sid and ty:
+                    out[sid] = ty
+    except FileNotFoundError:
+        pass
+    except Exception as e:
+        log(f'party_types.csv could not be read ({e})')
+    return out
+
+
+def ageing_view(rows, asof_day):
+    data = ageing_compact(rows, asof_day)
+    data['partyTypes'] = load_party_types()
+    return data
+
+
+def po_view(rows, asof_day, *extra):
+    data = po_compact(rows, asof_day, *extra)
+    # the store locations of stock_locations.csv as [plant, location, category]: the Price Variance page counts as Store only the PO lines delivered to them
+    locs = load_stock_locations()
+    data['storeLocs'] = sorted([p, c, v[0]] for (p, c), v in locs.items()) if locs else None
+    return data
+
+
 def purchase_view(rows, asof_day):
     return purchase_compact(rows, asof_day, load_stock_locations())
 
@@ -410,7 +500,7 @@ def stock_view(rows, asof_day, *extra):
     return stock_compact(rows, asof_day, load_stock_locations(), extra[0].state if extra else None)
 
 
-PAGES = {'/': TPL, '/index.html': TPL, '/issue': ISSUE_TPL, '/po': PO_TPL, '/po-approval': PO_APPROVAL_TPL, '/stock': STOCK_TPL, '/summary': SUMMARY_TPL, '/purchase': PURCHASE_TPL}
+PAGES = {'/': TPL, '/index.html': TPL, '/issue': ISSUE_TPL, '/po': PO_TPL, '/po-approval': PO_APPROVAL_TPL, '/stock': STOCK_TPL, '/summary': SUMMARY_TPL, '/purchase': PURCHASE_TPL, '/invoice': INVOICE_TPL, '/price': PRICE_TPL, '/ageing': AGEING_TPL}
 # User ID -> full name, put into the page like the data (no '<' in names, so it is safe inside a script tag).
 USERS_JSON = json.dumps(USER_NAMES, ensure_ascii=False, separators=(',', ':'))
 PGS_JSON = json.dumps(PG_NAMES, ensure_ascii=False, separators=(',', ':'))
@@ -422,7 +512,7 @@ def make_handler(apis):
         def log_message(self, *a):
             pass
 
-        def _send(self, code, body, ctype, gz=None, cache='no-store'):
+        def _send(self, code, body, ctype, gz=None, cache='no-store', extra=()):
             wants_gz = 'gzip' in self.headers.get('Accept-Encoding', '')
             if wants_gz and gz is None and len(body) > 1024:
                 gz = gzip.compress(body, 6)
@@ -432,6 +522,8 @@ def make_handler(apis):
             self.send_header('Content-Type', ctype)
             if wants_gz and gz is not None:
                 self.send_header('Content-Encoding', 'gzip')
+            for k, v in extra:
+                self.send_header(k, v)
             self.send_header('Vary', 'Accept-Encoding')
             self.send_header('Content-Length', str(len(body)))
             self.send_header('Cache-Control', cache)
@@ -452,7 +544,7 @@ def make_handler(apis):
             if u.path == '/healthz':
                 return self._send(200, b'ok', 'text/plain')
             if u.path in PAGES:
-                html = open(PAGES[u.path], encoding='utf-8').read().replace('__DATA__', 'null').replace('__USERS__', USERS_JSON).replace('__PGS__', PGS_JSON).replace('__MGS__', MGS_JSON)
+                html = open(PAGES[u.path], encoding='utf-8').read().replace('__USERS__', USERS_JSON).replace('__PGS__', PGS_JSON).replace('__MGS__', MGS_JSON)
                 return self._send(200, html.encode('utf-8'), 'text/html; charset=utf-8')
             if u.path in STATIC:
                 path, ctype = STATIC[u.path]
@@ -466,8 +558,13 @@ def make_handler(apis):
             if u.path in apis:
                 force = 'refresh' in urllib.parse.parse_qs(u.query)
                 try:
-                    raw, gz = apis[u.path].payload(force)
-                    return self._send(200, raw, 'application/json; charset=utf-8', gz)
+                    raw, gz, digest, stamp = apis[u.path].payload(force)
+                    tag = f'"{digest}"'
+                    # the page asks again every 30 seconds with the tag of the data it has: nothing changed = 304, no body, no redraw
+                    hdr = (('ETag', tag), ('X-Fetched-At', str(stamp)))
+                    if not force and self.headers.get('If-None-Match') == tag:
+                        return self._send(304, b'', 'application/json; charset=utf-8', extra=hdr)
+                    return self._send(200, raw, 'application/json; charset=utf-8', gz, extra=hdr)
                 except SapError as e:
                     log(str(e))
                     body = json.dumps({'error': str(e)}).encode('utf-8')
@@ -489,7 +586,7 @@ def main():
     ap.add_argument('--port', type=int, default=int(os.environ.get('PORT', 8765)))
     ap.add_argument('--lan', action='store_true', help='local PC only: let other PCs on the network open the dashboard (no login)')
     ap.add_argument('--base-url', default=os.environ.get('SAP_BASE_URL', DEFAULT_BASE))
-    ap.add_argument('--ttl', type=int, default=int(os.environ.get('CACHE_TTL', 300)), help='seconds to reuse fetched data before asking SAP again (default 300)')
+    ap.add_argument('--ttl', type=int, default=int(os.environ.get('CACHE_TTL', 25)), help='seconds to reuse fetched data before asking SAP again (default 25, a little under the 30 seconds the pages ask again, so every check gets fresh data)')
     ap.add_argument('--no-browser', action='store_true')
     args = ap.parse_args()
 
@@ -510,22 +607,28 @@ def main():
         # A pasted password often carries a stray space or newline.
         password = password or getpass.getpass('SAP password (typing is hidden): ').strip()
     typed = (user, password) if not CLOUD and not saved else None
-    sap = Sap(args.base_url, 'YY1_Store_Pending_PR', PR_QUERY, to_compact, user, password, args.ttl, min_refresh=30)
-    # Issue data is ~10x bigger and changes slowly, so it is refreshed every 30 minutes at most.
+    sap = Sap(args.base_url, 'YY1_Store_Pending_PR', PR_QUERY, to_compact, user, password, args.ttl, min_refresh=MIN_REFRESH)
+    # Every view is read again 25 seconds after its last read (a little under the 30 seconds the pages ask again), but only while a page is open; a read of the
+    # biggest views takes 10-25 seconds, so they are nearly always being read while a page is open.
     issue = Sap(ISSUE_BASE, 'YY1_Store_Reservation', ISSUE_QUERY, issue_compact, user, password,
-                max(args.ttl, 1800), min_refresh=300)
-    # PO items: about 66,000 lines since 1 Jan 2026, so the same 30 minute refresh as the issue data.
-    po = Sap(PO_BASE, 'YY1_PO_ITEM_SUPPLIER', PO_QUERY, po_compact, user, password, max(args.ttl, 1800), min_refresh=300,
+                args.ttl, min_refresh=MIN_REFRESH)
+    # PO items: about 72,000 lines since 1 Jan 2026.
+    po = Sap(PO_BASE, 'YY1_PO_ITEM_SUPPLIER', PO_QUERY, po_view, user, password, args.ttl, min_refresh=MIN_REFRESH,
              extra=[(PO_STATUS_BASE, 'YY1_PO_ITEM_STATUS', PO_STATUS_QUERY)])
-    # Store stock: about 27,000 rows from SAP of which about 5,000 hold stock; same 30 minute refresh as the other big views.
-    stock = Sap(STOCK_BASE, STOCK_ENTITY, STOCK_QUERY, stock_view, user, password, max(args.ttl, 1800), min_refresh=300,
-                extra=[(ISSUE_BASE, 'YY1_Store_Reservation', CONSUME_QUERY, consume_fold, True)])
+    # Store stock: about 27,000 rows from SAP of which about 5,000 hold stock. The goods issues read with it (about 300,000 rows, 60 calls) are read in full
+    # every 30 minutes; the refreshes in between read only the last 7 days (consume_recent_query) and add them to that state.
+    stock = Sap(STOCK_BASE, STOCK_ENTITY, STOCK_QUERY, stock_view, user, password, args.ttl, min_refresh=MIN_REFRESH,
+                extra=[(ISSUE_BASE, 'YY1_Store_Reservation', CONSUME_QUERY, consume_fold, True, consume_recent_query)])
     # Purchases (movement types 101 / 102) from the same view as the Store Issue. SAP is asked for the lines that have a purchase order first; if it
     # refuses that filter the simpler query is used and the lines without a PO are read too (much more data).
     pq = {'$select': ','.join(PURCHASE_FIELDS), '$orderby': _ORDER}
     purchase = Sap(ISSUE_BASE, 'YY1_Store_Reservation', [{**pq, '$filter': PURCHASE_FILTER + " and PurchaseOrder ne ''"}, {**pq, '$filter': PURCHASE_FILTER}],
-                   purchase_view, user, password, max(args.ttl, 1800), min_refresh=300)
-    apis = {'/api/pr': sap, '/api/issue': issue, '/api/po': po, '/api/stock': stock, '/api/purchase': purchase}
+                   purchase_view, user, password, args.ttl, min_refresh=MIN_REFRESH)
+    # Pending invoice entries (inbound deliveries without a goods receipt): a few hundred rows that change during the day.
+    invoice = Sap(INVOICE_BASE, 'YY1_STORE_INVOICE_VL06', INVOICE_QUERY, invoice_compact, user, password, args.ttl, min_refresh=MIN_REFRESH)
+    # Payment ageing: about 25,000 open vendor items.
+    ageing = Sap(AGEING_BASE, 'YY1_STORE_VENDOR_AGEING', AGEING_QUERY, ageing_view, user, password, args.ttl, min_refresh=MIN_REFRESH)
+    apis = {'/api/pr': sap, '/api/issue': issue, '/api/po': po, '/api/stock': stock, '/api/purchase': purchase, '/api/invoice': invoice, '/api/ageing': ageing}
     del password
 
     if CLOUD:
@@ -546,7 +649,7 @@ def main():
         typed = None
         # Warm the big issue and PO data in the background (one after the other) so those pages open quickly.
         def warm():
-            for view in (issue, po, stock):
+            for view in (issue, po, stock, ageing):
                 try:
                     view.payload()
                 except SapError as e:

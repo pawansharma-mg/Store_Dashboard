@@ -1,0 +1,499 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pending Invoice Entry</title>
+<link rel="icon" type="image/png" href="/logo.png">
+<style>
+/* Same look as the other pages. */
+:root{
+  color-scheme:light;
+  --plane:#f4f6f5;--surface:#fff;--ink:#0b0b0b;--ink2:#52514e;--muted:#898781;--grid:#e1e0d9;--border:rgba(11,11,11,.10);
+  --s1:#2a78d6;--good:#0ca30c;--warn:#fab219;--serious:#ec835a;--crit:#d03b3b;
+  --brand:#1CADE4;--brand-dark:#0E7FAE;--brand-red:#E42227;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--plane:#101110;--surface:#1a1b1a;--ink:#fff;--ink2:#c3c2b7;--grid:#2c2c2a;--border:rgba(255,255,255,.10);--s1:#3987e5}}
+:root[data-theme="dark"]{color-scheme:dark;--plane:#101110;--surface:#1a1b1a;--ink:#fff;--ink2:#c3c2b7;--grid:#2c2c2a;--border:rgba(255,255,255,.10);--s1:#3987e5}
+*{box-sizing:border-box}
+body{margin:0;background:var(--plane);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.top{position:sticky;top:0;z-index:20;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;background:var(--surface);border-bottom:3px solid var(--brand-red);padding:12px 20px}
+.brand{display:flex;align-items:center;gap:12px;min-width:0}
+.logo{width:42px;height:42px;object-fit:contain;flex:none}
+h1{margin:0;font-size:1.1rem;font-weight:700;color:var(--brand-dark)}
+.sub{margin:2px 0 0;font-size:.8rem;color:var(--muted)}
+.tools{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.live{display:flex;align-items:center;gap:8px;font-size:.8rem;color:var(--muted)}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;flex:none}
+.btn{height:34px;padding:0 14px;border:0;border-radius:7px;background:var(--brand);color:#fff;font-size:.83rem;font-weight:600;text-decoration:none;display:inline-flex;align-items:center}
+.btn:hover{background:var(--brand-dark)}
+.btn:disabled{opacity:.5;cursor:default}
+.nav{display:flex;flex-wrap:wrap;gap:6px;padding:8px 20px;background:var(--surface);border-bottom:1px solid var(--border)}
+.nav a{font-size:.78rem;font-weight:600;color:var(--ink2);text-decoration:none;padding:6px 12px;border-radius:999px;background:var(--plane)}
+.nav a.on{background:var(--brand);color:#fff}
+.wrap{max-width:1240px;margin:0 auto;padding:20px 16px 48px}
+.bar{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
+.fld{display:flex;flex-direction:column;gap:4px;min-width:0}
+.fld>span{font-size:.78rem;color:var(--ink2)}
+.fld select,.fld input{height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface);padding:0 10px;min-width:0}
+.grow{flex:1 1 240px}.grow input{width:100%}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{border:1px solid var(--border);border-radius:999px;background:var(--surface);padding:3px 11px;font-size:12.5px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-top:16px}
+.tile{background:var(--surface);border:1px solid var(--border);border-top:3px solid var(--s1);border-radius:12px;padding:14px 16px;box-shadow:0 1px 2px rgba(11,11,11,.04),0 1px 8px rgba(11,11,11,.04)}
+.tile:nth-child(2){border-top-color:var(--serious)}.tile:nth-child(3){border-top-color:var(--good)}.tile:nth-child(4){border-top-color:var(--warn)}
+.tv{font-size:1.5rem;font-weight:700;font-variant-numeric:tabular-nums}
+.tl{font-size:.76rem;color:var(--muted)}
+.grid{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;margin-top:12px}
+@media (min-width:1200px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;min-width:0;box-shadow:0 1px 2px rgba(11,11,11,.04),0 1px 8px rgba(11,11,11,.04)}
+.card h2{margin:0;font-size:1.02rem;font-weight:700;display:flex;align-items:center;flex-wrap:wrap;gap:9px}
+.sec-badge{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:26px;padding:0 6px;border-radius:8px;background:var(--brand-dark);color:#fff;font-size:.72rem;font-weight:700}
+.hint{margin:4px 0 12px;font-size:12.5px;color:var(--ink2)}
+.tbox{max-height:440px;overflow:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--grid);vertical-align:top}
+th{font-size:.7rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);border-bottom:2px solid var(--grid);white-space:nowrap}
+.tbox thead th{position:sticky;top:0;background:var(--surface);z-index:1}
+.tbox tfoot td{background:var(--surface);font-weight:700;border-top:2px solid var(--grid)}
+tbody tr:nth-child(even) td{background:rgba(128,128,128,.04)}
+tbody tr:hover td{background:rgba(28,173,228,.07)}
+tr.sel td{background:rgba(28,173,228,.14)!important}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.nw{white-space:nowrap}
+.lnk{border:0;background:none;padding:0;color:var(--brand-dark);font-weight:600;text-decoration:underline;text-align:left}
+.tablecard{margin-top:12px}
+.tscroll{overflow:auto;max-height:75vh}
+.tscroll table{min-width:1700px}
+.pager{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;margin-top:12px;color:var(--ink2)}
+.empty{padding:28px 0;color:var(--ink2);text-align:center}
+.note{margin-top:16px;color:var(--ink2);font-size:12.5px;max-width:110ch}
+.footer{text-align:center;font-size:.72rem;color:var(--muted);padding:0 20px 24px}
+@media (max-width:700px){.top{position:static}}
+@media (max-width:480px){.sub{display:none}.card{padding:16px}}
+.seg{display:inline-flex;border-radius:8px;overflow:hidden;border:1px solid var(--brand);flex:none}
+.seg button{border:0;border-radius:0;background:transparent;color:var(--brand-dark);font-size:.83rem;font-weight:600;height:32px;padding:0 13px;cursor:pointer}
+.seg button.on{background:var(--brand);color:#fff}
+.seg button:not(.on):hover{background:rgba(28,173,228,.15)}
+.stick{position:sticky;top:0;z-index:20}
+.stick .top{position:static}
+@media (max-width:700px){.stick{position:static}}
+.tscroll>table>thead th{position:sticky;top:0;z-index:3;background:var(--surface);box-shadow:0 2px 0 var(--grid)}
+.tscroll tfoot td{font-weight:700;border-top:2px solid var(--grid);background:var(--surface)}
+[hidden]{display:none!important}
+.tile .ts{font-size:.72rem;font-weight:600;color:var(--brand-dark);margin-top:6px}
+.tilebtn{text-align:left;font:inherit;color:inherit;cursor:pointer;width:100%}
+.tilebtn:hover{box-shadow:0 0 0 2px rgba(28,173,228,.35)}
+.tilebtn[aria-expanded="true"]{box-shadow:0 0 0 2px var(--brand)}
+.topcard{margin-top:16px;border-top:3px solid var(--brand-red);scroll-margin-top:150px}
+.subh{margin:16px 0 6px;font-size:.85rem;font-weight:700;color:var(--ink2)}
+.pill{display:inline-block;padding:1px 8px;border-radius:999px;font-size:.72rem;font-weight:600;white-space:nowrap}
+.pill.ok{color:var(--good);background:rgba(12,163,12,.14)}
+.pill.pend{color:var(--crit);background:rgba(208,59,59,.14)}
+.pill.part{color:#b36b00;background:rgba(250,178,25,.22)}
+.pill.none{color:var(--muted);background:rgba(128,128,128,.16)}
+.supc{min-width:170px}
+.matc{min-width:230px;max-width:320px}
+.qmore{font-size:.72rem;font-weight:600;color:var(--muted);cursor:help}
+.old{color:var(--crit);font-weight:700}
+</style>
+<link rel="stylesheet" href="/ui.css">
+<script src="/live.js"></script>
+</head>
+<body>
+<div class="stick"><header class="top">
+  <div class="brand"><img class="logo" src="/logo.png" alt="Mittal Group"><div>
+    <h1>Mittal Group</h1>
+    <p class="sub">Pending Invoice Entry · supplier invoices entered as inbound deliveries whose goods receipt (MIGO) is not posted yet. Source: S/4HANA Cloud, YY1_STORE_INVOICE_VL06_CDS.</p>
+  </div></div>
+  <div class="tools">
+    <div class="live"><span class="dot" id="liveDot" style="background:var(--warn)"></span><span id="liveTxt">Connecting to SAP…</span></div>
+    <button id="refresh" class="btn" type="button">Refresh</button>
+    <div class="seg" id="themeSeg" role="group" aria-label="Colour mode"><button type="button" data-th="light" title="Normal (light) mode">Normal</button><button type="button" data-th="dark" title="Dark mode">Dark</button></div>
+  </div>
+</header>
+<nav class="nav"><a href="/summary">Summary</a><a href="/issue">Store Issue</a><a href="/stock">Store Stock</a><a href="/">Pending PR</a><a href="/po">Pending Purchase Orders</a><a href="/po-approval">PO Approval Pending</a><a href="/invoice" class="on">Pending Invoice Entry</a><a href="/purchase">Purchase</a><a href="/price">Price Variance</a><a href="/ageing">Payment Ageing</a></nav></div>
+<div class="wrap">
+  <section class="bar" aria-label="Filters">
+    <label class="fld"><span>Plant</span><select id="plantSel"></select></label>
+    <label class="fld"><span>Department (purch. group)</span><select id="deptSel"></select></label>
+    <label class="fld"><span>Supplier</span><select id="supSel"></select></label>
+    <label class="fld"><span>Goods receipt</span><select id="stSel"><option value="">Not posted and partly</option><option value="A">Not posted</option><option value="B">Partly posted</option></select></label>
+    <label class="fld"><span>Delivery date from</span><input id="dFrom" type="date"></label>
+    <label class="fld"><span>To</span><input id="dTo" type="date"></label>
+    <div class="fld"><span>Quick</span><div class="seg" id="quickSeg" role="group" aria-label="Quick dates"><button type="button" data-qk="today">Today</button><button type="button" data-qk="yest">Yesterday</button><button type="button" data-qk="month">This month</button><button type="button" data-qk="all">All dates</button></div></div>
+    <label class="fld grow"><span>Search</span><input id="q" type="search" placeholder="Delivery, PO, supplier, material, description, plant, user name"></label>
+  </section>
+  <div class="chips" id="chips"></div>
+  <section class="kpis" id="kpis"></section>
+
+  <section class="card topcard" id="tileCard" hidden>
+    <h2><span id="tileTitle"></span></h2>
+    <p class="hint" id="tileHint"></p>
+    <div class="tbox" id="tileBox"></div>
+    <div class="pager"><span id="tileInfo"></span><div><button class="btn" id="tileAll" type="button">See all</button></div></div>
+  </section>
+
+  <section class="grid">
+    <article class="card">
+      <h2><span class="sec-badge">1</span>Supplier wise</h2>
+      <p class="hint" id="supHint">Top 50 by number of pending items for the current filters. Click a supplier to filter everything.</p>
+      <div class="tbox" id="bySup"></div>
+    </article>
+    <article class="card">
+      <h2><span class="sec-badge">2</span>Department wise</h2>
+      <p class="hint">Department = purchasing group of the PO. Click a department to filter everything.</p>
+      <div class="tbox" id="byDept"></div>
+    </article>
+    <article class="card">
+      <h2><span class="sec-badge">3</span>Plant wise</h2>
+      <p class="hint">Click a plant to filter everything.</p>
+      <div class="tbox" id="byPlant"></div>
+    </article>
+    <article class="card">
+      <h2><span class="sec-badge">4</span>Waiting since</h2>
+      <p class="hint">Days since the delivery date of the invoice. Click a row to filter everything.</p>
+      <div class="tbox" id="byAge"></div>
+    </article>
+    <article class="card">
+      <h2><span class="sec-badge">5</span>Month-wise pending</h2>
+      <p class="hint">By delivery date. Click a month to see it day by day.</p>
+      <div class="tbox" id="byMonth"></div>
+    </article>
+    <article class="card">
+      <h2><span class="sec-badge">6</span><span id="dayTitle">Day-wise pending</span></h2>
+      <p class="hint">Click a date to filter everything to that day.</p>
+      <div class="tbox" id="byDay"></div>
+    </article>
+  </section>
+
+  <section class="card tablecard">
+    <h2><span class="sec-badge">7</span>Pending invoice items</h2>
+    <p class="hint" id="tcount"></p>
+    <div class="tscroll"><table id="tbl"></table></div>
+    <div class="pager"><span id="pinfo"></span><div><button class="btn" id="seeAll" type="button">See all</button></div></div>
+  </section>
+  <details class="notebox"><summary>Notes about these figures</summary><p class="note">An invoice is entered in SAP as an inbound delivery (the SAP monitor VL06) when the supplier's goods arrive. It stays pending until the goods receipt (MIGO) is posted against it: "Not posted" is a delivery item with no receipt yet, "Partly posted" one with a part of it received. Deliveries whose receipt was posted straight against the PO (SAP shows no status on them) and the finished ones are not listed. The delivery quantity is what came on the invoice; "PO received" and "PO still to deliver" are the figures of the whole PO item. The value is the delivery quantity at the PO price (PO data of the Pending Purchase Orders page, which starts at 1 Jan 2026), so an item of an older PO has no value and is left out of the totals; the supplier name also comes from that data (older suppliers show their number). The view starts in June 2024, so very old rows are invoices that were never received in SAP, or whose goods were received without the delivery, and are worth a clean-up. The delivery date starts as the whole current month and moves on by itself; use Today, Yesterday, All dates, or change it, to see other days. Data is refreshed from SAP at most every 5 minutes, or with the Refresh button.</p></details>
+</div>
+<footer class="footer">Mittal Group · Pending Invoice Entry · Source: SAP S/4HANA Cloud, YY1_STORE_INVOICE_VL06_CDS</footer>
+
+<script id="users" type="application/json">__USERS__</script>
+<script id="pgs" type="application/json">__PGS__</script>
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const USER_NAMES=(()=>{try{return JSON.parse(document.getElementById('users').textContent);}catch(e){return {};}})();
+const uName=id=>USER_NAMES[id]?USER_NAMES[id][0]:id;
+const uTip=id=>USER_NAMES[id]?id+(USER_NAMES[id][1]?' ('+USER_NAMES[id][1]+')':''):id;
+const PG_NAMES=(()=>{try{return JSON.parse(document.getElementById('pgs').textContent);}catch(e){return {};}})();
+const pgName=c=>PG_NAMES[c]||c||'(blank)';
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const PAGE=25;
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtN=n=>Math.round(n).toLocaleString('en-IN');
+function fmtINR(v){const a=Math.abs(v);if(a>=1e7)return '₹'+(v/1e7).toFixed(2)+' Cr';if(a>=1e5)return '₹'+(v/1e5).toFixed(2)+' L';return '₹'+Math.round(v).toLocaleString('en-IN');}
+const fmtDay=d=>new Date(d*864e5).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric',timeZone:'UTC'});
+const mIdx=d=>{const t=new Date(d*864e5);return t.getUTCFullYear()*12+t.getUTCMonth();};
+const mName=k=>MON[k%12]+' '+Math.floor(k/12);
+const dayOf=v=>v?Math.floor(Date.parse(v)/864e5):null;
+const iso=d=>new Date(d*864e5).toISOString().slice(0,10);
+const fmtQty=(q,u)=>q.toLocaleString('en-IN',{maximumFractionDigits:3})+' '+u;
+const qf=([u,v])=>v.toLocaleString('en-IN',{maximumFractionDigits:3})+' '+esc(u);
+// quantities per unit (a list can hold KG, PC, M ...): the first `max` one per line, then "+ N more units" (hover: all of them)
+const qCap=(m,max)=>{const e=[...m].filter(([,v])=>v!==0);if(!e.length)return '–';if(e.length<=max)return e.map(qf).join('<br>');return e.slice(0,max).map(qf).join('<br>')+`<br><span class="qmore" title="${esc(e.map(qf).join(', '))}">+ ${e.length-max} more units</span>`;};
+const qSum=rows=>{const m=new Map();for(const r of rows)m.set(r.unit,(m.get(r.unit)||0)+r.qty);return m;};
+// waiting since: age buckets in days
+const BUCKETS=[['Today',0,0],['1 day',1,1],['2–7 days',2,7],['8–30 days',8,30],['31–90 days',31,90],['Over 90 days',91,1e9]];
+const OLD_DAYS=7;
+
+let D=null,R=[],CUR=null,renderToken=0,tileToken=0,POD=null,POMAP=new Map(),SUPN=new Map();
+const S={tile:null,tileAll:false,all:false,plant:'',dept:null,sup:null,st:'',age:null,from:null,to:null,q:'',mon:null};
+const supName=id=>SUPN.get(id)||'';
+const supLabel=id=>supName(id)?supName(id)+' ('+id+')':'Supplier '+id;
+
+function pass(r,skip){
+  skip=skip||[];
+  if(!skip.includes('plant')&&S.plant&&r.plant!==S.plant)return false;
+  if(!skip.includes('dept')&&S.dept!==null&&r.dept!==S.dept)return false;
+  if(!skip.includes('sup')&&S.sup!==null&&r.supId!==S.sup)return false;
+  if(S.st&&r.st!==S.st)return false;
+  if(!skip.includes('age')&&S.age!==null&&r.b!==S.age)return false;
+  if(!skip.includes('date')&&S.from!==null&&!(r.ddate>=S.from))return false;
+  if(!skip.includes('date')&&S.to!==null&&!(r.ddate<=S.to))return false;
+  if(S.q&&!r.hay.includes(S.q))return false;
+  return true;
+}
+
+// dels: distinct deliveries (invoices); n: items; val/vn: value and the number of items that have a value
+const agg=()=>({dels:new Set(),n:0,val:0,vn:0,sups:new Set(),old:0});
+function add(m,k,r){let x=m.get(k);if(!x)m.set(k,x=agg());x.dels.add(r.del);x.n++;if(r.val!==null){x.val+=r.val;x.vn++;}x.sups.add(r.supId);if(r.age>x.old)x.old=r.age;}
+const merge=(t,x)=>{for(const d of x.dels)t.dels.add(d);t.n+=x.n;t.val+=x.val;t.vn+=x.vn;for(const s of x.sups)t.sups.add(s);if(x.old>t.old)t.old=x.old;};
+const byCnt=m=>[...m.entries()].sort((a,b)=>b[1].n-a[1].n||b[1].dels.size-a[1].dels.size);
+const none='<div class="empty">Nothing matches the filters.</div>';
+const valTxt=x=>x.vn?fmtINR(x.val)+(x.vn<x.n?'<span class="qmore" title="'+fmtN(x.vn)+' of '+fmtN(x.n)+' items have a PO price in the 2026 data"> *</span>':''):'–';
+const nums=x=>`<td class="num">${fmtN(x.dels.size)}</td><td class="num">${fmtN(x.n)}</td><td class="num nw">${valTxt(x)}</td><td class="num nw">${x.old?fmtN(x.old)+' d':'–'}</td>`;
+function aggTable(list,head,cell,sel){
+  if(!list.length)return none;
+  const tot=agg();for(const [,x] of list)merge(tot,x);
+  return `<table><thead><tr><th>${head}</th><th class="num">Invoice</th><th class="num">Items</th><th class="num">Value (approx.)</th><th class="num">Oldest</th></tr></thead><tbody>`+
+    list.map(([k,x])=>`<tr${k===sel?' class="sel"':''}><td>${cell(k)}</td>${nums(x)}</tr>`).join('')+
+    `</tbody><tfoot><tr><td>Total (${fmtN(list.length)})</td>${nums(tot)}</tr></tfoot></table>`;
+}
+
+// ---------------------------------------------------------------- the pending items
+const stPill=s=>s==='A'?'<span class="pill pend">Not posted</span>':'<span class="pill part" title="a part of the delivery is received">Partly posted</span>';
+const ageTxt=a=>a===null?'–':`<span class="${a>OLD_DAYS?'old':''}">${fmtN(a)} d</span>`;
+const LHEAD='<thead><tr><th class="num">#</th><th>Delivery</th><th>Item</th><th>Delivery date</th><th class="num">Waiting</th><th>Supplier</th><th>PO</th><th>PO item</th><th>Material</th><th>Description</th><th>Plant</th><th>S.Loc</th><th class="num">Delivery qty</th><th class="num">PO received</th><th class="num">PO still to deliver</th><th class="num">Value (approx.)</th><th>Department</th><th>Goods receipt</th><th>Entered by</th><th>PO date</th></tr></thead>';
+const lineRow=(r,i)=>`<tr><td class="num">${i+1}</td><td class="nw"><b>${esc(r.del)}</b></td><td>${r.item}</td><td class="nw">${r.ddate===null?'–':fmtDay(r.ddate)}</td><td class="num nw">${ageTxt(r.age)}</td><td class="supc" title="${esc('Supplier '+r.supId)}">${esc(supName(r.supId)||('Supplier '+r.supId))}</td><td class="nw">${esc(r.po||'–')}</td><td>${r.poItem||'–'}</td><td class="nw">${esc(r.mat)}</td><td class="matc">${esc(r.matName)}</td><td>${esc(r.plant)}</td><td class="nw">${esc(r.sloc||'–')}</td><td class="num nw">${fmtQty(r.qty,esc(r.unit))}</td><td class="num nw">${fmtQty(r.gr,esc(r.unit))}</td><td class="num nw">${fmtQty(r.still,esc(r.unit))}</td><td class="num nw">${r.val===null?'–':'<b>'+fmtINR(r.val)+'</b>'}</td><td class="nw">${esc(r.dept)}</td><td>${stPill(r.st)}</td><td class="nw" title="${esc(uTip(r.user))}">${esc(uName(r.user))}</td><td class="nw">${r.poDay===null?'–':fmtDay(r.poDay)}</td></tr>`;
+const itemTxt=r=>(r.matName||r.mat)+' · '+fmtQty(r.qty,r.unit);
+const matLines=items=>{const e=items.map(r=>esc(itemTxt(r)));if(e.length<=3)return e.join('<br>');return e.slice(0,3).join('<br>')+`<br><span class="qmore" title="${esc(items.map(itemTxt).join('\n'))}">+ ${e.length-3} more items</span>`;};
+const valSum=rows=>{let v=0,n=0;for(const r of rows)if(r.val!==null){v+=r.val;n++;}return [v,n];};
+const lineFoot=rows=>{const [v,n]=valSum(rows);return `<tfoot><tr><td colspan="12">Total (${fmtN(rows.length)} items, ${fmtN(new Set(rows.map(r=>r.del)).size)} deliveries)</td><td class="num nw qlist">${qCap(qSum(rows),3)}</td><td colspan="2"></td><td class="num nw">${n?fmtINR(v):'–'}</td><td colspan="4"></td></tr></tfoot>`;};
+
+// ---------------------------------------------------------------- details of a tile
+const TILE_INFO={
+  dels:['Invoices (deliveries) pending','Every inbound delivery of the current filters that still waits for its goods receipt, newest first.'],
+  items:['Items pending','Every delivery item of the current filters that waits for its goods receipt, newest first.'],
+  sups:['Suppliers waiting','Suppliers with a pending invoice in the current filters, most items first.'],
+  val:['Value (approx.)','Delivery quantity at the PO price, by supplier, department and plant. Items of POs older than the 2026 PO data have no value.'],
+  today:['Delivery date today','The pending items whose delivery date is today.'],
+  old:['Waiting over '+OLD_DAYS+' days','Pending items whose delivery date is more than '+OLD_DAYS+' days back, the oldest first: these invoices need a look.']
+};
+function delList(rows){
+  const m=new Map();
+  for(const r of rows){let x=m.get(r.del);if(!x)m.set(r.del,x={del:r.del,ddate:r.ddate,age:r.age,supId:r.supId,n:0,val:0,vn:0,pos:new Set(),st:'B',user:r.user,items:[]});x.n++;x.items.push(r);if(r.val!==null){x.val+=r.val;x.vn++;}x.pos.add(r.po);if(r.st==='A')x.st='A';}
+  return [...m.values()].sort((a,b)=>(b.ddate||0)-(a.ddate||0)||b.del.localeCompare(a.del));
+}
+function renderTile(){
+  const k=S.tile;
+  if(!k||!CUR||!D||!TILE_INFO[k]){$('tileCard').hidden=true;return;}
+  $('tileCard').hidden=false;
+  $('tileTitle').textContent=TILE_INFO[k][0];$('tileHint').textContent=TILE_INFO[k][1];
+  const rows=CUR.rows;
+  let list=null,thead='',rowFn=null,foot=null,html='',n=0,unit='items';
+  const newest=a=>a.slice().sort((x,y)=>(y.ddate||0)-(x.ddate||0)||y.del.localeCompare(x.del)||x.item-y.item);
+  if(k==='items'||k==='today'||k==='old'){
+    list=k==='items'?newest(rows):k==='today'?newest(rows.filter(r=>r.ddate===D.asofDay)):rows.filter(r=>r.age>OLD_DAYS).sort((a,b)=>b.age-a.age||a.del.localeCompare(b.del)||a.item-b.item);
+    thead=LHEAD;rowFn=lineRow;foot=l=>lineFoot(l);
+  }else if(k==='dels'){
+    list=delList(rows);unit='deliveries';
+    thead='<thead><tr><th class="num">#</th><th>Delivery</th><th>Delivery date</th><th class="num">Waiting</th><th>Supplier</th><th>Material and quantity</th><th class="num">Items</th><th>POs</th><th class="num">Value (approx.)</th><th>Goods receipt</th><th>Entered by</th></tr></thead>';
+    rowFn=(x,i)=>`<tr><td class="num">${i+1}</td><td class="nw"><b>${esc(x.del)}</b></td><td class="nw">${x.ddate===null?'–':fmtDay(x.ddate)}</td><td class="num nw">${ageTxt(x.age)}</td><td class="supc">${esc(supName(x.supId)||('Supplier '+x.supId))}</td><td class="matc">${matLines(x.items)}</td><td class="num">${fmtN(x.n)}</td><td class="nw" title="${esc([...x.pos].join(', '))}">${x.pos.size>2?[...x.pos].slice(0,2).join(', ')+' +'+(x.pos.size-2):[...x.pos].join(', ')}</td><td class="num nw">${x.vn?fmtINR(x.val):'–'}</td><td>${stPill(x.st)}</td><td class="nw" title="${esc(uTip(x.user))}">${esc(uName(x.user))}</td></tr>`;
+    foot=l=>`<tfoot><tr><td colspan="6">Total (${fmtN(l.length)} deliveries)</td><td class="num">${fmtN(l.reduce((s,x)=>s+x.n,0))}</td><td></td><td class="num nw">${fmtINR(l.reduce((s,x)=>s+x.val,0))}</td><td colspan="2"></td></tr></tfoot>`;
+  }else if(k==='sups'){
+    const m=new Map();for(const r of rows)add(m,r.supId,r);
+    list=byCnt(m).map(([id,x])=>({id,...x}));unit='suppliers';
+    thead='<thead><tr><th class="num">#</th><th>Supplier</th><th class="num">Invoice</th><th class="num">Items</th><th class="num">Value (approx.)</th><th class="num">Oldest</th></tr></thead>';
+    rowFn=(x,i)=>`<tr><td class="num">${i+1}</td><td class="supc">${esc(supLabel(x.id))}</td>${nums(x)}</tr>`;
+    foot=l=>{const t=agg();for(const x of l)merge(t,x);return `<tfoot><tr><td colspan="2">Total (${fmtN(l.length)} suppliers)</td>${nums(t)}</tr></tfoot>`;};
+  }else if(k==='val'){
+    const sp=new Map(),dp=new Map(),pl=new Map();for(const r of rows){add(sp,r.supId,r);add(dp,r.dept,r);add(pl,r.plant,r);}
+    const byVal=m=>[...m.entries()].sort((a,b)=>b[1].val-a[1].val||b[1].n-a[1].n);
+    html='<h3 class="subh">Supplier wise (top 30 by value)</h3>'+aggTable(byVal(sp).slice(0,30),'Supplier',id=>esc(supLabel(id)))+'<h3 class="subh">Department wise</h3>'+aggTable(byVal(dp),'Department',x=>esc(x))+'<h3 class="subh">Plant wise</h3>'+aggTable(byVal(pl),'Plant',x=>esc(x));
+  }
+  if(list){
+    n=list.length;const slice=S.tileAll?list:list.slice(0,PAGE),first=S.tileAll?slice.slice(0,300):slice;
+    $('tileBox').innerHTML=list.length?`<table>${thead}<tbody>${first.map((x,i)=>rowFn(x,i)).join('')}</tbody>${foot?foot(list):''}</table>`:none;
+    // See all can mean thousands of lines: the first rows appear at once and the rest are added in batches
+    const token=++tileToken;let done=first.length;
+    const more=()=>{if(token!==tileToken||done>=slice.length)return;const tb=$('tileBox').querySelector('tbody');if(!tb)return;tb.insertAdjacentHTML('beforeend',slice.slice(done,done+500).map((x,i)=>rowFn(x,done+i)).join(''));done+=500;setTimeout(more,0);};
+    setTimeout(more,0);
+  }else{tileToken++;$('tileBox').innerHTML=html;}
+  $('tileInfo').textContent=!list||!n?'':(S.tileAll||n<=PAGE?`All ${fmtN(n)} ${unit} shown`:`Showing the first ${PAGE} of ${fmtN(n)} ${unit}`);
+  $('tileAll').hidden=!list||n<=PAGE;$('tileAll').textContent=S.tileAll?'Show first '+PAGE:'See all '+fmtN(n);
+}
+const reveal=id=>{const el=$(id);if(el&&!el.hidden)el.scrollIntoView({behavior:'smooth',block:'start'});};
+
+function quickState(){
+  const a=D?D.asofDay:null;
+  if(S.from===null&&S.to===null)return 'all';
+  if(S.from===a&&S.to===a)return 'today';
+  if(S.from===a-1&&S.to===a-1)return 'yest';
+  if(D){const t=new Date(a*864e5),y=t.getUTCFullYear(),m=t.getUTCMonth();if(S.from===Date.UTC(y,m,1)/864e5&&S.to===Date.UTC(y,m+1,0)/864e5)return 'month';}
+  return '';
+}
+
+function render(){
+  if(!D)return;
+  const rows=R.filter(r=>pass(r));
+  const tm=new Map([[0,agg()]]);for(const r of rows)add(tm,0,r);const tot=tm.get(0);
+  const [v,vn]=valSum(rows);
+  const todayN=new Set(rows.filter(r=>r.ddate===D.asofDay).map(r=>r.del)).size;
+  const oldN=new Set(rows.filter(r=>r.age>OLD_DAYS).map(r=>r.del)).size;
+  CUR={rows,tot};
+  // every tile opens its details under the tiles
+  $('kpis').innerHTML=[
+    [fmtN(tot.dels.size),'Invoices (deliveries) pending','dels'],
+    [fmtN(rows.length),'Items pending','items'],
+    [fmtN(tot.sups.size),'Suppliers waiting','sups'],
+    [POD?(vn?fmtINR(v):'–'):'…',POD?`Value (approx.) · ${fmtN(vn)} of ${fmtN(rows.length)} items`:'Value (approx.) · PO data loading','val'],
+    [fmtN(todayN),'Delivery date today','today'],
+    [fmtN(oldN),'Deliveries waiting over '+OLD_DAYS+' days','old']
+  ].map(t=>`<button type="button" class="tile tilebtn" data-tile="${t[2]}" aria-expanded="${S.tile===t[2]}"><div class="tv">${t[0]}</div><div class="tl">${t[1]}</div>${S.tile===t[2]?'<div class="ts">click to hide</div>':''}</button>`).join('');
+  renderTile();
+  for(const b of document.querySelectorAll('#quickSeg button'))b.classList.toggle('on',b.dataset.qk===quickState());
+  // chips
+  const c=[];
+  if(S.plant)c.push(['plant','Plant '+S.plant]);
+  if(S.dept!==null)c.push(['dept','Department: '+S.dept]);
+  if(S.sup!==null)c.push(['sup','Supplier: '+(supName(S.sup)||S.sup)]);
+  if(S.st)c.push(['st',S.st==='A'?'Not posted':'Partly posted']);
+  if(S.age!==null)c.push(['age','Waiting: '+BUCKETS[S.age][0]]);
+  if(S.from!==null||S.to!==null)c.push(['date','Delivery date '+(S.from!==null?fmtDay(S.from):'start')+' – '+(S.to!==null?fmtDay(S.to):'today')]);
+  if(S.q)c.push(['q','Search: '+S.q]);
+  $('chips').innerHTML=c.map(x=>`<button type="button" class="chip" data-clr="${x[0]}">${esc(x[1])} ×</button>`).join('')+(c.length?'<button type="button" class="chip" data-clr="all">Reset filters</button>':'');
+  // each table ignores its own filter, so the list stays when you pick a row
+  const sp=new Map(),dp=new Map(),pl=new Map(),ag=new Map();
+  for(const r of R){
+    if(pass(r,['sup']))add(sp,r.supId,r);
+    if(pass(r,['dept']))add(dp,r.dept,r);
+    if(pass(r,['plant']))add(pl,r.plant,r);
+    if(pass(r,['age']))add(ag,r.b,r);
+  }
+  const spl=byCnt(sp);
+  $('supHint').textContent='Number of pending items for the current filters'+(spl.length>50?`; top 50 of ${fmtN(spl.length)} suppliers shown, the total covers all`:'')+'. Click a supplier to filter everything.';
+  $('bySup').innerHTML=aggTable(spl.slice(0,50),'Supplier',k=>`<button type="button" class="lnk" data-sup="${esc(k)}">${esc(supName(k)||('Supplier '+k))}</button>`,S.sup);
+  $('byDept').innerHTML=aggTable(byCnt(dp),'Department',k=>`<button type="button" class="lnk" data-dept="${esc(k)}">${esc(k)}</button>`,S.dept);
+  $('byPlant').innerHTML=aggTable(byCnt(pl),'Plant',k=>`<button type="button" class="lnk" data-plant="${esc(k)}">${esc(k)}</button>`,S.plant||null);
+  $('byAge').innerHTML=aggTable([...ag.entries()].filter(([k])=>k>=0).sort((a,b)=>a[0]-b[0]),'Waiting',k=>`<button type="button" class="lnk" data-age="${k}">${BUCKETS[k][0]}</button>`,S.age);
+  // month / day (ignore From/To so every month stays listed)
+  const mon=new Map(),day=new Map();
+  if(S.mon===null)S.mon=mIdx(D.asofDay);
+  for(const r of R){if(r.ddate===null||!pass(r,['date']))continue;const k=mIdx(r.ddate);add(mon,k,r);if(k===S.mon)add(day,r.ddate,r);}
+  $('byMonth').innerHTML=aggTable([...mon.entries()].sort((a,b)=>b[0]-a[0]),'Month',k=>`<button type="button" class="lnk" data-mon="${k}">${mName(k)}</button>`,S.mon);
+  $('dayTitle').textContent='Day-wise pending · '+mName(S.mon);
+  $('byDay').innerHTML=aggTable([...day.entries()].sort((a,b)=>a[0]-b[0]),'Delivery date',k=>`<button type="button" class="lnk" data-day="${k}">${fmtDay(k)}</button>`);
+  // the items, newest delivery first
+  rows.sort((a,b)=>(b.ddate||0)-(a.ddate||0)||b.del.localeCompare(a.del)||a.item-b.item);
+  const slice=S.all?rows:rows.slice(0,PAGE);
+  const first=S.all?slice.slice(0,400):slice;
+  $('tbl').innerHTML=LHEAD+'<tbody>'+(first.length?first.map((r,i)=>lineRow(r,i)).join(''):'<tr><td colspan="20" class="empty">Nothing matches the filters.</td></tr>')+'</tbody>'+(rows.length?lineFoot(rows):'');
+  const token=++renderToken;let done=first.length;
+  const more=()=>{if(token!==renderToken||done>=slice.length)return;document.querySelector('#tbl tbody').insertAdjacentHTML('beforeend',slice.slice(done,done+600).map((r,i)=>lineRow(r,done+i)).join(''));done+=600;setTimeout(more,0);};
+  setTimeout(more,0);
+  $('tcount').textContent=fmtN(rows.length)+' items · '+fmtN(tot.dels.size)+' invoices (deliveries) · '+fmtN(tot.sups.size)+' suppliers'+(POD&&vn?' · value (approx.) '+fmtINR(v):'');
+  $('pinfo').textContent=!rows.length?'':rows.length<=PAGE||S.all?`All ${fmtN(rows.length)} items shown`:`Showing the first ${PAGE} of ${fmtN(rows.length)}`;
+  $('seeAll').hidden=rows.length<=PAGE;$('seeAll').textContent=S.all?'Show first '+PAGE:'See all '+fmtN(rows.length);
+}
+
+function setMonthDates(){const t=new Date(D.asofDay*864e5);const y=t.getUTCFullYear(),m=t.getUTCMonth();const a=Date.UTC(y,m,1)/864e5,b=Date.UTC(y,m+1,0)/864e5;S.from=a;S.to=b;$('dFrom').value=iso(a);$('dTo').value=iso(b);}
+const syncDates=()=>{$('dFrom').value=S.from===null?'':iso(S.from);$('dTo').value=S.to===null?'':iso(S.to);};
+document.addEventListener('click',e=>{
+  const t=e.target.closest('button');if(!t)return;
+  if(t.dataset.dept!==undefined){S.dept=S.dept===t.dataset.dept?null:t.dataset.dept;$('deptSel').value=S.dept===null?'':S.dept;}
+  else if(t.dataset.plant!==undefined){S.plant=S.plant===t.dataset.plant?'':t.dataset.plant;$('plantSel').value=S.plant;}
+  else if(t.dataset.sup!==undefined){S.sup=S.sup===t.dataset.sup?null:t.dataset.sup;$('supSel').value=S.sup===null?'':S.sup;}
+  else if(t.dataset.age!==undefined){const a=+t.dataset.age;S.age=S.age===a?null:a;}
+  else if(t.dataset.mon!==undefined){S.mon=+t.dataset.mon;}
+  else if(t.dataset.day!==undefined){const d=+t.dataset.day;S.from=S.to=d;syncDates();}
+  else if(t.dataset.qk){const k=t.dataset.qk;
+    if(k==='today')S.from=S.to=D.asofDay;else if(k==='yest')S.from=S.to=D.asofDay-1;else if(k==='month')setMonthDates();else S.from=S.to=null;
+    syncDates();if(S.from!==null)S.mon=mIdx(S.from);}
+  else if(t.dataset.clr){const c=t.dataset.clr;
+    if(c==='plant'||c==='all'){S.plant='';$('plantSel').value='';}
+    if(c==='dept'||c==='all'){S.dept=null;$('deptSel').value='';}
+    if(c==='sup'||c==='all'){S.sup=null;$('supSel').value='';}
+    if(c==='st'||c==='all'){S.st='';$('stSel').value='';}
+    if(c==='age'||c==='all')S.age=null;
+    if(c==='date')S.from=S.to=null,syncDates();
+    if(c==='all')setMonthDates();
+    if(c==='q'||c==='all'){S.q='';$('q').value='';}}
+  else if(t.dataset.tile!==undefined){const k=t.dataset.tile;S.tile=S.tile===k?null:k;S.tileAll=false;render();if(S.tile)reveal('tileCard');return;}
+  else if(t.id==='tileAll'){S.tileAll=!S.tileAll;renderTile();return;}
+  else if(t.id==='seeAll'){S.all=!S.all;render();if(!S.all)document.querySelector('.tscroll').scrollTop=0;return;}
+  else return;
+  render();
+});
+$('plantSel').addEventListener('change',e=>{S.plant=e.target.value;render();});
+$('deptSel').addEventListener('change',e=>{S.dept=e.target.value===''?null:e.target.value;render();});
+$('supSel').addEventListener('change',e=>{S.sup=e.target.value===''?null:e.target.value;render();});
+$('stSel').addEventListener('change',e=>{S.st=e.target.value;render();});
+$('dFrom').addEventListener('change',e=>{S.from=dayOf(e.target.value);render();});
+$('dTo').addEventListener('change',e=>{S.to=dayOf(e.target.value);render();});
+let qT;$('q').addEventListener('input',e=>{clearTimeout(qT);qT=setTimeout(()=>{S.q=e.target.value.trim().toLowerCase();render();},200);});
+
+const root=document.documentElement;
+function setTheme(t,save){root.dataset.theme=t;for(const b of document.querySelectorAll('#themeSeg button'))b.classList.toggle('on',b.dataset.th===t);if(save){try{localStorage.setItem('spr-theme',t);}catch(e){}}}
+let savedTheme='dark';try{savedTheme=localStorage.getItem('spr-theme')||'dark';}catch(e){}
+setTheme(savedTheme==='light'?'light':'dark',false);
+document.getElementById('themeSeg').addEventListener('click',e=>{const b=e.target.closest('button[data-th]');if(b)setTheme(b.dataset.th,true);});
+
+// ---------------------------------------------------------------- data
+// the price, quantity and rate of every PO item (PO data) give a pending item its value; the PO data also holds the supplier names
+function assign(){
+  for(const r of R){
+    const p=POMAP.get(r.po+'|'+r.poItem);
+    r.val=p&&p[1]>0&&p[2]>0?r.qty*p[0]/p[1]*p[2]:null;
+    r.hay=(r.del+' '+r.po+' '+r.supId+' '+supName(r.supId)+' '+r.mat+' '+r.matName+' '+r.plant+' '+r.sloc+' '+r.dept+' '+r.user+' '+uName(r.user)).toLowerCase();
+  }
+}
+function fillSelects(){
+  const cnt=f=>{const c=new Map();for(const r of R)c.set(f(r),(c.get(f(r))||0)+1);return [...c.entries()].sort((a,b)=>b[1]-a[1]);};
+  $('plantSel').innerHTML='<option value="">All plants</option>'+cnt(r=>r.plant).map(e=>`<option value="${esc(e[0])}">${esc(e[0])}</option>`).join('');$('plantSel').value=S.plant;
+  const dl=cnt(r=>r.dept);
+  $('deptSel').innerHTML='<option value="">All departments</option>'+dl.map(e=>`<option value="${esc(e[0])}">${esc(e[0])}</option>`).join('');
+  if(S.dept!==null&&!dl.some(e=>e[0]===S.dept))S.dept=null;$('deptSel').value=S.dept===null?'':S.dept;
+  const sl=[...new Set(R.map(r=>r.supId))].sort((a,b)=>(supName(a)||'~'+a).localeCompare(supName(b)||'~'+b));
+  $('supSel').innerHTML='<option value="">All suppliers</option>'+sl.map(id=>`<option value="${esc(id)}">${esc(supLabel(id))}</option>`).join('');
+  if(S.sup!==null&&!sl.includes(S.sup))S.sup=null;$('supSel').value=S.sup===null?'':S.sup;
+}
+function setData(d){
+  D=d;
+  R=d.rows.map(a=>{
+    const mt=d.mats[a[9]];
+    const r={ddate:a[0],cday:a[1],del:a[2],item:a[3],po:a[4],poItem:a[5],supId:d.suppliers[a[6]],plant:d.plants[a[7]],sloc:d.slocs[a[8]],mat:mt[0],matName:mt[1],unit:d.units[a[10]],qty:a[11],st:d.statuses[a[12]],gr:a[13],still:a[14],inv:a[15],poDay:a[16],type:d.types[a[17]],dept:pgName(d.pgs[a[18]]),user:d.users[a[19]],poUser:d.users[a[20]],grAmt:a[21],invAmt:a[22]};
+    r.age=r.ddate===null?null:Math.max(0,d.asofDay-r.ddate);
+    r.b=r.age===null?-1:BUCKETS.findIndex(b=>r.age>=b[1]&&r.age<=b[2]);
+    return r;
+  });
+  assign();fillSelects();
+}
+// PO + item -> [net amount, order quantity, rate to INR]; the supplier names (id -> name) of the PO data
+function setPO(j){
+  POD=j;POMAP=new Map();SUPN=new Map();
+  for(const s of j.suppliers)if(s[1])SUPN.set(s[0],s[1]);
+  for(const a of j.rows)POMAP.set(a[2]+'|'+a[3],[a[17],a[15],a[24]]);
+  if(D){assign();fillSelects();render();}
+}
+// a link from the Summary page: ?tile=dels&plant=1010&from=2026-10-01&to=2026-10-31 (dates=all clears the dates); used once, on the first load
+let LINK=(()=>{try{const q=new URLSearchParams(location.search);return q.has('tile')||q.has('plant')||q.has('from')||q.has('to')||q.has('dates')?q:null;}catch(e){return null;}})();
+function applyLink(){
+  if(!LINK)return;const q=LINK;LINK=null;
+  if(q.has('plant')){S.plant=q.get('plant')||'';if(![...$('plantSel').options].some(o=>o.value===S.plant))S.plant='';$('plantSel').value=S.plant;}
+  if(q.get('dates')==='all'){S.from=S.to=null;syncDates();}
+  else if(q.has('from')||q.has('to')){S.from=dayOf(q.get('from'));S.to=dayOf(q.get('to'));syncDates();}
+  const k=q.get('tile');if(k&&TILE_INFO[k]){S.tile=k;S.tileAll=false;S.reveal=true;}
+}
+function setLive(kind,text){$('liveDot').style.background=kind==='ok'?'var(--good)':kind==='err'?'var(--crit)':'var(--warn)';$('liveTxt').textContent=text;$('refresh').disabled=kind==='busy';}
+const hhmm=ms=>new Date(ms).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+let loading=false;
+async function load(force,auto){
+  if(loading)return;loading=true;
+  if(!auto||!D)setLive('busy',D?'Refreshing from SAP…':'Loading pending invoices from SAP…');
+  // the PO data (price and supplier names) is fetched in parallel; the page is drawn as soon as the invoices are there
+  const poP=LIVE.get('/api/po',force).then(g=>g.same||!g.res.ok?null:g.j).catch(()=>null);
+  try{
+    const g=await LIVE.get('/api/invoice',force),res=g.res,j=g.j;
+    if(g.same){setLive('ok','Live from SAP · updated '+hhmm(g.stamp)+' · '+fmtN(R.length)+' pending items');poP.then(p=>{if(p)setPO(p);});return;}
+    if(!res.ok)throw new Error(j.error||('HTTP '+res.status));
+    setData(j);if(!S.dInit){S.dInit=true;setMonthDates();applyLink();}render();
+    if(S.reveal){S.reveal=false;setTimeout(()=>reveal('tileCard'),150);}
+    setLive('ok','Live from SAP · updated '+hhmm(j.fetchedAt)+' · '+fmtN(R.length)+' pending items');
+    poP.then(p=>{if(p)setPO(p);});
+  }catch(e){
+    const msg=e.message==='Failed to fetch'?'The dashboard server is not running. Start it again with Start_Live_Dashboard.bat.':e.message;
+    setLive('err',msg);
+  }finally{loading=false;}
+}
+$('refresh').addEventListener('click',()=>load(true));
+load(false);
+setInterval(()=>{if(!document.hidden)load(false,true);},LIVE.every);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)load(false,true);});
+})();
+</script>
+<script src="/ui.js" defer></script>
+</body>
+</html>

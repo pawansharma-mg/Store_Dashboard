@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Payment Ageing</title>
+<link rel="icon" type="image/png" href="/logo.png">
+<style>
+/* Same look as the other pages. */
+:root{
+  color-scheme:light;
+  --plane:#f4f6f5;--surface:#fff;--ink:#0b0b0b;--ink2:#52514e;--muted:#898781;--grid:#e1e0d9;--border:rgba(11,11,11,.10);
+  --s1:#2a78d6;--good:#0ca30c;--warn:#fab219;--serious:#ec835a;--crit:#d03b3b;
+  --brand:#1CADE4;--brand-dark:#0E7FAE;--brand-red:#E42227;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--plane:#101110;--surface:#1a1b1a;--ink:#fff;--ink2:#c3c2b7;--grid:#2c2c2a;--border:rgba(255,255,255,.10);--s1:#3987e5}}
+:root[data-theme="dark"]{color-scheme:dark;--plane:#101110;--surface:#1a1b1a;--ink:#fff;--ink2:#c3c2b7;--grid:#2c2c2a;--border:rgba(255,255,255,.10);--s1:#3987e5}
+*{box-sizing:border-box}
+body{margin:0;background:var(--plane);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.top{position:sticky;top:0;z-index:20;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;background:var(--surface);border-bottom:3px solid var(--brand-red);padding:12px 20px}
+.brand{display:flex;align-items:center;gap:12px;min-width:0}
+.logo{width:42px;height:42px;object-fit:contain;flex:none}
+h1{margin:0;font-size:1.1rem;font-weight:700;color:var(--brand-dark)}
+.sub{margin:2px 0 0;font-size:.8rem;color:var(--muted)}
+.tools{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.live{display:flex;align-items:center;gap:8px;font-size:.8rem;color:var(--muted)}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;flex:none}
+.btn{height:34px;padding:0 14px;border:0;border-radius:7px;background:var(--brand);color:#fff;font-size:.83rem;font-weight:600;text-decoration:none;display:inline-flex;align-items:center}
+.btn:hover{background:var(--brand-dark)}
+.btn:disabled{opacity:.5;cursor:default}
+.nav{display:flex;flex-wrap:wrap;gap:6px;padding:8px 20px;background:var(--surface);border-bottom:1px solid var(--border)}
+.nav a{font-size:.78rem;font-weight:600;color:var(--ink2);text-decoration:none;padding:6px 12px;border-radius:999px;background:var(--plane)}
+.nav a.on{background:var(--brand);color:#fff}
+.wrap{max-width:1240px;margin:0 auto;padding:20px 16px 48px}
+.bar{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
+.fld{display:flex;flex-direction:column;gap:4px;min-width:0}
+.fld>span{font-size:.78rem;color:var(--ink2)}
+.fld select,.fld input{height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface);padding:0 10px;min-width:0}
+.grow{flex:1 1 240px}.grow input{width:100%}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:16px}
+.tile{background:var(--surface);border:1px solid var(--border);border-top:3px solid var(--crit);border-radius:12px;padding:14px 16px;box-shadow:0 1px 2px rgba(11,11,11,.04),0 1px 8px rgba(11,11,11,.04)}
+.tile:nth-child(2){border-top-color:var(--good)}.tile:nth-child(3){border-top-color:var(--s1)}
+.tv{font-size:1.5rem;font-weight:700;font-variant-numeric:tabular-nums}
+.tl{font-size:.76rem;color:var(--muted)}
+.grid{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;margin-top:12px}
+@media (min-width:1000px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;min-width:0;box-shadow:0 1px 2px rgba(11,11,11,.04),0 1px 8px rgba(11,11,11,.04)}
+.card h2{margin:0;font-size:1.02rem;font-weight:700;display:flex;align-items:center;flex-wrap:wrap;gap:9px}
+.sec-badge{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:26px;padding:0 6px;border-radius:8px;background:var(--brand-dark);color:#fff;font-size:.72rem;font-weight:700}
+.hint{margin:4px 0 12px;font-size:12.5px;color:var(--ink2)}
+.tbox{max-height:70vh;overflow:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--grid);vertical-align:top}
+th{font-size:.7rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);border-bottom:2px solid var(--grid);white-space:nowrap}
+.tbox thead th{position:sticky;top:0;background:var(--surface);z-index:1}
+.tbox tfoot td{position:sticky;bottom:0;background:var(--surface);font-weight:700;border-top:2px solid var(--grid)}
+tbody tr:nth-child(even) td{background:rgba(128,128,128,.04)}
+tbody tr:hover td{background:rgba(28,173,228,.07)}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.nw{white-space:nowrap}
+.empty{padding:28px 0;color:var(--ink2);text-align:center}
+.note{margin-top:16px;color:var(--ink2);font-size:12.5px;max-width:110ch}
+.footer{text-align:center;font-size:.72rem;color:var(--muted);padding:0 20px 24px}
+@media (max-width:700px){.top{position:static}}
+@media (max-width:480px){.sub{display:none}.card{padding:16px}}
+.seg{display:inline-flex;border-radius:8px;overflow:hidden;border:1px solid var(--brand);flex:none}
+.seg button{border:0;border-radius:0;background:transparent;color:var(--brand-dark);font-size:.83rem;font-weight:600;height:32px;padding:0 13px;cursor:pointer}
+.seg button.on{background:var(--brand);color:#fff}
+.seg button:not(.on):hover{background:rgba(28,173,228,.15)}
+.stick{position:sticky;top:0;z-index:20}
+.stick .top{position:static}
+@media (max-width:700px){.stick{position:static}}
+[hidden]{display:none!important}
+.amt{font-weight:700}
+.lnk{border:0;background:none;padding:0;color:var(--brand-dark);font-weight:600;text-decoration:underline;text-align:left}
+.btn.alt{background:transparent;color:var(--brand-dark);border:1px solid var(--brand);height:32px}
+.btn.alt:hover{background:rgba(28,173,228,.12)}
+.topcard{margin-top:16px;border-top:3px solid var(--brand-red);scroll-margin-top:150px}
+.subh{margin:16px 0 6px;font-size:.85rem;font-weight:700;color:var(--ink2)}
+.od{color:var(--crit);font-weight:700}
+.dr{color:var(--good);font-weight:700}
+.txtc{min-width:200px;max-width:320px}
+/* the two party lists: small type, close rows, the name gets the room (no wrapping into 3 lines) */
+.plist table{font-size:12.5px;table-layout:auto}
+.plist th,.plist td{padding:5px 8px;line-height:1.3}
+.plist th{font-size:.66rem}
+.plist td.pn{min-width:190px;width:100%}
+.plist .cty{color:var(--muted);font-size:.72rem;margin-left:6px;white-space:nowrap}
+.plist td.nw,.plist th.nw{white-space:nowrap}
+.plist .card-in{overflow-x:hidden}
+.give .amt{color:var(--crit)}
+.get .amt{color:var(--good)}
+</style>
+<link rel="stylesheet" href="/ui.css">
+<script src="/live.js"></script>
+</head>
+<body>
+<div class="stick"><header class="top">
+  <div class="brand"><img class="logo" src="/logo.png" alt="Mittal Group"><div>
+    <h1>Mittal Group</h1>
+    <p class="sub">Payment Ageing · which party we have to pay and which party has to pay us, from the open vendor items. Source: S/4HANA Cloud, YY1_STORE_VENDOR_AGEING_CDS.</p>
+  </div></div>
+  <div class="tools">
+    <div class="live"><span class="dot" id="liveDot" style="background:var(--warn)"></span><span id="liveTxt">Connecting to SAP…</span></div>
+    <button id="refresh" class="btn" type="button">Refresh</button>
+    <div class="seg" id="themeSeg" role="group" aria-label="Colour mode"><button type="button" data-th="light" title="Normal (light) mode">Normal</button><button type="button" data-th="dark" title="Dark mode">Dark</button></div>
+  </div>
+</header>
+<nav class="nav"><a href="/summary">Summary</a><a href="/issue">Store Issue</a><a href="/stock">Store Stock</a><a href="/">Pending PR</a><a href="/po">Pending Purchase Orders</a><a href="/po-approval">PO Approval Pending</a><a href="/invoice">Pending Invoice Entry</a><a href="/purchase">Purchase</a><a href="/price">Price Variance</a><a href="/ageing" class="on">Payment Ageing</a></nav></div>
+<div class="wrap">
+  <section class="bar" aria-label="Filters">
+    <label class="fld"><span>Party type</span><select id="tySel"><option value="">All parties</option><option value="Store">Store</option><option value="RM">RM (raw material)</option><option value="Employees">Employees</option><option value="Group">Group companies</option><option value="Others">Others</option></select></label>
+    <label class="fld grow"><span>Search party</span><input id="q" type="search" placeholder="Party name, number, city or GSTIN"></label>
+  </section>
+  <section class="kpis" id="kpis"></section>
+
+  <section class="card" style="margin-top:12px">
+    <h2>Party type wise</h2>
+    <p class="hint">Store = parties we buy Store items from, RM = raw material suppliers, Employees = the employee accounts, Group companies = the Mittal companies, Others = everything else (services, banks, deposits, old parties). Click a row to filter the two lists.</p>
+    <div class="tbox" id="byTy" style="max-height:none"></div>
+  </section>
+
+  <section class="card topcard" id="detCard" hidden>
+    <h2><span id="detTitle"></span><button type="button" class="btn alt" id="detClose" style="margin-left:auto">Close</button></h2>
+    <p class="hint" id="detHint"></p>
+    <h3 class="subh" id="detItemsH">Open items</h3>
+    <div class="tbox" id="detItems"></div>
+    <h3 class="subh" id="detMatH">Materials delivered by this party</h3>
+    <p class="hint" id="detMatHint"></p>
+    <div class="tbox" id="detMats"></div>
+  </section>
+
+  <section class="grid">
+    <article class="card give" data-detail>
+      <h2><span class="sec-badge">1</span>To give (Dena hai) · which party we have to pay</h2>
+      <p class="hint" id="giveHint"></p>
+      <div class="tbox plist" id="give"></div>
+    </article>
+    <article class="card get" data-detail>
+      <h2><span class="sec-badge">2</span>To get (Lena hai) · which party has to pay us</h2>
+      <p class="hint" id="getHint"></p>
+      <div class="tbox plist" id="get"></div>
+    </article>
+  </section>
+  <details class="notebox"><summary>Notes about these figures</summary><p class="note">Click a party to see its open items (posting date, document, reference, text, due date) and the materials it delivered. SAP's open items do not say which material an invoice is for; the material list is what the party delivered on its purchase orders since 1 Jan 2026 (the PO data of the Pending Purchase Orders page: delivered quantity and delivered value), so it shows what the money was most likely spent on. For the employee accounts the dates are what matters: a debit item is what the company gave (an advance or a payment) on its posting date, a credit item is what was taken back or settled on its posting date. The Dates column of the two lists shows the posting dates of the items that make up the amount (To give: the open invoices and credits; To get: the debit items, what was given). How a party gets its type: a type written in <code>backend/data/party_types.csv</code> (Supplier, Type) wins; then the account group EMPL = Employees; then a name that starts with Mittal Coin or Mittal Appliance = Group companies; then the party's purchase orders since 1 Jan 2026 (Store material types ZCON, ZHMI, ZSPR, ZSRM, ZVRP or purchasing group 010 Store Purchase = Store; PO type ZDRM or ZIRM or material type ZRMA = RM; both = the one with more items); then the account group ZIRM or a name with (R.M) or RM Purchase = RM; all the rest = Others. A party without a purchase order in 2026 is therefore usually in Others. One line per party (supplier or customer account). The amount is the sum of all its open items of both companies (Mittal Appliances Limited 1000 and Mittal Coin Pvt Ltd 2000), in INR, as in SAP's vendor line item list: invoices and credits add up to what we owe, payments and advances that are not cleared yet reduce it. A party whose total is positive is in "To give", a party whose total is negative (we paid more than we owe: an advance, a payment not matched to an invoice) is in "To get". Amounts under 50 paise are left out. The group's own companies (Mittal Coin Pvt Ltd, Mittal Appliances Limited) and employee accounts are listed like any party. Data is refreshed from SAP at most every 30 minutes, or with the Refresh button.</p></details>
+</div>
+<footer class="footer">Mittal Group · Payment Ageing · Source: SAP S/4HANA Cloud, YY1_STORE_VENDOR_AGEING_CDS</footer>
+
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtN=n=>Math.round(n).toLocaleString('en-IN');
+function fmtINR(v){const a=Math.abs(v),s=v<0?'−':'';if(a>=1e7)return s+'₹'+(a/1e7).toFixed(2)+' Cr';if(a>=1e5)return s+'₹'+(a/1e5).toFixed(2)+' L';return s+'₹'+Math.round(a).toLocaleString('en-IN');}
+let D=null,P=[],q='',ty='',POI=null,POJ=null,POS=new Map(),PM=new Map(),sel=null;
+const TYPES=['Store','RM','Employees','Group','Others'];
+const TNAME={Store:'Store',RM:'RM (raw material)',Employees:'Employees',Group:'Group companies',Others:'Others'};
+const STORE_MT=['ZCON','ZHMI','ZSPR','ZSRM','ZVRP'];
+// a link can open the page on one type: /ageing?ty=RM (Store, RM, Employees, Group, Others)
+try{const v=new URLSearchParams(location.search).get('ty');if(TYPES.includes(v))ty=v;}catch(e){}
+const fmtDay=d=>d===null||d===undefined?'–':new Date(d*864e5).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric',timeZone:'UTC'});
+const tile=(big,label)=>`<div class="tile"><div class="tv">${big}</div><div class="tl">${esc(label)}</div></div>`;
+// one table: the parties, the biggest first, with the exact rupees on hover
+const fmtDayS=d=>new Date(d*864e5).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit',timeZone:'UTC'});
+function dates(p,sign){
+  const a=sign>0?p.cmin:p.dmin,b=sign>0?p.cmax:p.dmax;
+  if(a===null||a===undefined)return '–';
+  const s=a===b?fmtDayS(a):fmtDayS(a)+' – '+fmtDayS(b),full=a===b?fmtDay(a):fmtDay(a)+' – '+fmtDay(b);
+  return `<span title="${esc(full)}">${s}</span>`;
+}
+function table(list,sign){
+  if(!list.length)return '<div class="empty">No party matches.</div>';
+  const tot=list.reduce((s,p)=>s+sign*p.net,0);
+  const emp=ty==='Employees',dh=emp?(sign>0?'Taken on':'Given on'):'Dates',dt=sign>0?'Posting dates of the open invoices and credits that make up the amount':'Posting dates of the open debit items (what was paid or given) that make up the amount';
+  const showType=ty==='',cols=showType?5:4;
+  return `<table><thead><tr><th class="num">#</th><th>Party</th>${showType?'<th>Type</th>':''}<th class="nw" title="${esc(dt)}">${dh}</th><th class="num">Amount</th></tr></thead><tbody>`+
+    list.map((p,i)=>`<tr${p.id===sel?' class="sel"':''}><td class="num">${i+1}</td><td class="pn"><button type="button" class="lnk" data-party="${esc(p.id)}" title="${esc('Party '+p.id+(p.gstin?' · GSTIN '+p.gstin:'')+' · '+fmtN(p.n)+' open items · click for the items and materials')}">${esc(p.name)}</button>${p.city?`<span class="cty">${esc(p.city)}</span>`:''}</td>${showType?`<td class="nw">${esc(TNAME[p.type]||p.type)}</td>`:''}<td class="nw">${dates(p,sign)}</td><td class="num nw amt" title="₹ ${Math.round(sign*p.net).toLocaleString('en-IN')}">${fmtINR(sign*p.net)}</td></tr>`).join('')+
+    `</tbody><tfoot><tr><td></td><td>Total (${fmtN(list.length)} parties)</td>${showType?'<td></td>':''}<td></td><td class="num nw">${fmtINR(tot)}</td></tr></tfoot></table>`;
+}
+// ---------------------------------------------------------------- the details of one party
+const DET_LIMIT=500;
+function renderDetail(){
+  const card=$('detCard');
+  const p=sel!==null?PM.get(sel):null;
+  if(!p){card.hidden=true;return;}
+  card.hidden=false;
+  const emp=p.type==='Employees',net=p.net;
+  $('detTitle').textContent=p.name+' · '+TNAME[p.type]+' · '+(net>0.5?'to give '+fmtINR(net):net<-0.5?'to get '+fmtINR(-net):'nothing open');
+  $('detHint').textContent='Party '+p.id+(p.city?' · '+p.city:'')+(p.gstin?' · GSTIN '+p.gstin:'')+' · '+fmtN(p.items.length)+' open items'+(emp?'. Given = what the company paid or gave (debit item), Taken = what was taken back or settled (credit item); the date is the posting date.':'. Invoice / credit = what we owe, Payment / debit = what was paid or given and is not cleared yet.');
+  const items=p.items.slice().sort((a,b)=>(a.post||0)-(b.post||0)||a.doc.localeCompare(b.doc));
+  const kind=r=>emp?(r.pay<0?'Given':'Taken / settled'):(r.pay<0?'Payment / debit':'Invoice / credit');
+  const shownI=items.slice(0,DET_LIMIT);
+  $('detItemsH').textContent=emp?'Dates and amounts: when it was given and when it was taken':'Open items';
+  $('detItems').innerHTML=`<table><thead><tr><th>Posting date</th><th>Document</th><th>Doc type</th><th>Reference</th><th>Text</th><th>Due date</th><th class="num">Past due</th><th>${emp?'Given / taken':'Kind'}</th><th class="num">Amount</th></tr></thead><tbody>`+
+    shownI.map(r=>{const od=r.due===null?null:D.asofDay-r.due;return `<tr><td class="nw">${fmtDay(r.post)}</td><td class="nw">${esc(r.doc)}/${r.item}</td><td class="nw">${esc(r.type)}</td><td class="nw">${esc(r.ref||'–')}</td><td class="txtc">${esc(r.text||'–')}</td><td class="nw">${fmtDay(r.due)}</td><td class="num nw">${od===null?'–':od>0?`<span class="od">${fmtN(od)} d</span>`:od===0?'due today':fmtN(-od)+' d to go'}</td><td class="nw">${kind(r)}</td><td class="num nw ${r.pay<0?'dr':'amt'}" title="${r.cur!=='INR'?esc(r.cur+' '+Math.abs(r.fx).toLocaleString('en-IN',{maximumFractionDigits:2})):''}">${fmtINR(r.pay)}</td></tr>`;}).join('')+
+    `</tbody><tfoot><tr><td colspan="8">Total (${fmtN(items.length)} items${items.length>DET_LIMIT?', the first '+fmtN(DET_LIMIT)+' shown':''}) · net ${net>0.5?'to give':net<-0.5?'to get':''}</td><td class="num nw">${fmtINR(Math.abs(net))}</td></tr></tfoot></table>`;
+  // the materials: what the party delivered on its purchase orders since 1 Jan 2026
+  $('detMatH').hidden=$('detMatHint').hidden=$('detMats').hidden=emp;
+  if(emp)return;
+  if(!POJ){$('detMatHint').textContent='Loading the purchase order data…';$('detMats').innerHTML='';return;}
+  const rows=POS.get(p.id)||[],m=new Map();
+  for(const a of rows){
+    const qty=a[15],gr=a[22]||0,rate=a[24]>0?a[24]:(POJ.curs[a[14]]==='INR'?1:0),code=POJ.mats[a[8]]||'',name=POJ.texts[a[9]]||'',unit=POJ.units[a[13]];
+    const k=(code||name)+'|'+unit;let x=m.get(k);if(!x)m.set(k,x={code,name,unit,pos:new Set(),qty:0,gr:0,val:0,still:0});
+    x.pos.add(a[2]);x.qty+=qty;x.gr+=gr;x.still+=a[23]||0;if(qty>0&&gr)x.val+=a[17]*gr/qty*rate;
+  }
+  const list=[...m.values()].sort((a,b)=>b.val-a.val||b.qty-a.qty);
+  const delivered=list.filter(x=>x.gr>0);
+  $('detMatHint').textContent=rows.length?`${fmtN(rows.length)} PO items of this party since 1 Jan 2026: ${fmtN(delivered.length)} materials delivered, the biggest delivered value first (the invoices of these deliveries are among the open items above; SAP does not say which).`:'This party has no purchase order since 1 Jan 2026 (it is an older party, a bank, a deposit or an employee account), so its materials cannot be shown. The text of the open items above says what each entry is for.';
+  const shownM=list.slice(0,50);
+  $('detMats').innerHTML=!list.length?'':`<table><thead><tr><th>Material</th><th>Description</th><th class="num">POs</th><th class="num">Ordered</th><th class="num">Delivered</th><th class="num">Delivered value</th><th class="num">Still to deliver</th></tr></thead><tbody>`+
+    shownM.map(x=>`<tr><td class="nw">${esc(x.code||'–')}</td><td class="txtc">${esc(x.name)}</td><td class="num">${fmtN(x.pos.size)}</td><td class="num nw">${x.qty.toLocaleString('en-IN',{maximumFractionDigits:3})} ${esc(x.unit)}</td><td class="num nw">${x.gr.toLocaleString('en-IN',{maximumFractionDigits:3})} ${esc(x.unit)}</td><td class="num nw"><b>${x.val?fmtINR(x.val):'–'}</b></td><td class="num nw">${x.still.toLocaleString('en-IN',{maximumFractionDigits:3})} ${esc(x.unit)}</td></tr>`).join('')+
+    `</tbody><tfoot><tr><td colspan="5">Total (${fmtN(list.length)} materials${list.length>50?', the first 50 shown':''})</td><td class="num nw">${fmtINR(list.reduce((s,x)=>s+x.val,0))}</td><td></td></tr></tfoot></table>`;
+}
+function render(){
+  if(!D)return;
+  const bySearch=q?P.filter(p=>p.hay.includes(q)):P;
+  // the table of the types ignores the type filter, the lists and the tiles follow it
+  const tt=new Map(TYPES.map(k=>[k,{g:0,gv:0,t:0,tv:0}]));
+  for(const p of bySearch){const x=tt.get(p.type);if(p.net>0.5){x.g++;x.gv+=p.net;}else if(p.net<-0.5){x.t++;x.tv-=p.net;}}
+  const shown=ty?bySearch.filter(p=>p.type===ty):bySearch;
+  const give=shown.filter(p=>p.net>0.5).sort((a,b)=>b.net-a.net),get=shown.filter(p=>p.net<-0.5).sort((a,b)=>a.net-b.net);
+  const sumG=give.reduce((s,p)=>s+p.net,0),sumT=get.reduce((s,p)=>s-p.net,0);
+  const label=ty?TNAME[ty]+' \u00b7 ':'';
+  $('kpis').innerHTML=tile(fmtINR(sumG),`${label}To give (Dena hai) \u00b7 ${fmtN(give.length)} parties`)+tile(fmtINR(sumT),`${label}To get (Lena hai) \u00b7 ${fmtN(get.length)} parties`)+tile(fmtINR(sumG-sumT),`${label}Net we have to give`);
+  let tg=0,gv=0,tt2=0,tv=0;for(const x of tt.values()){tg+=x.g;gv+=x.gv;tt2+=x.t;tv+=x.tv;}
+  $('byTy').innerHTML=`<table><thead><tr><th>Party type</th><th class="num">To give: parties</th><th class="num">To give (Dena)</th><th class="num">To get: parties</th><th class="num">To get (Lena)</th><th class="num">Net we have to give</th></tr></thead><tbody>`+
+    TYPES.map(k=>{const x=tt.get(k);return `<tr${ty===k?' class="sel"':''}><td><button type="button" class="lnk" data-ty="${k}">${esc(TNAME[k])}</button></td><td class="num">${fmtN(x.g)}</td><td class="num nw">${fmtINR(x.gv)}</td><td class="num">${fmtN(x.t)}</td><td class="num nw">${fmtINR(x.tv)}</td><td class="num nw"><b>${fmtINR(x.gv-x.tv)}</b></td></tr>`;}).join('')+
+    `</tbody><tfoot><tr><td>All parties</td><td class="num">${fmtN(tg)}</td><td class="num nw">${fmtINR(gv)}</td><td class="num">${fmtN(tt2)}</td><td class="num nw">${fmtINR(tv)}</td><td class="num nw">${fmtINR(gv-tv)}</td></tr></tfoot></table>`;
+  const base=ty?TNAME[ty]+': ':'';
+  $('giveHint').textContent=q||ty?`${base}${fmtN(give.length)} parties${q?' match the search':''}, the biggest amount first.`:`${fmtN(give.length)} parties, the biggest amount first.`;
+  $('getHint').textContent=q||ty?`${base}${fmtN(get.length)} parties${q?' match the search':''}, the biggest amount first.`:`${fmtN(get.length)} parties, the biggest amount first.`;
+  $('give').innerHTML=table(give,1);$('get').innerHTML=table(get,-1);
+  $('tySel').value=ty;
+  renderDetail();
+}
+document.addEventListener('click',e=>{
+  const pb=e.target.closest('button[data-party]');
+  if(pb){sel=sel===pb.dataset.party?null:pb.dataset.party;render();if(sel!==null){const c=$('detCard');if(c&&!c.hidden)c.scrollIntoView({behavior:'smooth',block:'start'});}return;}
+  if(e.target.closest('#detClose')){sel=null;render();return;}
+  const b=e.target.closest('button[data-ty]');if(!b)return;ty=ty===b.dataset.ty?'':b.dataset.ty;render();});
+$('tySel').addEventListener('change',e=>{ty=e.target.value;render();});
+let qT;$('q').addEventListener('input',e=>{clearTimeout(qT);qT=setTimeout(()=>{q=e.target.value.trim().toLowerCase();render();},200);});
+
+const root=document.documentElement;
+function setTheme(t,save){root.dataset.theme=t;for(const b of document.querySelectorAll('#themeSeg button'))b.classList.toggle('on',b.dataset.th===t);if(save){try{localStorage.setItem('spr-theme',t);}catch(e){}}}
+let savedTheme='dark';try{savedTheme=localStorage.getItem('spr-theme')||'dark';}catch(e){}
+setTheme(savedTheme==='light'?'light':'dark',false);
+document.getElementById('themeSeg').addEventListener('click',e=>{const b=e.target.closest('button[data-th]');if(b)setTheme(b.dataset.th,true);});
+
+// ---------------------------------------------------------------- data: the open items add up per party
+function setData(d){
+  D=d;const m=new Map();
+  for(const a of d.rows){
+    const s=d.suppliers[a[7]];let p=m.get(s[0]);
+    if(!p)m.set(s[0],p={id:s[0],name:s[1]||('Party '+s[0]),city:s[2],grp:s[3],gstin:s[4],net:0,n:0,items:[],cmin:null,cmax:null,dmin:null,dmax:null});
+    p.net-=a[8];p.n++;
+    const r={post:a[0],due:a[1],doc:a[3],item:a[4],type:d.types[a[6]],pay:-a[8],fx:a[9],cur:d.curs[a[10]],ref:a[18],text:a[19]};
+    p.items.push(r);
+    if(a[0]!==null){
+      if(r.pay>0){if(p.cmin===null||a[0]<p.cmin)p.cmin=a[0];if(p.cmax===null||a[0]>p.cmax)p.cmax=a[0];}
+      else{if(p.dmin===null||a[0]<p.dmin)p.dmin=a[0];if(p.dmax===null||a[0]>p.dmax)p.dmax=a[0];}
+    }
+  }
+  P=[...m.values()];PM=m;
+  classifyAll();
+}
+// the type of a party: the hand-made list, the employee account group, the Mittal companies, its purchase orders (Store or RM), then the RM account group / name
+function classify(p){
+  const mine=D.partyTypes&&D.partyTypes[p.id];if(mine&&TYPES.includes(mine))return mine;
+  if(p.grp==='EMPL')return 'Employees';
+  if(/^mittal (coin|appliance)/i.test(p.name))return 'Group';
+  const i=POI&&POI.get(p.id);
+  if(i&&(i[0]||i[1]))return i[1]&&i[1]>=i[0]?'RM':'Store';
+  if(p.grp==='ZIRM'||/\(R\.?M\b|\bRM Purchase|\(RM\)/i.test(p.name))return 'RM';
+  return 'Others';
+}
+function classifyAll(){for(const p of P){p.type=classify(p);p.hay=(p.name+' '+p.id+' '+p.city+' '+p.gstin+' '+TNAME[p.type]).toLowerCase();}}
+// the purchase orders of every supplier (PO data since 1 Jan 2026): [Store items, RM items]
+function setPO(j){
+  POI=new Map();POJ=j;POS=new Map();
+  for(const a of j.rows){
+    const id=j.suppliers[a[5]][0];let i=POI.get(id);if(!i)POI.set(id,i=[0,0]);
+    let l=POS.get(id);if(!l)POS.set(id,l=[]);l.push(a);
+    if(STORE_MT.includes(j.mtypes[a[11]])||j.pgs[a[19]]==='010')i[0]++;
+    const pt=j.types[a[4]];if(pt==='ZDRM'||pt==='ZIRM'||j.mtypes[a[11]]==='ZRMA')i[1]++;
+  }
+  if(D){classifyAll();render();}
+}
+function setLive(kind,text){$('liveDot').style.background=kind==='ok'?'var(--good)':kind==='err'?'var(--crit)':'var(--warn)';$('liveTxt').textContent=text;$('refresh').disabled=kind==='busy';}
+const hhmm=ms=>new Date(ms).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+let loading=false;
+async function load(force,auto){
+  if(loading)return;loading=true;
+  if(!auto||!D)setLive('busy',D?'Refreshing from SAP…':'Loading the open vendor items from SAP (first load can take a minute)…');
+  try{
+    const poP=LIVE.get('/api/po',force).then(g=>g.same||!g.res.ok?null:g.j).catch(()=>null);
+    const g=await LIVE.get('/api/ageing',force),res=g.res,j=g.j;
+    if(g.same){setLive('ok','Live from SAP · updated '+hhmm(g.stamp)+' · '+fmtN(P.length)+' parties');poP.then(p=>{if(p)setPO(p);});return;}
+    if(!res.ok)throw new Error(j.error||('HTTP '+res.status));
+    setData(j);render();
+    setLive('ok','Live from SAP · updated '+hhmm(j.fetchedAt)+' · '+fmtN(P.length)+' parties');
+    poP.then(x=>{if(x)setPO(x);});
+  }catch(e){
+    const msg=e.message==='Failed to fetch'?'The dashboard server is not running. Start it again with Start_Live_Dashboard.bat.':e.message;
+    setLive('err',msg);
+  }finally{loading=false;}
+}
+$('refresh').addEventListener('click',()=>load(true));
+load(false);
+setInterval(()=>{if(!document.hidden)load(false,true);},LIVE.every);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)load(false,true);});
+})();
+</script>
+<script src="/ui.js" defer></script>
+</body>
+</html>

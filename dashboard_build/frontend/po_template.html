@@ -58,7 +58,6 @@ h1{margin:0;font-size:1.1rem;font-weight:700;color:var(--brand-dark)}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;min-width:0;box-shadow:0 1px 2px rgba(11,11,11,.04),0 1px 8px rgba(11,11,11,.04)}
 .card h2{margin:0;font-size:1.02rem;font-weight:700;display:flex;align-items:center;flex-wrap:wrap;gap:9px}
 .sec-badge{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:26px;padding:0 6px;border-radius:8px;background:var(--brand-dark);color:#fff;font-size:.72rem;font-weight:700}
-.badge-live{margin-left:auto;padding:3px 8px;border-radius:999px;font-size:.62rem;font-weight:700;letter-spacing:.04em;color:var(--good);background:rgba(12,163,12,.16)}
 .hint{margin:4px 0 12px;font-size:12.5px;color:var(--ink2)}
 .tbox{max-height:440px;overflow:auto}
 table{width:100%;border-collapse:collapse;font-size:13px}
@@ -123,6 +122,7 @@ tr.sel td{background:rgba(28,173,228,.14)!important}
 [hidden]{display:none!important}
 </style>
 <link rel="stylesheet" href="/ui.css">
+<script src="/live.js"></script>
 </head>
 <body>
 <div class="stick"><header class="top">
@@ -136,7 +136,7 @@ tr.sel td{background:rgba(28,173,228,.14)!important}
     <div class="seg" id="themeSeg" role="group" aria-label="Colour mode"><button type="button" data-th="light" title="Normal (light) mode">Normal</button><button type="button" data-th="dark" title="Dark mode">Dark</button></div>
   </div>
 </header>
-<nav class="nav"><a href="/summary">Summary</a><a href="/issue">Store Issue</a><a href="/stock">Store Stock</a><a href="/">Pending PR</a><a href="/po" class="on">Pending Purchase Orders</a><a href="/po-approval">PO Approval Pending</a><a href="/purchase">Purchase</a></nav></div>
+<nav class="nav"><a href="/summary">Summary</a><a href="/issue">Store Issue</a><a href="/stock">Store Stock</a><a href="/">Pending PR</a><a href="/po" class="on">Pending Purchase Orders</a><a href="/po-approval">PO Approval Pending</a><a href="/invoice">Pending Invoice Entry</a><a href="/purchase">Purchase</a><a href="/price">Price Variance</a><a href="/ageing">Payment Ageing</a></nav></div>
 <div class="wrap">
   <section class="bar" aria-label="Filters">
     <label class="fld"><span>Plant</span><select id="plantSel"></select></label>
@@ -155,7 +155,7 @@ tr.sel td{background:rgba(28,173,228,.14)!important}
   <section class="kpis" id="kpis"></section>
 
   <section class="card topcard" id="tileCard" hidden>
-    <h2><span id="tileTitle"></span><span class="badge-live">LIVE</span></h2>
+    <h2><span id="tileTitle"></span></h2>
     <p class="hint" id="tileHint"></p>
     <div class="tbox" id="tileBox"></div>
     <div class="pager"><span id="tileInfo"></span><div><button class="btn" id="tileAll" type="button">See all</button></div></div>
@@ -163,49 +163,49 @@ tr.sel td{background:rgba(28,173,228,.14)!important}
 
   <section class="grid">
     <article class="card">
-      <h2><span class="sec-badge">1</span>Supplier wise PO value<span class="badge-live">LIVE</span></h2>
+      <h2><span class="sec-badge">1</span>Supplier wise PO value</h2>
       <p class="hint" id="supHint">Net order value (INR) of the PO items. Click a supplier to filter everything.</p>
       <div class="tbox" id="bySup"></div>
     </article>
     <article class="card">
-      <h2><span class="sec-badge">2</span>PO type wise<span class="badge-live">LIVE</span></h2>
+      <h2><span class="sec-badge">2</span>PO type wise</h2>
       <p class="hint">Click a PO type to filter everything.</p>
       <div class="tbox" id="byType"></div>
     </article>
     <article class="card">
-      <h2><span class="sec-badge">3</span>Material type wise<span class="badge-live">LIVE</span></h2>
+      <h2><span class="sec-badge">3</span>Material type wise</h2>
       <p class="hint">PO items by material type. The yellow line adds up the Store material types (ZCON, ZHMI, ZSPR, ZSRM, ZVRP); they are listed under it (↳), then the other types. Click the yellow line to see only the Store POs. The total at the bottom counts every type once. Items without a material (services, asset text items) have no type.</p>
       <div class="tbox" id="byMt"></div>
     </article>
     <article class="card">
-      <h2><span class="sec-badge">4</span>Plant wise<span class="badge-live">LIVE</span></h2>
+      <h2><span class="sec-badge">4</span>Plant wise</h2>
       <p class="hint">Click a plant to filter everything.</p>
       <div class="tbox" id="byPlant"></div>
     </article>
     <article class="card">
-      <h2><span class="sec-badge">5</span>Material group wise<span class="badge-live">LIVE</span></h2>
+      <h2><span class="sec-badge">5</span>Material group wise</h2>
       <p class="hint">Click a material group to filter everything.</p>
       <div class="tbox" id="byGrp"></div>
     </article>
     <article class="card">
-      <h2><span class="sec-badge">6</span>Purchasing group wise<span class="badge-live">LIVE</span></h2>
+      <h2><span class="sec-badge">6</span>Purchasing group wise</h2>
       <p class="hint">Click a purchasing group to filter everything.</p>
       <div class="tbox" id="byPg"></div>
     </article>
     <article class="card">
-      <h2><span class="sec-badge">7</span>Month-wise POs<span class="badge-live">LIVE</span></h2>
+      <h2><span class="sec-badge">7</span>Month-wise POs</h2>
       <p class="hint">By the date chosen above (PO date or Created on). Click a month to see it day by day.</p>
       <div class="tbox" id="byMonth"></div>
     </article>
     <article class="card">
-      <h2><span class="sec-badge">8</span><span id="dayTitle">Day-wise POs</span><span class="badge-live">LIVE</span></h2>
+      <h2><span class="sec-badge">8</span><span id="dayTitle">Day-wise POs</span></h2>
       <p class="hint">Click a date to filter everything to that day.</p>
       <div class="tbox" id="byDay"></div>
     </article>
   </section>
 
   <section class="card tablecard">
-    <h2><span class="sec-badge">9</span>PO items<span class="badge-live">LIVE</span></h2>
+    <h2><span class="sec-badge">9</span>PO items</h2>
     <p class="hint" id="tcount"></p>
     <div class="tscroll"><table id="tbl"></table></div>
     <div class="pager"><span id="pinfo"></span><div><button class="btn" id="seeAll" type="button">See all</button></div></div>
@@ -408,7 +408,7 @@ function render(){
   CUR={rows,amt,open,dlv};
   // every tile opens its details under the tiles
   $('kpis').innerHTML=[[fmtINR(amt),'Total order value (INR)'+(fx?` · includes ${fmtN(fx)} other-currency items converted to INR at the PO's exchange rate`:''),'val'],[fmtINR(dlv),'Delivered value (INR) · goods already received','delivered'],[fmtINR(open),'Pending value (INR) · still to be delivered'+(ast?` · incl. ${fmtINR(ast)} of asset POs`:''),'open'],[fmtN(pos.size),'Purchase orders','pos'],[fmtN(rows.length),'PO items','items'],[fmtN(sups.size),'Suppliers','sups']]
-    .map(t=>`<button type="button" class="tile tilebtn" data-tile="${t[2]}" aria-expanded="${S.tile===t[2]}"><div class="tv">${t[0]}</div><div class="tl">${t[1]}</div><div class="ts">${S.tile===t[2]?'click to hide':'click for details'}</div></button>`).join('');
+    .map(t=>`<button type="button" class="tile tilebtn" data-tile="${t[2]}" aria-expanded="${S.tile===t[2]}"><div class="tv">${t[0]}</div><div class="tl">${t[1]}</div>${S.tile===t[2]?'<div class="ts">click to hide</div>':''}</button>`).join('');
   renderTile();
   // chips
   const c=[];
@@ -612,12 +612,12 @@ function applyLink(){
 function setLive(kind,text){$('liveDot').style.background=kind==='ok'?'var(--good)':kind==='err'?'var(--crit)':'var(--warn)';$('liveTxt').textContent=text;$('refresh').disabled=kind==='busy';}
 const hhmm=ms=>new Date(ms).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
 let loading=false;
-async function load(force){
+async function load(force,auto){
   if(loading)return;loading=true;
-  setLive('busy',D?'Refreshing from SAP…':'Loading purchase order data from SAP (first load can take a minute)…');
+  if(!auto||!D)setLive('busy',D?'Refreshing from SAP…':'Loading purchase order data from SAP (first load can take a minute)…');
   try{
-    const res=await fetch('/api/po'+(force?'?refresh=1':''),{cache:'no-store'});
-    const j=await res.json().catch(()=>({}));
+    const g=await LIVE.get('/api/po',force),res=g.res,j=g.j;
+    if(g.same){setLive('ok','Live from SAP · updated '+hhmm(g.stamp)+' · '+fmtN(R.length)+' items');return;}
     if(!res.ok)throw new Error(j.error||('HTTP '+res.status));
     setData(j);if(!S.dInit){S.dInit=true;setMonthDates();applyLink();}render();if(S.reveal){S.reveal=false;setTimeout(()=>reveal('tileCard'),150);}
     setLive('ok','Live from SAP · updated '+hhmm(j.fetchedAt)+' · '+fmtN(R.length)+' items');
@@ -628,7 +628,8 @@ async function load(force){
 }
 $('refresh').addEventListener('click',()=>load(true));
 load(false);
-setInterval(()=>{if(!document.hidden)load(false);},1800000);
+setInterval(()=>{if(!document.hidden)load(false,true);},LIVE.every);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)load(false,true);});
 })();
 </script>
 <script src="/ui.js" defer></script>
