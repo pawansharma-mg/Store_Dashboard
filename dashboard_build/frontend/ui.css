@@ -49,6 +49,7 @@ h1{font-size:1.15rem;letter-spacing:-.01em}
 .nav a[href="/invoice"]{--ico:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/%3E%3Cpath d='M14 2v6h6'/%3E%3Cpath d='M16 13H8'/%3E%3Cpath d='M16 17H8'/%3E%3Cpath d='M10 9H8'/%3E%3C/svg%3E")}
 .nav a[href="/purchase"]{--ico:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z'/%3E%3Cpath d='M3 6h18'/%3E%3Cpath d='M16 10a4 4 0 0 1-8 0'/%3E%3C/svg%3E")}
 .nav a[href="/stock"]{--ico:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 2l10 5-10 5L2 7z'/%3E%3Cpath d='M2 12l10 5 10-5M2 17l10 5 10-5'/%3E%3C/svg%3E")}
+.nav a[href="/asset"]{--ico:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z'/%3E%3C/svg%3E")}
 
 /* a little more life: soft colour in the background, gradient buttons, cards that rise in */
 :root{--bg-glow-a:rgba(28,173,228,.13);--bg-glow-b:rgba(108,92,231,.09)}
@@ -279,21 +280,12 @@ html[data-density="compact"] .pagehead h2{font-size:1.3rem}
 .tbox tbody tr td.hasbar,.tscroll tbody tr td.hasbar{background-size:100% 22px!important;background-position:left center!important;vertical-align:middle}
 @media print{.netbanner,.densebtn{display:none!important}html:has(.printhead) .pagehead{display:none!important}.pagehead{margin-bottom:10px}}
 
-/* ================= pass 3: colour (25-Oct-2026) ================= */
-/* Every page has a colour of its own, the colour of its menu tab (--pc, with a partner colour --pc2 for gradients). The menu, header, title, cards, tables, buttons and charts use it;
-   every tile takes the colour of its icon. The meaning colours stay as they were: red = alert, green = good, orange / yellow = warning. Edit the --k-* lines to change a page's colour. */
+/* ================= pass 3: one colour (25-Oct-2026, made calmer on 26-Oct-2026: "colour zyada hai, multiple colours mat do") ================= */
+/* The whole dashboard has ONE colour, the brand blue of the Mittal logo (--pc, with --pc2 a little lighter for gradients). The menu, header, buttons, titles, tables and charts use it, on every page.
+   The only other colours are the ones that MEAN something: red = loss / alert / price up, green = profit / good / price down, orange and yellow = warning (status pills), and the brand red line under the header.
+   Edit --pc / --pc2 / --pc-rgb below to change the colour of every page at once. */
 :root{
-  --k-sum:#5B4BD6;--k-sum2:#8B5CF6;--k-sum-rgb:91,75,214;
-  --k-pr:#0E8FCB;--k-pr2:#4F7CF0;--k-pr-rgb:14,143,203;
-  --k-iss:#EA580C;--k-iss2:#F59E0B;--k-iss-rgb:234,88,12;
-  --k-stk:#059669;--k-stk2:#2DD4BF;--k-stk-rgb:5,150,105;
-  --k-po:#2563EB;--k-po2:#7C5CF6;--k-po-rgb:37,99,235;
-  --k-apr:#0D9488;--k-apr2:#38BDF8;--k-apr-rgb:13,148,136;
-  --k-inv:#9333EA;--k-inv2:#EC4899;--k-inv-rgb:147,51,234;
-  --k-pur:#DB2777;--k-pur2:#F97316;--k-pur-rgb:219,39,119;
-  --k-prc:#E11D48;--k-prc2:#A855F7;--k-prc-rgb:225,29,72;
-  --k-age:#D97706;--k-age2:#EF4444;--k-age-rgb:217,119,6;
-  --pc:var(--k-pr);--pc2:var(--k-pr2);--pc-rgb:var(--k-pr-rgb);
+  --pc:#0E8FCB;--pc2:#1CADE4;--pc-rgb:14,143,203;
   --pct:var(--pc);
   --cc:var(--pc);--cc-rgb:var(--pc-rgb);
   --ring:0 0 0 3px rgba(var(--pc-rgb),.38);
@@ -301,39 +293,18 @@ html[data-density="compact"] .pagehead h2{font-size:1.3rem}
 }
 :root[data-theme="dark"]{--pct:var(--pc2);--bar:rgba(var(--pc-rgb),.42)}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--pct:var(--pc2);--bar:rgba(var(--pc-rgb),.42)}}
-html:has(.nav a.on[href="/summary"]){--pc:var(--k-sum);--pc2:var(--k-sum2);--pc-rgb:var(--k-sum-rgb)}
-html:has(.nav a.on[href="/"]){--pc:var(--k-pr);--pc2:var(--k-pr2);--pc-rgb:var(--k-pr-rgb)}
-html:has(.nav a.on[href="/issue"]){--pc:var(--k-iss);--pc2:var(--k-iss2);--pc-rgb:var(--k-iss-rgb)}
-html:has(.nav a.on[href="/stock"]){--pc:var(--k-stk);--pc2:var(--k-stk2);--pc-rgb:var(--k-stk-rgb)}
-html:has(.nav a.on[href="/po"]){--pc:var(--k-po);--pc2:var(--k-po2);--pc-rgb:var(--k-po-rgb)}
-html:has(.nav a.on[href="/po-approval"]){--pc:var(--k-apr);--pc2:var(--k-apr2);--pc-rgb:var(--k-apr-rgb)}
-html:has(.nav a.on[href="/invoice"]){--pc:var(--k-inv);--pc2:var(--k-inv2);--pc-rgb:var(--k-inv-rgb)}
-html:has(.nav a.on[href="/purchase"]){--pc:var(--k-pur);--pc2:var(--k-pur2);--pc-rgb:var(--k-pur-rgb)}
-html:has(.nav a.on[href="/price"]){--pc:var(--k-prc);--pc2:var(--k-prc2);--pc-rgb:var(--k-prc-rgb)}
-html:has(.nav a.on[href="/ageing"]){--pc:var(--k-age);--pc2:var(--k-age2);--pc-rgb:var(--k-age-rgb)}
 ::selection{background:rgba(var(--pc-rgb),.28)}
-body{background-image:radial-gradient(900px 380px at 6% -60px,rgba(var(--pc-rgb),.17),transparent 70%),radial-gradient(800px 340px at 100% -40px,rgba(236,72,153,.10),transparent 70%),radial-gradient(760px 320px at 55% 108%,rgba(16,185,129,.07),transparent 70%)}
+body{background-image:radial-gradient(900px 380px at 6% -60px,rgba(var(--pc-rgb),.12),transparent 70%)}
 
-/* the menu: every tab has its own colour, the open page is filled with it */
-.nav a[href="/summary"]{--nc:var(--k-sum);--nc2:var(--k-sum2);--nc-rgb:var(--k-sum-rgb)}
-.nav a[href="/"]{--nc:var(--k-pr);--nc2:var(--k-pr2);--nc-rgb:var(--k-pr-rgb)}
-.nav a[href="/issue"]{--nc:var(--k-iss);--nc2:var(--k-iss2);--nc-rgb:var(--k-iss-rgb)}
-.nav a[href="/stock"]{--nc:var(--k-stk);--nc2:var(--k-stk2);--nc-rgb:var(--k-stk-rgb)}
-.nav a[href="/po"]{--nc:var(--k-po);--nc2:var(--k-po2);--nc-rgb:var(--k-po-rgb)}
-.nav a[href="/po-approval"]{--nc:var(--k-apr);--nc2:var(--k-apr2);--nc-rgb:var(--k-apr-rgb)}
-.nav a[href="/invoice"]{--nc:var(--k-inv);--nc2:var(--k-inv2);--nc-rgb:var(--k-inv-rgb)}
-.nav a[href="/purchase"]{--nc:var(--k-pur);--nc2:var(--k-pur2);--nc-rgb:var(--k-pur-rgb)}
-.nav a[href="/price"]{--nc:var(--k-prc);--nc2:var(--k-prc2);--nc-rgb:var(--k-prc-rgb)}
-.nav a[href="/ageing"]{--nc:var(--k-age);--nc2:var(--k-age2);--nc-rgb:var(--k-age-rgb)}
-.nav a{background-image:linear-gradient(rgba(var(--nc-rgb),.10),rgba(var(--nc-rgb),.10));border-color:rgba(var(--nc-rgb),.30)}
-.nav a::before{background:rgb(var(--nc-rgb));opacity:1}
-.nav a:hover{background-color:rgba(var(--nc-rgb),.18);background-image:none;color:var(--ink);border-color:rgba(var(--nc-rgb),.65);transform:translateY(-1px)}
-.nav a.on{background-image:linear-gradient(135deg,var(--nc),var(--nc2));border-color:transparent;color:#fff;font-weight:700;box-shadow:0 4px 12px rgba(var(--nc-rgb),.45);transform:none}
-.nav a.on::before{background:#fff}
+/* the menu: quiet tabs, the open page is filled with the colour */
+.nav a{--nc:var(--pc);--nc2:var(--pc2);--nc-rgb:var(--pc-rgb)}
+.nav a::before{background:currentColor;opacity:.8}
+.nav a:hover{background-color:rgba(var(--pc-rgb),.12);color:var(--ink);border-color:rgba(var(--pc-rgb),.5)}
+.nav a.on{background-image:linear-gradient(135deg,var(--pc),var(--pc2));border-color:transparent;color:#fff;font-weight:700;box-shadow:0 3px 10px rgba(var(--pc-rgb),.35)}
+.nav a.on::before{background:#fff;opacity:1}
 
-/* header: a colour line under it (brand red into the colour of the page), a wash of the page colour behind it */
-.top{border-bottom:3px solid transparent;border-image:linear-gradient(90deg,var(--brand-red),var(--pc) 45%,var(--pc2)) 1;background-image:linear-gradient(100deg,rgba(var(--pc-rgb),.16),rgba(var(--pc-rgb),.04) 55%,rgba(236,72,153,.05))}
-.stick::before{content:"";display:block;height:4px;background:linear-gradient(90deg,#1CADE4,#6C5CE7,#EC4899,#F59E0B,#10B981)}
+/* header: the brand red line under it, a faint wash of the colour behind it */
+.top{border-bottom:3px solid var(--brand-red);background-image:linear-gradient(100deg,rgba(var(--pc-rgb),.10),rgba(var(--pc-rgb),.03) 55%,transparent)}
 .btn{background-image:linear-gradient(135deg,var(--pc),var(--pc2));box-shadow:0 1px 2px rgba(var(--pc-rgb),.40)}
 .btn:hover{background-image:linear-gradient(135deg,var(--pc2),var(--pc));box-shadow:0 3px 10px rgba(var(--pc-rgb),.40)}
 .densebtn{color:var(--pct);border-color:var(--pc)}
@@ -342,77 +313,47 @@ body{background-image:radial-gradient(900px 380px at 6% -60px,rgba(var(--pc-rgb)
 .pgname{border-left-color:var(--pc)}
 .totop{background:linear-gradient(135deg,var(--pc),var(--pc2))}
 
-/* the title of the page */
-.pagehead{border-left:5px solid transparent;border-image:linear-gradient(180deg,var(--pc),var(--pc2)) 1;padding-left:14px}
-.pagehead h2{display:inline-block;background-image:linear-gradient(90deg,var(--pc),var(--pc2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}
-:root[data-theme="dark"] .pagehead h2{filter:brightness(1.4) saturate(1.1)}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .pagehead h2{filter:brightness(1.4) saturate(1.1)}}
+/* the title of the page: dark text with a bar of the colour beside it */
+.pagehead{border-left:5px solid var(--pc);padding-left:14px}
+.pagehead h2{color:var(--ink)}
 
-/* tiles: the colour of the icon (the top edge, a wash behind, the icon bubble) */
-[data-ico]{--ac:#8B5CF6;--ac-rgb:139,92,246}
-[data-ico="alert"]{--ac:#EF4444;--ac-rgb:239,68,68}
-[data-ico="up"]{--ac:#F0614D;--ac-rgb:240,97,77}
-[data-ico="down"]{--ac:#10B981;--ac-rgb:16,185,129}
-[data-ico="check"]{--ac:#10B981;--ac-rgb:16,185,129}
-[data-ico="coin"]{--ac:#F59E0B;--ac-rgb:245,158,11}
-[data-ico="clock"]{--ac:#F97316;--ac-rgb:249,115,22}
-[data-ico="box"]{--ac:#0EA5E9;--ac-rgb:14,165,233}
-[data-ico="truck"]{--ac:#3B82F6;--ac-rgb:59,130,246}
-[data-ico="pin"]{--ac:#EC4899;--ac-rgb:236,72,153}
-[data-ico="target"]{--ac:#A855F7;--ac-rgb:168,85,247}
-[data-ico="shield"]{--ac:#14B8A6;--ac-rgb:20,184,166}
-[data-ico="trophy"]{--ac:#F43F5E;--ac-rgb:244,63,94}
-[data-ico="moon"]{--ac:#6366F1;--ac-rgb:99,102,241}
-[data-ico="lock"]{--ac:#64748B;--ac-rgb:100,116,139}
-.tile[data-ico]:not([aria-expanded="true"]):not([aria-pressed="true"]){background-image:linear-gradient(160deg,rgba(var(--ac-rgb),.12),rgba(var(--ac-rgb),0) 68%)}
-.tile[data-ico]:not(.opt1):not(.opt2):not([aria-expanded="true"]):not([aria-pressed="true"]){border-top-color:var(--ac)}
-.tile[data-ico]::before{background:linear-gradient(135deg,rgba(var(--ac-rgb),.26),rgba(var(--ac-rgb),.10))}
+/* tiles: one colour (the top edge, a faint wash, the icon bubble); only a tile that means "alert / price up" is red and "price down" is green */
+[data-ico]{--ac:var(--pc);--ac-rgb:var(--pc-rgb)}
+[data-ico="alert"],[data-ico="up"]{--ac:#D03B3B;--ac-rgb:208,59,59}
+[data-ico="down"]{--ac:#0CA30C;--ac-rgb:12,163,12}
+.tile[data-ico]:not([aria-expanded="true"]):not([aria-pressed="true"]){background-image:linear-gradient(160deg,rgba(var(--ac-rgb),.08),rgba(var(--ac-rgb),0) 68%)}
+/* every tile has the same top edge: the pages gave tile 1, 2, 3 ... different colours by their place in the row, which meant nothing */
+.tile:not(.opt1):not(.opt2):not([aria-expanded="true"]):not([aria-pressed="true"]),#kpis>*:not(.opt1):not(.opt2):not([aria-expanded="true"]):not([aria-pressed="true"]){border-top-color:var(--ac,var(--pc))!important}
+.tile[data-ico]::before{background:rgba(var(--ac-rgb),.14)}
 .tile[data-ico]::after{background:var(--ac)}
-.tilebtn[data-ico]:hover,a.tile[data-ico]:hover{border-left-color:rgba(var(--ac-rgb),.55);border-right-color:rgba(var(--ac-rgb),.55);border-bottom-color:rgba(var(--ac-rgb),.55)}
-/* the big number of the page (Pending PR): a band of the page colour */
-.hero[data-ico]{background-image:linear-gradient(135deg,var(--pc),var(--pc2));border-color:transparent;color:#fff;box-shadow:0 8px 24px rgba(var(--pc-rgb),.35)}
+.tilebtn[data-ico]:hover,a.tile[data-ico]:hover{border-left-color:rgba(var(--ac-rgb),.5);border-right-color:rgba(var(--ac-rgb),.5);border-bottom-color:rgba(var(--ac-rgb),.5)}
+/* the big number of the page (Pending PR): a band of the colour */
+.hero[data-ico]{background-image:linear-gradient(135deg,var(--pc),var(--pc2));border-color:transparent;color:#fff;box-shadow:0 6px 18px rgba(var(--pc-rgb),.28)}
 .hero[data-ico] .big,.hero[data-ico] .lab,.hero[data-ico] .ts,.hero[data-ico] *{color:#fff}
-.hero[data-ico]::before{background:rgba(255,255,255,.24)}
+.hero[data-ico]::before{background:rgba(255,255,255,.22)}
 .hero[data-ico]::after{background:#fff}
 
-/* cards: a stripe of colour on top, the heading marked with it; the cards of a page go through the colours one after the other */
-.card{box-shadow:inset 0 3px 0 var(--cc),var(--shadow);background-image:linear-gradient(180deg,rgba(var(--cc-rgb),.07),rgba(var(--cc-rgb),0) 110px)}
-.topcard{box-shadow:var(--shadow)}
-.card:nth-child(6n+1){--cc:#1CADE4;--cc-rgb:28,173,228}
-.card:nth-child(6n+2){--cc:#8B5CF6;--cc-rgb:139,92,246}
-.card:nth-child(6n+3){--cc:#10B981;--cc-rgb:16,185,129}
-.card:nth-child(6n+4){--cc:#F59E0B;--cc-rgb:245,158,11}
-.card:nth-child(6n+5){--cc:#EC4899;--cc-rgb:236,72,153}
-.card:nth-child(6n){--cc:#F97316;--cc-rgb:249,115,22}
-#sec-issue{--cc:var(--k-iss);--cc-rgb:var(--k-iss-rgb)}
-#sec-stock{--cc:var(--k-stk);--cc-rgb:var(--k-stk-rgb)}
-#sec-pr{--cc:var(--k-pr);--cc-rgb:var(--k-pr-rgb)}
-#sec-po{--cc:var(--k-po);--cc-rgb:var(--k-po-rgb)}
-#sec-appr{--cc:var(--k-apr);--cc-rgb:var(--k-apr-rgb)}
-#sec-invoice{--cc:var(--k-inv);--cc-rgb:var(--k-inv-rgb)}
-#sec-purchase{--cc:var(--k-pur);--cc-rgb:var(--k-pur-rgb)}
-#sec-price{--cc:var(--k-prc);--cc-rgb:var(--k-prc-rgb)}
-#sec-ageing{--cc:var(--k-age);--cc-rgb:var(--k-age-rgb)}
-.card h2::before{content:"";flex:none;width:10px;height:10px;margin-right:8px;border-radius:3px;background:var(--cc);display:inline-block}
-.card h2:has(.sec-badge)::before{display:none}
-.sec-badge{background-image:linear-gradient(135deg,var(--cc),rgba(var(--cc-rgb),.72))!important;background-color:var(--cc)!important}
-.sumcard h2 .opn,.opn{color:var(--cc)}
-:root[data-theme="dark"] .opn{filter:brightness(1.3)}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .opn{filter:brightness(1.3)}}
+/* cards: plain white cards; the number badge of a heading is the colour */
+.card{background-image:none}
+.card h2::before{display:none}
+.sec-badge{background-image:none!important;background-color:var(--pc)!important}
+.opn{color:var(--pct)}
+:root[data-theme="dark"] .opn{filter:brightness(1.15)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .opn{filter:brightness(1.15)}}
 
-/* tables: header and total row washed with the page colour, a line under the header, the row under the mouse lit */
-.tbox thead th,.tscroll>table>thead th,.card table thead th{background-image:linear-gradient(rgba(var(--pc-rgb),.13),rgba(var(--pc-rgb),.13));border-bottom:2px solid rgba(var(--pc-rgb),.55);color:var(--ink2)}
-.tbox tfoot td,.tscroll tfoot td{background-image:linear-gradient(rgba(var(--pc-rgb),.12),rgba(var(--pc-rgb),.12));font-weight:700}
-tbody tr:hover>td{background-color:rgba(var(--pc-rgb),.08)}
+/* tables: heading and total row washed with the colour, a line under the heading, the row under the mouse lit */
+.tbox thead th,.tscroll>table>thead th,.card table thead th{background-image:linear-gradient(rgba(var(--pc-rgb),.10),rgba(var(--pc-rgb),.10));border-bottom:2px solid rgba(var(--pc-rgb),.5);color:var(--ink2)}
+.tbox tfoot td,.tscroll tfoot td{background-image:linear-gradient(rgba(var(--pc-rgb),.09),rgba(var(--pc-rgb),.09));font-weight:700}
+tbody tr:hover>td{background-color:rgba(var(--pc-rgb),.07)}
 tr.sel td:first-child{box-shadow:inset 3px 0 0 var(--pc)}
 
 /* filters and chips */
-.bar[aria-label="Filters"]{border-left:4px solid var(--pc);background-image:linear-gradient(100deg,rgba(var(--pc-rgb),.07),rgba(var(--pc-rgb),0) 60%)}
+.bar[aria-label="Filters"]{border-left:4px solid var(--pc);background-image:none}
 .fld select:hover,.fld input:hover{border-color:var(--pc)}
 .fld select:focus,.fld input:focus{border-color:var(--pc)}
-.chip{background:rgba(var(--pc-rgb),.12);border-color:rgba(var(--pc-rgb),.38);color:var(--pct)}
-.chip:hover{background:rgba(var(--pc-rgb),.22)}
-.csvbtn:hover{background:rgba(var(--pc-rgb),.14);color:var(--pct);border-color:rgba(var(--pc-rgb),.5)}
+.chip{background:rgba(var(--pc-rgb),.10);border-color:rgba(var(--pc-rgb),.35);color:var(--pct)}
+.chip:hover{background:rgba(var(--pc-rgb),.2)}
+.csvbtn:hover{background:rgba(var(--pc-rgb),.12);color:var(--pct);border-color:rgba(var(--pc-rgb),.5)}
 .cta{color:var(--pct)}
 details[open]>summary{color:var(--pct)}
 
@@ -422,7 +363,6 @@ details[open]>summary{color:var(--pct)}
 .uc-leg button:hover{background:rgba(var(--pc-rgb),.10)}
 .uc-leg button.sel{background:rgba(var(--pc-rgb),.18)}
 .mb{background:linear-gradient(180deg,var(--pc2),var(--pc))}
-
 /* on paper the colour backgrounds do not print, so the white text of the big number goes black and the washes go */
 @media print{
   .hero[data-ico]{background-image:none!important;color:#000!important;box-shadow:none!important;border-color:#999!important}
@@ -432,9 +372,7 @@ details[open]>summary{color:var(--pct)}
   .card{background-image:none!important;box-shadow:none!important}
   .tile[data-ico]{background-image:none!important}
   .pagehead{border-left:0;padding-left:0}
-  .pagehead h2{background:none!important;-webkit-text-fill-color:#000!important;color:#000!important;filter:none!important}
   .top{border-image:none;border-bottom:2px solid var(--brand-red)}
-  .stick::before{display:none}
 }
 
 /* ================= pass 4: shorter pages (25-Oct-2026) ================= */
@@ -495,10 +433,8 @@ h1,h2,.tile .tv,.hero .big,.pagehead h2{font-family:"Segoe UI Variable Display",
 
 /* the brand */
 .logo{filter:drop-shadow(0 3px 6px rgba(var(--pc-rgb),.28))}
-.brand h1{font-size:1.2rem;font-weight:800;letter-spacing:-.015em;background-image:linear-gradient(90deg,var(--pc),var(--pc2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}
+.brand h1{font-size:1.2rem;font-weight:800;letter-spacing:-.015em;color:var(--pct)}
 .brand h1 .pgname{-webkit-text-fill-color:var(--ink);color:var(--ink)}
-:root[data-theme="dark"] .brand h1{filter:brightness(1.35)}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .brand h1{filter:brightness(1.35)}}
 
 /* form controls: taller, rounder, a custom arrow, a magnifier in the search box */
 .fld select,.fld input{height:40px;padding:0 12px;border:1px solid rgba(var(--pc-rgb),.24);border-radius:11px;background-color:var(--surface);box-shadow:inset 0 1px 2px rgba(16,24,40,.06);font-size:.88rem}

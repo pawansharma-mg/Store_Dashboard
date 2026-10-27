@@ -96,6 +96,19 @@ AGEING_FIELDS = [
 ]
 AGEING_FILTER = 'ClearingDate eq null'
 
+# Asset Transactions: YY1_STORE_ASSET_TR_CDS (SAP FI-AA, an aggregate view with one row per journal entry line and depreciation area, from June 2024, ledger 0L, both company
+# codes). Only the real asset transactions are read: transaction types 100 .. 499 (acquisition, goods receipt, AuC settlement, retirement, transfer); the depreciation runs
+# (document type AF, 40,000 rows, types blank and 500) and the opening balances of the legacy data takeover (document type UE, types 970 and 151) are left out.
+# One transaction on the page = one journal entry + asset + transaction type. Its amount is the sum of its lines in depreciation area 01 (area 00 holds the same
+# acquisition twice, positive and negative, and adds up to nothing); the supplier is on the area 01 line, the plant on the area 00 line.
+ASSET_FIELDS = [
+    'CompanyCode', 'FiscalYear', 'AccountingDocument', 'LedgerGLLineItem', 'MasterFixedAsset', 'FixedAsset', 'AssetTransactionType', 'AssetDepreciationArea',
+    'PostingDate', 'AmountInCompanyCodeCurrency', 'GLAccount', 'ProfitCenter', 'Plant', 'AccountingDocumentType', 'Supplier', 'DocumentItemText',
+    'FixedAssetDescription', 'AssetClass', 'Inventory',
+]
+ASSET_FILTER = "AssetTransactionType ge '100' and AssetTransactionType lt '500' and AccountingDocumentType ne 'UE'"
+ASSET_ACQ = ('100', '120')  # the acquisitions: external acquisition (invoice) and acquisition at goods receipt; one asset is bought once, by one of them
+
 # Purchasing group -> description, the PGr / Description list the user sent from SAP on 18-Oct-2026 (names are spelled as in SAP).
 # A code that is not listed is shown as its number.
 PG_NAMES = {
@@ -911,6 +924,63 @@ def ageing_compact(rows, asof_day):
     data = {'asofDay': asof_day, 'rows': out}
     for k, d in dicts.items():
         data[k] = [list(x) if isinstance(x, tuple) else x for x in d.keys()]
+    return data
+
+
+def asset_compact(rows, asof_day):
+    """Asset transactions: the lines of one journal entry + asset + transaction type are added up to one transaction.
+    Rows: [postingDay, company, journalEntry, fiscalYear, asset, description, class, type, docType, supplier, plant, amount, text, profitCenter, glAccount, lines].
+    asset is 'main number-sub number' (20000518-0); amount is in INR, the sum of the area 01 lines (what SAP's Asset Transactions app shows); supplier is the supplier number
+    ('' if none); plant comes from the area 00 line (blank on some). Entries: companies, classes, types, docTypes, suppliers, plants, profitCenters, glAccounts."""
+    dicts = {k: {} for k in ('companies', 'classes', 'types', 'docTypes', 'suppliers', 'plants', 'pcs', 'gls')}
+
+    def code(name, value):
+        d = dicts[name]
+        if value not in d:
+            d[value] = len(d)
+        return d[value]
+
+    groups = {}
+    for r in rows:
+        t = r.get('AssetTransactionType') or ''
+        if not ('100' <= t < '500') or r.get('AccountingDocumentType') in ('AF', 'UE'):
+            continue
+        key = (r.get('CompanyCode') or '', r.get('FiscalYear') or '', r.get('AccountingDocument') or '', r.get('MasterFixedAsset') or '', r.get('FixedAsset') or '', t)
+        groups.setdefault(key, []).append(r)
+    out = []
+    for key, rs in groups.items():
+        book = [r for r in rs if r.get('AssetDepreciationArea') == '01'] or rs
+        post = None
+        for r in book:
+            d = _good_day(r.get('PostingDate'))
+            if d is not None and (post is None or d < post):
+                post = d
+        top = max(book, key=lambda r: abs(_f(r.get('AmountInCompanyCodeCurrency'))))
+        sup = next(((r.get('Supplier') or '').lstrip('0') for r in book if r.get('Supplier')), '')
+        plant = next((r.get('Plant') for r in rs if r.get('Plant')), '')
+        text = next(((r.get('DocumentItemText') or '').strip() for r in book if (r.get('DocumentItemText') or '').strip()), '')
+        out.append([
+            post,
+            code('companies', key[0]),
+            key[2],
+            key[1],
+            key[3] + '-' + (key[4].lstrip('0') or '0'),
+            (top.get('FixedAssetDescription') or '').strip(),
+            code('classes', top.get('AssetClass') or ''),
+            code('types', key[5]),
+            code('docTypes', top.get('AccountingDocumentType') or ''),
+            code('suppliers', sup),
+            code('plants', plant),
+            round(sum(_f(r.get('AmountInCompanyCodeCurrency')) for r in book), 2),
+            text,
+            code('pcs', top.get('ProfitCenter') or ''),
+            code('gls', top.get('GLAccount') or ''),
+            len(book),
+        ])
+    out.sort(key=lambda a: (a[0] if a[0] is not None else 0, a[2], a[4]))
+    data = {'asofDay': asof_day, 'rows': out}
+    for k, d in dicts.items():
+        data[k] = list(d.keys())
     return data
 
 

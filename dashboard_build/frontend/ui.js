@@ -159,6 +159,7 @@
   var ICON_RULES = [
     [/going up|rises?\b/i, 'up'], [/going down|falls?\b/i, 'down'], [/\bloss\b/i, 'alert'], [/\bprofit\b/i, 'coin'], [/top 5|expensive/i, 'trophy'], [/invoice/i, 'box'], [/not used/i, 'moon'], [/blocked/i, 'lock'], [/quality/i, 'shield'], [/lines|items/i, 'box'], [/location/i, 'pin'], [/supplier/i, 'truck'],
     [/cost center/i, 'target'], [/quantity to check/i, 'alert'], [/approval/i, 'check'], [/day|oldest|waiting|overdue|older|passed/i, 'clock'],
+    [/^acquisitions\b/i, 'box'], [/^(MAL|MCPL)\b/, 'coin'],
     [/value|amount|deliver|₹/i, 'coin'], [/material|purchase order|\bprs?\b|\bpos\b/i, 'box']
   ];
   function icons() {
@@ -212,7 +213,7 @@
   }
 
   // ---------------------------------------------------------------- charts above the summary tables
-  var PALETTE = ['#1CADE4', '#8B5CF6', '#10B981', '#F59E0B', '#EC4899', '#F97316', '#14B8A6', '#6366F1'];
+  var PALETTE = ['#0E7FAE', '#7CC8E8', '#2A78D6', '#BFE3F4', '#0B5E87', '#4FB3E0', '#6DA7EC', '#3E5C76']; // the one blue of the dashboard in light and dark steps
   var OTHER = '#94A3B8';
   // page -> table container -> chart. col: which column to draw (a header test); rev: the table lists the newest first
   var CHARTS = {
@@ -221,6 +222,7 @@
     '/po-approval': [{ id: 'byAge', type: 'cols', col: /^pos$/i }, { id: 'byAppr', type: 'donut', col: /^pos$/i }, { id: 'byPlant', type: 'donut', col: /net value/i }],
     '/invoice': [{ id: 'byAge', type: 'cols', col: /^items$/i }, { id: 'byMonth', type: 'cols', col: /^items$/i, rev: true }, { id: 'byDay', type: 'cols', col: /^items$/i }, { id: 'byDept', type: 'donut', col: /^items$/i }, { id: 'byPlant', type: 'donut', col: /^items$/i }],
     '/purchase': [{ id: 'byMonth', type: 'cols', col: /net value/i, rev: true }, { id: 'byDay', type: 'cols', col: /net value/i }, { id: 'byDept', type: 'donut', col: /net value/i }, { id: 'byPlant', type: 'donut', col: /net value/i }],
+    '/asset': [{ id: 'byMonth', type: 'cols', col: /^amount$/i, rev: true }, { id: 'byDay', type: 'cols', col: /^amount$/i }, { id: 'byCo', type: 'donut', col: /^amount$/i }, { id: 'byCls', type: 'donut', col: /^amount$/i }],
     '/stock': [{ id: 'byCat', type: 'donut', col: /value/i }, { id: 'byMtype', type: 'donut', col: /value/i }, { id: 'byType', type: 'donut', col: /total value/i }, { id: 'byPlant', type: 'donut', col: /total value/i }]
   };
   function readTable(box, colTest, rev) {
@@ -319,7 +321,7 @@
   }
 
   // ---------------------------------------------------------------- download a table as CSV (opens in Excel)
-  var PAGE_SLUG = { '/': 'pending-pr', '/issue': 'store-issue', '/po': 'purchase-orders', '/po-approval': 'po-approval', '/purchase': 'purchase', '/invoice': 'pending-invoice-entry', '/ageing': 'payment-ageing', '/price': 'price-variance', '/stock': 'store-stock' }[location.pathname];
+  var PAGE_SLUG = { '/': 'pending-pr', '/issue': 'store-issue', '/po': 'purchase-orders', '/po-approval': 'po-approval', '/purchase': 'purchase', '/invoice': 'pending-invoice-entry', '/ageing': 'payment-ageing', '/price': 'price-variance', '/stock': 'store-stock', '/asset': 'capital-issue' }[location.pathname];
   function slug(t) { return t.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'table'; }
   function cardTitle(card) {
     var h = card.querySelector('h2');
@@ -428,7 +430,7 @@
   // The PDF is drawn to look like the dashboard: the Mittal logo, the page colour, the status chip, the filter chips, tiles with their icon and colour, cards with a coloured top edge and a numbered badge,
   // tables with a tinted heading row. Summary = the tiles and every summary table; Details = every row of the list, both under the filters that are set now.
   // It is written here in the browser (standard fonts, no library, no call to the server), so it follows the filters on the screen.
-  var ICO_COLOR = { alert: '#EF4444', up: '#F0614D', down: '#10B981', check: '#10B981', coin: '#F59E0B', clock: '#F97316', box: '#0EA5E9', truck: '#3B82F6', pin: '#EC4899', target: '#A855F7', shield: '#14B8A6', trophy: '#F43F5E', moon: '#6366F1', lock: '#64748B', spark: '#8B5CF6' };
+  var ICO_COLOR = { alert: '#D03B3B', up: '#D03B3B', down: '#0CA30C' }; // every other tile is the colour of the page (blue); only alert / price up is red and price down is green, as on the screen
   function hexRgb(h) { return [parseInt(h.slice(1, 3), 16) / 255, parseInt(h.slice(3, 5), 16) / 255, parseInt(h.slice(5, 7), 16) / 255]; }
   function rgbHex(c) { return '#' + c.map(function (v) { return ('0' + Math.round(v * 255).toString(16)).slice(-2); }).join(''); }
   function cssRgb(v, fb) {
@@ -441,9 +443,11 @@
   function cellText(td) {
     if (td.getAttribute('data-full') !== null) return td.getAttribute('data-full') || '–';
     var c = td;
-    if (td.querySelector('br')) {
+    if (td.querySelector('br, div, svg')) { // a line break or a block must not glue the words together; a small chart (svg) has only a tooltip text
       c = td.cloneNode(true);
+      [].forEach.call(c.querySelectorAll('svg'), function (v) { v.remove(); });
       [].forEach.call(c.querySelectorAll('br'), function (b) { b.replaceWith(td.classList.contains('qlist') ? ' + ' : ' '); });
+      [].forEach.call(c.querySelectorAll('div'), function (d) { d.insertAdjacentText('beforebegin', ' '); });
     }
     return c.textContent.replace(/\s+/g, ' ').trim();
   }
@@ -456,6 +460,12 @@
     });
     if (t.tFoot) [].forEach.call(t.tFoot.rows, function (r) { foot.push([].map.call(r.cells, function (c) { return { t: cellText(c), s: c.colSpan || 1 }; })); });
     if (!head.length && rows.length) head = rows[0].map(function () { return ''; });
+    var empty = head.map(function (h, c) { return rows.length > 0 && rows.every(function (r) { return !r[c]; }); });
+    if (empty.some(Boolean)) { // a column without any text (a small chart) is left out; a Total cell that spanned it gets narrower
+      head = head.filter(function (h, c) { return !empty[c]; });
+      rows = rows.map(function (r) { return r.filter(function (x, c) { return !empty[c]; }); });
+      foot = foot.map(function (r) { var c0 = 0, out = []; r.forEach(function (x) { var keep = 0; for (var c = c0; c < c0 + x.s; c++) if (!empty[c]) keep++; if (keep) out.push({ t: x.t, s: keep }); c0 += x.s; }); return out; });
+    }
     return { type: 'table', head: head, rows: rows, foot: foot };
   }
   function cardBlocks(card) { // the table (or tables) of a card with its heading, its number and its colour as on the screen
@@ -666,7 +676,7 @@
         C.rect(0, 0, W, H, BG);
         if (first) {
           C.grad(0, 0, W, 64, [mixWhite(pc, 0.17), mixWhite(pc2, 0.07), WHITE], false);
-          C.grad(0, 64, W, 3.2, [RED, pc, pc2], false);
+          C.rect(0, 64, W, 3.2, RED);
           C.image(logoIdx, M, 8, 48, 48);
           C.text(M + 58, 39, 'Mittal Group', 18, true, pc);
           if (doc.live) { var lw = textW(norm(doc.live), 7.8, false) + 28; C.rrect(W - M - lw, 22, lw, 21, 10.5, mixWhite(GREEN, 0.12), mixWhite(GREEN, 0.45), 0.7); C.circle(W - M - lw + 11, 32.5, 3.2, GREEN); C.text(W - M - lw + 19, 35.6, norm(doc.live), 7.8, false, INK); }
@@ -693,7 +703,7 @@
           y = top + 28;
         } else {
           C.grad(0, 0, W, 30, [mixWhite(pc, 0.15), WHITE], false);
-          C.grad(0, 30, W, 2.2, [RED, pc, pc2], false);
+          C.rect(0, 30, W, 2.2, RED);
           C.image(logoIdx, M, 5, 21, 21);
           C.text(M + 27, 20, 'Mittal Group', 10, true, pc);
           C.text(W - M - textW(norm(title), 8.4, true), 20, norm(title), 8.4, true, GRAY);
@@ -717,7 +727,7 @@
           if (it.hero) {
             C.grad(x, top, bw, bh, [pc, pc2], false, rr(x, top, bw, bh, 9));
           } else {
-            C.grad(x, top, bw, bh, [mixWhite(ac, 0.14), WHITE, WHITE], true, rr(x, top, bw, bh, 9));
+            C.grad(x, top, bw, bh, [mixWhite(ac, 0.09), WHITE, WHITE], true, rr(x, top, bw, bh, 9));
             C.rrect(x, top, bw, bh, 9, null, BORDER, 0.6);
             C.clip(rr(x, top, bw, bh, 9), function () { C.rect(x, top, bw, 2.8, ac); });
           }
@@ -858,8 +868,8 @@
     a.click();
     setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
   }
-  function detailCards() { return [].slice.call(document.querySelectorAll('.card[data-detail], .card.tablecard')); }
-  function summaryCards() { return [].filter.call(document.querySelectorAll('.wrap .card'), function (c) { return !c.matches('[data-detail], .tablecard, .sumcard') && mainTables(c).length; }); }
+  function detailCards() { return [].filter.call(document.querySelectorAll('.card[data-detail], .card.tablecard'), function (c) { return !c.closest('[hidden]'); }); }
+  function summaryCards() { return [].filter.call(document.querySelectorAll('.wrap .card'), function (c) { return !c.matches('[data-detail], .tablecard, .sumcard') && !c.closest('[hidden]') && mainTables(c).length; }); }
   function sequence(items, fn) { return items.reduce(function (p, it) { return p.then(function () { return fn(it); }); }, Promise.resolve()); }
   function buildSummary() { // -> Promise of a doc
     if (location.pathname === '/summary') { // the cards of the Summary: the name of the page and its figures

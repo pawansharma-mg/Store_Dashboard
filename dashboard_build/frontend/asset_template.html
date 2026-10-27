@@ -1,0 +1,499 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Capital Issue</title>
+<link rel="icon" type="image/png" href="/logo.png">
+<style>
+/* Same look as the other pages. */
+:root{
+  color-scheme:light;
+  --plane:#f4f6f5;--surface:#fff;--ink:#0b0b0b;--ink2:#52514e;--muted:#898781;--grid:#e1e0d9;--border:rgba(11,11,11,.10);
+  --s1:#2a78d6;--good:#0ca30c;--warn:#fab219;--serious:#ec835a;--crit:#d03b3b;
+  --brand:#1CADE4;--brand-dark:#0E7FAE;--brand-red:#E42227;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--plane:#101110;--surface:#1a1b1a;--ink:#fff;--ink2:#c3c2b7;--grid:#2c2c2a;--border:rgba(255,255,255,.10);--s1:#3987e5}}
+:root[data-theme="dark"]{color-scheme:dark;--plane:#101110;--surface:#1a1b1a;--ink:#fff;--ink2:#c3c2b7;--grid:#2c2c2a;--border:rgba(255,255,255,.10);--s1:#3987e5}
+*{box-sizing:border-box}
+body{margin:0;background:var(--plane);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.top{position:sticky;top:0;z-index:20;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;background:var(--surface);border-bottom:3px solid var(--brand-red);padding:12px 20px}
+.brand{display:flex;align-items:center;gap:12px;min-width:0}
+.logo{width:42px;height:42px;object-fit:contain;flex:none}
+h1{margin:0;font-size:1.1rem;font-weight:700;color:var(--brand-dark)}
+.sub{margin:2px 0 0;font-size:.8rem;color:var(--muted)}
+.tools{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.live{display:flex;align-items:center;gap:8px;font-size:.8rem;color:var(--muted)}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;flex:none}
+.btn{height:34px;padding:0 14px;border:0;border-radius:7px;background:var(--brand);color:#fff;font-size:.83rem;font-weight:600;text-decoration:none;display:inline-flex;align-items:center}
+.btn:hover{background:var(--brand-dark)}
+.btn:disabled{opacity:.5;cursor:default}
+.nav{display:flex;flex-wrap:wrap;gap:6px;padding:8px 20px;background:var(--surface);border-bottom:1px solid var(--border)}
+.nav a{font-size:.78rem;font-weight:600;color:var(--ink2);text-decoration:none;padding:6px 12px;border-radius:999px;background:var(--plane)}
+.nav a.on{background:var(--brand);color:#fff}
+.wrap{max-width:1240px;margin:0 auto;padding:20px 16px 48px}
+.bar{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
+.fld{display:flex;flex-direction:column;gap:4px;min-width:0}
+.fld>span{font-size:.78rem;color:var(--ink2)}
+.fld select,.fld input{height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface);padding:0 10px;min-width:0}
+.grow{flex:1 1 240px}.grow input{width:100%}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{border:1px solid var(--border);border-radius:999px;background:var(--surface);padding:3px 11px;font-size:12.5px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-top:16px}
+.tile{background:var(--surface);border:1px solid var(--border);border-top:3px solid var(--s1);border-radius:12px;padding:14px 16px;box-shadow:0 1px 2px rgba(11,11,11,.04),0 1px 8px rgba(11,11,11,.04)}
+.tile:nth-child(2){border-top-color:var(--serious)}.tile:nth-child(3){border-top-color:var(--good)}.tile:nth-child(4){border-top-color:var(--warn)}
+.tv{font-size:1.5rem;font-weight:700;font-variant-numeric:tabular-nums}
+.tl{font-size:.76rem;color:var(--muted)}
+.grid{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;margin-top:12px}
+@media (min-width:1200px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;min-width:0;box-shadow:0 1px 2px rgba(11,11,11,.04),0 1px 8px rgba(11,11,11,.04)}
+.card h2{margin:0;font-size:1.02rem;font-weight:700;display:flex;align-items:center;flex-wrap:wrap;gap:9px}
+.sec-badge{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:26px;padding:0 6px;border-radius:8px;background:var(--brand-dark);color:#fff;font-size:.72rem;font-weight:700}
+.hint{margin:4px 0 12px;font-size:12.5px;color:var(--ink2)}
+.tbox{max-height:440px;overflow:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--grid);vertical-align:top}
+th{font-size:.7rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);border-bottom:2px solid var(--grid);white-space:nowrap}
+.tbox thead th{position:sticky;top:0;background:var(--surface);z-index:1}
+.tbox tfoot td{background:var(--surface);font-weight:700;border-top:2px solid var(--grid)}
+tbody tr:nth-child(even) td{background:rgba(128,128,128,.04)}
+tbody tr:hover td{background:rgba(28,173,228,.07)}
+tr.sel td{background:rgba(28,173,228,.14)!important}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.nw{white-space:nowrap}
+.lnk{border:0;background:none;padding:0;color:var(--brand-dark);font-weight:600;text-decoration:underline;text-align:left}
+.tablecard{margin-top:12px}
+.tscroll{overflow:auto;max-height:75vh}
+.tscroll table{min-width:1500px}
+.pager{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;margin-top:12px;color:var(--ink2)}
+.empty{padding:28px 0;color:var(--ink2);text-align:center}
+.note{margin-top:16px;color:var(--ink2);font-size:12.5px;max-width:110ch}
+.footer{text-align:center;font-size:.72rem;color:var(--muted);padding:0 20px 24px}
+@media (max-width:700px){.top{position:static}}
+@media (max-width:480px){.sub{display:none}.card{padding:16px}}
+.seg{display:inline-flex;border-radius:8px;overflow:hidden;border:1px solid var(--brand);flex:none}
+.seg button{border:0;border-radius:0;background:transparent;color:var(--brand-dark);font-size:.83rem;font-weight:600;height:32px;padding:0 13px;cursor:pointer}
+.seg button.on{background:var(--brand);color:#fff}
+.seg button:not(.on):hover{background:rgba(28,173,228,.15)}
+.stick{position:sticky;top:0;z-index:20}
+.stick .top{position:static}
+@media (max-width:700px){.stick{position:static}}
+.tscroll>table>thead th{position:sticky;top:0;z-index:3;background:var(--surface);box-shadow:0 2px 0 var(--grid)}
+.tscroll tfoot td{font-weight:700;border-top:2px solid var(--grid);background:var(--surface)}
+[hidden]{display:none!important}
+.tile .ts{font-size:.72rem;font-weight:600;color:var(--brand-dark);margin-top:6px}
+.tilebtn{text-align:left;font:inherit;color:inherit;cursor:pointer;width:100%}
+.tilebtn:hover{box-shadow:0 0 0 2px rgba(28,173,228,.35)}
+.tilebtn[aria-expanded="true"]{box-shadow:0 0 0 2px var(--brand)}
+.topcard{margin-top:16px;border-top:3px solid var(--brand-red);scroll-margin-top:150px}
+.subh{margin:16px 0 6px;font-size:.85rem;font-weight:700;color:var(--ink2)}
+.btn.alt{background:transparent;color:var(--brand-dark);border:1px solid var(--brand);height:32px}
+.btn.alt:hover{background:rgba(28,173,228,.12)}
+.supc{min-width:170px}
+.descc{min-width:220px;max-width:300px}
+.txtc{min-width:160px;max-width:260px}
+.amt{font-weight:700}
+.neg{color:var(--crit)}
+.dt{font-size:.7rem;font-weight:600;color:var(--muted);margin-left:4px}
+.pill{display:inline-block;padding:1px 8px;border-radius:999px;font-size:.72rem;font-weight:600;white-space:nowrap}
+.pill.acq{color:var(--good);background:rgba(12,163,12,.14)}
+.pill.oth{color:var(--muted);background:rgba(128,128,128,.16)}
+</style>
+<link rel="stylesheet" href="/ui.css">
+<script src="/live.js"></script>
+</head>
+<body>
+<div class="stick"><header class="top">
+  <div class="brand"><img class="logo" src="/logo.png" alt="Mittal Group"><div>
+    <h1>Mittal Group</h1>
+    <p class="sub">Capital Issue · machines and other fixed assets bought, retired or transferred: asset number, supplier, amount and journal entry. Source: S/4HANA Cloud, YY1_STORE_ASSET_TR_CDS.</p>
+  </div></div>
+  <div class="tools">
+    <div class="live"><span class="dot" id="liveDot" style="background:var(--warn)"></span><span id="liveTxt">Connecting to SAP…</span></div>
+    <button id="refresh" class="btn" type="button">Refresh</button>
+    <div class="seg" id="themeSeg" role="group" aria-label="Colour mode"><button type="button" data-th="light" title="Normal (light) mode">Normal</button><button type="button" data-th="dark" title="Dark mode">Dark</button></div>
+  </div>
+</header>
+<nav class="nav"><a href="/summary">Summary</a><a href="/issue">Store Issue</a><a href="/asset" class="on">Capital Issue</a><a href="/stock">Store Stock</a><a href="/">Pending PR</a><a href="/po">Pending Purchase Orders</a><a href="/po-approval">PO Approval Pending</a><a href="/invoice">Pending Invoice Entry</a><a href="/purchase">Purchase</a><a href="/price">Price Variance</a><a href="/ageing">Payment Ageing</a></nav></div>
+<div class="wrap">
+  <section class="bar" aria-label="Filters">
+    <label class="fld"><span>Company</span><select id="coSel"><option value="">Both companies</option><option value="1000">MAL · Mittal Appliances (1000)</option><option value="2000">MCPL · Mittal Coin (2000)</option></select></label>
+    <label class="fld"><span>Transaction</span><select id="ttSel"></select></label>
+    <label class="fld"><span>Asset class</span><select id="clsSel"></select></label>
+    <label class="fld"><span>Supplier</span><select id="supSel"></select></label>
+    <label class="fld"><span>Posting date from</span><input id="dFrom" type="date"></label>
+    <label class="fld"><span>To</span><input id="dTo" type="date"></label>
+    <div class="fld"><span>Quick</span><div class="seg" id="quickSeg" role="group" aria-label="Quick dates"><button type="button" data-qk="today">Today</button><button type="button" data-qk="yest">Yesterday</button><button type="button" data-qk="month">This month</button><button type="button" data-qk="all">All dates</button></div></div>
+    <label class="fld grow"><span>Search</span><input id="q" type="search" placeholder="Asset number, description, supplier, journal entry, text"></label>
+  </section>
+  <div class="chips" id="chips"></div>
+  <section class="kpis" id="kpis"></section>
+
+  <section class="card topcard" id="tileCard" hidden>
+    <h2><span id="tileTitle"></span></h2>
+    <p class="hint" id="tileHint"></p>
+    <div class="tbox" id="tileBox"></div>
+    <div class="pager"><span id="tileInfo"></span><div><button class="btn" id="tileAll" type="button">See all</button></div></div>
+  </section>
+
+  <section class="card topcard" id="astCard" hidden>
+    <h2><span id="astTitle"></span><button type="button" class="btn alt" id="astClose" style="margin-left:auto">Close</button></h2>
+    <p class="hint" id="astHint"></p>
+    <div class="tbox" id="astBox" style="max-height:none"></div>
+  </section>
+
+  <section class="grid">
+    <article class="card">
+      <h2><span class="sec-badge">1</span>Month-wise</h2>
+      <p class="hint">By posting date. Click a month to see it day by day.</p>
+      <div class="tbox" id="byMonth"></div>
+    </article>
+    <article class="card">
+      <h2><span class="sec-badge">2</span><span id="dayTitle">Day-wise</span></h2>
+      <p class="hint">Click a date to filter everything to that day.</p>
+      <div class="tbox" id="byDay"></div>
+    </article>
+    <article class="card">
+      <h2><span class="sec-badge">3</span>Company wise</h2>
+      <p class="hint">MAL = Mittal Appliances Ltd (company 1000, plant 1010), MCPL = Mittal Coin Pvt Ltd (company 2000, plant 2010). Click a company to filter everything.</p>
+      <div class="tbox" id="byCo"></div>
+    </article>
+    <article class="card">
+      <h2><span class="sec-badge">4</span>Transaction type wise</h2>
+      <p class="hint">Acquisitions are types 100 and 120; the others move or retire what is already there. Click a type to filter everything.</p>
+      <div class="tbox" id="byType"></div>
+    </article>
+    <article class="card">
+      <h2><span class="sec-badge">5</span>Asset class wise</h2>
+      <p class="hint">Click a class to filter everything.</p>
+      <div class="tbox" id="byCls"></div>
+    </article>
+    <article class="card">
+      <h2><span class="sec-badge">6</span>Supplier wise</h2>
+      <p class="hint" id="supHint">Top 50 by amount for the current filters. Click a supplier to filter everything.</p>
+      <div class="tbox" id="bySup"></div>
+    </article>
+  </section>
+
+  <section class="card tablecard">
+    <h2><span class="sec-badge">7</span>Capital issue transactions</h2>
+    <p class="hint" id="tcount"></p>
+    <div class="tscroll"><table id="tbl"></table></div>
+    <div class="pager"><span id="pinfo"></span><div><button class="btn" id="seeAll" type="button">See all</button></div></div>
+  </section>
+  <details class="notebox"><summary>Notes about these figures</summary><p class="note">The figures are SAP's Asset Transactions (fixed asset accounting, ledger 0L, both companies, from June 2024). One line on this page is one transaction of one asset in one journal entry; its amount is what SAP's Asset Transactions app shows for the book depreciation area 01, in INR, without GST. The transaction types: 100 External asset acquisition (the supplier invoice posts the asset), 120 Goods receipt (the asset is posted when the goods are received; the invoice then clears the receipt, so an asset is bought by 100 or by 120, not both), 116 / 336 / 339 / 331 / 338 are Assets under Construction (the cost of a WBS collected on an AuC asset 4001 and later settled to the finished asset), 105 is a credit memo against an acquisition, 200 / 210 retire an asset (with / without revenue) and 300 to 330 transfer between assets, so the default "Acquisitions" view adds 100 and 120 only and "All transactions" adds up everything, which is a net figure. A retirement shows the net book value taken out (cost less accumulated depreciation). The depreciation runs and the opening balances of the data takeover of June 2024 are not part of this view. The asset number is main number-sub number, the asset text and the class are those of the asset master; a click on an asset number shows all its transactions. The supplier is the supplier of the vendor invoice or goods receipt; its name comes from the purchase order data of 2026, so an older supplier shows its number. The view carries no purchase order number and no cost center; the plant is known only for some entries and the company is the safe split (MAL 1000, MCPL 2000). The posting date starts as the whole current month and moves on by itself; use Today, Yesterday, All dates, or change it, to see other days. Data is refreshed from SAP at most every 5 minutes, or with the Refresh button.</p></details>
+</div>
+<footer class="footer">Mittal Group · Capital Issue · Source: SAP S/4HANA Cloud, YY1_STORE_ASSET_TR_CDS</footer>
+
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const PAGE=25;
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtN=n=>Math.round(n).toLocaleString('en-IN');
+function fmtINR(v){const a=Math.abs(v);if(a>=1e7)return '₹'+(v/1e7).toFixed(2)+' Cr';if(a>=1e5)return '₹'+(v/1e5).toFixed(2)+' L';return '₹'+Math.round(v).toLocaleString('en-IN');}
+const fullINR=v=>'₹ '+v.toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmtDay=d=>new Date(d*864e5).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric',timeZone:'UTC'});
+const mIdx=d=>{const t=new Date(d*864e5);return t.getUTCFullYear()*12+t.getUTCMonth();};
+const mName=k=>MON[k%12]+' '+Math.floor(k/12);
+const dayOf=v=>v?Math.floor(Date.parse(v)/864e5):null;
+const iso=d=>new Date(d*864e5).toISOString().slice(0,10);
+// the two companies of the group
+const CO={'1000':'MAL','2000':'MCPL'},COFULL={'1000':'Mittal Appliances Ltd (1000)','2000':'Mittal Coin Pvt Ltd (2000)'};
+const coName=c=>CO[c]||c;
+// SAP's transaction types; 100 and 120 buy an asset (one of them per asset), the others move or retire it
+const ACQ=['100','120'];
+const TT={'100':'External acquisition','105':'Credit memo to an acquisition','116':'AuC cost (WBS)','120':'Goods receipt (acquisition)','200':'Retirement with revenue','210':'Retirement without revenue','300':'Transfer','310':'Transfer','320':'Transfer','330':'Transfer','331':'AuC settlement (to asset)','336':'AuC settlement (to asset)','338':'AuC settlement (from AuC)','339':'AuC settlement (from AuC)'};
+const ttName=c=>TT[c]?c+' · '+TT[c]:'Type '+c;
+
+let D=null,R=[],CUR=null,renderToken=0,tileToken=0,SUPN=new Map();
+const S={tile:null,tileAll:false,all:false,co:'',tt:'acq',cls:'',sup:null,asset:null,from:null,to:null,q:'',mon:null};
+const supName=id=>SUPN.get(id)||'';
+const supLabel=id=>id===''?'(no supplier)':supName(id)?supName(id)+' ('+id+')':'Supplier '+id;
+const supCell=id=>id===''?'–':`<span title="${esc('Supplier '+id)}">${esc(supName(id)||('Supplier '+id))}</span>`;
+
+function pass(r,skip){
+  skip=skip||[];
+  if(!skip.includes('co')&&S.co&&r.co!==S.co)return false;
+  if(!skip.includes('tt')){if(S.tt==='acq'){if(!ACQ.includes(r.type))return false;}else if(S.tt!=='all'&&r.type!==S.tt)return false;}
+  if(!skip.includes('cls')&&S.cls&&r.cls!==S.cls)return false;
+  if(!skip.includes('sup')&&S.sup!==null&&r.sup!==S.sup)return false;
+  if(!skip.includes('date')&&S.from!==null&&!(r.day>=S.from))return false;
+  if(!skip.includes('date')&&S.to!==null&&!(r.day<=S.to))return false;
+  if(S.q&&!r.hay.includes(S.q))return false;
+  return true;
+}
+
+// n: transactions, amt: amount, assets / sups: how many different
+const agg=()=>({n:0,amt:0,assets:new Set(),sups:new Set()});
+function add(m,k,r){let x=m.get(k);if(!x)m.set(k,x=agg());x.n++;x.amt+=r.amt;x.assets.add(r.ak);if(r.sup!=='')x.sups.add(r.sup);}
+const merge=(t,x)=>{t.n+=x.n;t.amt+=x.amt;for(const a of x.assets)t.assets.add(a);for(const s of x.sups)t.sups.add(s);};
+const byAmt=m=>[...m.entries()].sort((a,b)=>b[1].amt-a[1].amt||b[1].n-a[1].n);
+const none='<div class="empty">Nothing matches the filters.</div>';
+const amtTd=v=>`<td class="num nw ${v<-0.5?'neg':''}" title="${esc(fullINR(v))}">${fmtINR(v)}</td>`;
+const nums=x=>`<td class="num">${fmtN(x.n)}</td><td class="num">${fmtN(x.assets.size)}</td>${amtTd(x.amt)}`;
+function aggTable(list,head,cell,sel){
+  if(!list.length)return none;
+  const tot=agg();for(const [,x] of list)merge(tot,x);
+  return `<table><thead><tr><th>${head}</th><th class="num">Transactions</th><th class="num">Assets</th><th class="num">Amount</th></tr></thead><tbody>`+
+    list.map(([k,x])=>`<tr${k===sel?' class="sel"':''}><td>${cell(k)}</td>${nums(x)}</tr>`).join('')+
+    `</tbody><tfoot><tr><td>Total (${fmtN(list.length)})</td>${nums(tot)}</tr></tfoot></table>`;
+}
+
+// ---------------------------------------------------------------- the transactions
+const LHEAD='<thead><tr><th class="num">#</th><th>Posting date</th><th>Company</th><th>Asset</th><th>Description</th><th>Supplier</th><th>Transaction</th><th class="num">Amount</th><th>Journal entry</th><th>Class</th><th>Plant</th><th>Text</th></tr></thead>';
+const typePill=t=>`<span class="pill ${ACQ.includes(t)?'acq':'oth'}" title="${esc(ttName(t))}">${esc(t)}</span> ${esc(TT[t]||'')}`;
+const lineRow=(r,i)=>`<tr><td class="num">${i+1}</td><td class="nw">${r.day===null?'–':fmtDay(r.day)}</td><td class="nw" title="${esc(COFULL[r.co]||r.co)}">${esc(coName(r.co))}</td><td class="nw"><button type="button" class="lnk" data-asset="${esc(r.ak)}" title="All transactions of this asset">${esc(r.asset)}</button></td><td class="descc">${esc(r.desc)}</td><td class="supc">${supCell(r.sup)}</td><td class="nw">${typePill(r.type)}</td><td class="num nw amt ${r.amt<-0.5?'neg':''}" title="${esc(fullINR(r.amt))}">${fmtINR(r.amt)}</td><td class="nw">${esc(r.je)} <span class="dt" title="Journal entry type">${esc(r.dtype)}</span></td><td>${esc(r.cls)}</td><td>${esc(r.plant||'–')}</td><td class="txtc">${esc(r.text||'–')}</td></tr>`;
+const sumAmt=rows=>rows.reduce((s,r)=>s+r.amt,0);
+const lineFoot=rows=>`<tfoot><tr><td colspan="7">Total (${fmtN(rows.length)} transactions, ${fmtN(new Set(rows.map(r=>r.ak)).size)} assets)</td><td class="num nw">${fmtINR(sumAmt(rows))}</td><td colspan="4"></td></tr></tfoot>`;
+const newest=a=>a.slice().sort((x,y)=>(y.day||0)-(x.day||0)||y.je.localeCompare(x.je)||x.asset.localeCompare(y.asset));
+
+// ---------------------------------------------------------------- details of a tile
+const TILE_INFO={
+  cnt:['Transactions','Every transaction of the current filters, newest first.'],
+  assets:['Assets','The assets that have a transaction in the current filters, the biggest amount first.'],
+  sups:['Suppliers','The suppliers of the transactions in the current filters, the biggest amount first.'],
+  mal:['MAL (Mittal Appliances Ltd, 1000)','The transactions of company 1000 for the current filters (the company filter is not applied), newest first.'],
+  mcpl:['MCPL (Mittal Coin Pvt Ltd, 2000)','The transactions of company 2000 for the current filters (the company filter is not applied), newest first.']
+};
+function renderTile(){
+  const k=S.tile;
+  if(!k||!CUR||!D||!TILE_INFO[k]){$('tileCard').hidden=true;return;}
+  $('tileCard').hidden=false;
+  $('tileTitle').textContent=TILE_INFO[k][0];$('tileHint').textContent=TILE_INFO[k][1];
+  const rows=CUR.rows;
+  let list=null,thead='',rowFn=null,foot=null,n=0,unit='transactions';
+  if(k==='cnt'||k==='mal'||k==='mcpl'){
+    const src=k==='cnt'?rows:R.filter(r=>pass(r,['co'])&&r.co===(k==='mal'?'1000':'2000'));
+    list=newest(src);thead=LHEAD;rowFn=lineRow;foot=l=>lineFoot(l);
+  }else if(k==='assets'){
+    const m=new Map();for(const r of rows){let x=m.get(r.ak);if(!x)m.set(r.ak,x={ak:r.ak,co:r.co,asset:r.asset,desc:r.desc,cls:r.cls,n:0,amt:0,last:0,sups:new Set()});x.n++;x.amt+=r.amt;if((r.day||0)>x.last)x.last=r.day||0;if(r.sup!=='')x.sups.add(r.sup);}
+    list=[...m.values()].sort((a,b)=>b.amt-a.amt||b.last-a.last);unit='assets';
+    thead='<thead><tr><th class="num">#</th><th>Asset</th><th>Company</th><th>Description</th><th>Class</th><th>Supplier</th><th class="num">Transactions</th><th>Last posting</th><th class="num">Amount</th></tr></thead>';
+    rowFn=(x,i)=>`<tr><td class="num">${i+1}</td><td class="nw"><button type="button" class="lnk" data-asset="${esc(x.ak)}" title="All transactions of this asset">${esc(x.asset)}</button></td><td class="nw">${esc(coName(x.co))}</td><td class="descc">${esc(x.desc)}</td><td>${esc(x.cls)}</td><td class="supc">${x.sups.size?[...x.sups].slice(0,2).map(supCell).join('<br>')+(x.sups.size>2?'<br>+ '+(x.sups.size-2)+' more':''):'–'}</td><td class="num">${fmtN(x.n)}</td><td class="nw">${x.last?fmtDay(x.last):'–'}</td>${amtTd(x.amt)}</tr>`;
+    foot=l=>`<tfoot><tr><td colspan="6">Total (${fmtN(l.length)} assets)</td><td class="num">${fmtN(l.reduce((s,x)=>s+x.n,0))}</td><td></td><td class="num nw">${fmtINR(l.reduce((s,x)=>s+x.amt,0))}</td></tr></tfoot>`;
+  }else if(k==='sups'){
+    const m=new Map();for(const r of rows)if(r.sup!=='')add(m,r.sup,r);
+    list=byAmt(m).map(([id,x])=>({id,...x}));unit='suppliers';
+    thead='<thead><tr><th class="num">#</th><th>Supplier</th><th class="num">Transactions</th><th class="num">Assets</th><th class="num">Amount</th></tr></thead>';
+    rowFn=(x,i)=>`<tr><td class="num">${i+1}</td><td class="supc">${esc(supLabel(x.id))}</td>${nums(x)}</tr>`;
+    foot=l=>{const t=agg();for(const x of l)merge(t,x);return `<tfoot><tr><td colspan="2">Total (${fmtN(l.length)} suppliers)</td>${nums(t)}</tr></tfoot>`;};
+  }
+  if(list){
+    n=list.length;const slice=S.tileAll?list:list.slice(0,PAGE),first=S.tileAll?slice.slice(0,300):slice;
+    $('tileBox').innerHTML=list.length?`<table>${thead}<tbody>${first.map((x,i)=>rowFn(x,i)).join('')}</tbody>${foot?foot(list):''}</table>`:none;
+    // See all can mean thousands of lines: the first rows appear at once and the rest are added in batches
+    const token=++tileToken;let done=first.length;
+    const more=()=>{if(token!==tileToken||done>=slice.length)return;const tb=$('tileBox').querySelector('tbody');if(!tb)return;tb.insertAdjacentHTML('beforeend',slice.slice(done,done+500).map((x,i)=>rowFn(x,done+i)).join(''));done+=500;setTimeout(more,0);};
+    setTimeout(more,0);
+  }else{tileToken++;$('tileBox').innerHTML='';}
+  $('tileInfo').textContent=!list||!n?'':(S.tileAll||n<=PAGE?`All ${fmtN(n)} ${unit} shown`:`Showing the first ${PAGE} of ${fmtN(n)} ${unit}`);
+  $('tileAll').hidden=!list||n<=PAGE;$('tileAll').textContent=S.tileAll?'Show first '+PAGE:'See all '+fmtN(n);
+}
+// all the transactions of one asset (every date and type): what happened to the machine
+function renderAsset(){
+  const card=$('astCard');
+  if(S.asset===null||!D){card.hidden=true;return;}
+  const rows=R.filter(r=>r.ak===S.asset).sort((a,b)=>(a.day||0)-(b.day||0)||a.je.localeCompare(b.je));
+  if(!rows.length){card.hidden=true;return;}
+  card.hidden=false;
+  const r0=rows[rows.length-1];
+  $('astTitle').textContent='Asset '+r0.asset+' · '+r0.desc;
+  $('astHint').textContent=`${COFULL[r0.co]||r0.co} · class ${r0.cls} · ${fmtN(rows.length)} transactions, all dates and types, oldest first · net ${fmtINR(sumAmt(rows))}`;
+  $('astBox').innerHTML=`<table>${LHEAD}<tbody>${rows.map((r,i)=>lineRow(r,i)).join('')}</tbody>${lineFoot(rows)}</table>`;
+}
+const reveal=id=>{const el=$(id);if(el&&!el.hidden)el.scrollIntoView({behavior:'smooth',block:'start'});};
+
+function quickState(){
+  const a=D?D.asofDay:null;
+  if(S.from===null&&S.to===null)return 'all';
+  if(S.from===a&&S.to===a)return 'today';
+  if(S.from===a-1&&S.to===a-1)return 'yest';
+  if(D){const t=new Date(a*864e5),y=t.getUTCFullYear(),m=t.getUTCMonth();if(S.from===Date.UTC(y,m,1)/864e5&&S.to===Date.UTC(y,m+1,0)/864e5)return 'month';}
+  return '';
+}
+
+function render(){
+  if(!D)return;
+  const rows=R.filter(r=>pass(r));
+  const tot=agg();for(const r of rows){tot.n++;tot.amt+=r.amt;tot.assets.add(r.ak);if(r.sup!=='')tot.sups.add(r.sup);}
+  const comp=c=>{const x=agg();for(const r of R)if(pass(r,['co'])&&r.co===c){x.n++;x.amt+=r.amt;}return x;};
+  const mal=comp('1000'),mcpl=comp('2000');
+  CUR={rows,tot};
+  const amtLabel=S.tt==='acq'?'Acquisition value (100 + 120)':S.tt==='all'?'Net amount · all transactions':'Amount · '+ttName(S.tt);
+  const cntLabel=S.tt==='acq'?'Acquisitions (assets bought)':S.tt==='all'?'Transactions':'Transactions · type '+S.tt;
+  // every tile opens its details under the tiles
+  $('kpis').innerHTML=[
+    ['coin',fmtINR(tot.amt),amtLabel,null],
+    ['box',fmtN(rows.length),cntLabel,'cnt'],
+    ['box',fmtN(tot.assets.size),'Assets','assets'],
+    ['truck',fmtN(tot.sups.size),'Suppliers','sups'],
+    ['coin',fmtINR(mal.amt),'MAL (1000) · '+fmtN(mal.n)+' transactions','mal'],
+    ['coin',fmtINR(mcpl.amt),'MCPL (2000) · '+fmtN(mcpl.n)+' transactions','mcpl']
+  ].map(t=>t[3]===null?`<div class="tile" data-ico="${t[0]}"><div class="tv">${t[1]}</div><div class="tl">${esc(t[2])}</div></div>`:`<button type="button" class="tile tilebtn" data-ico="${t[0]}" data-tile="${t[3]}" aria-expanded="${S.tile===t[3]}"><div class="tv">${t[1]}</div><div class="tl">${esc(t[2])}</div>${S.tile===t[3]?'<div class="ts">click to hide</div>':''}</button>`).join('');
+  renderTile();renderAsset();
+  for(const b of document.querySelectorAll('#quickSeg button'))b.classList.toggle('on',b.dataset.qk===quickState());
+  // chips
+  const c=[];
+  if(S.co)c.push(['co','Company: '+(CO[S.co]||S.co)]);
+  if(S.tt!=='acq')c.push(['tt',S.tt==='all'?'All transactions':'Transaction: '+ttName(S.tt)]);
+  if(S.cls)c.push(['cls','Class '+S.cls]);
+  if(S.sup!==null)c.push(['sup','Supplier: '+(supName(S.sup)||S.sup)]);
+  if(S.from!==null||S.to!==null)c.push(['date','Posting date '+(S.from!==null?fmtDay(S.from):'start')+' – '+(S.to!==null?fmtDay(S.to):'today')]);
+  if(S.q)c.push(['q','Search: '+S.q]);
+  $('chips').innerHTML=c.map(x=>`<button type="button" class="chip" data-clr="${x[0]}">${esc(x[1])} ×</button>`).join('')+(c.length?'<button type="button" class="chip" data-clr="all">Reset filters</button>':'');
+  // each table ignores its own filter, so the list stays when you pick a row
+  const co=new Map(),ty=new Map(),cl=new Map(),sp=new Map();
+  for(const r of R){
+    if(pass(r,['co']))add(co,r.co,r);
+    if(pass(r,['tt']))add(ty,r.type,r);
+    if(pass(r,['cls']))add(cl,r.cls,r);
+    if(pass(r,['sup'])&&r.sup!=='')add(sp,r.sup,r);
+  }
+  $('byCo').innerHTML=aggTable(byAmt(co),'Company',k=>`<button type="button" class="lnk" data-co="${esc(k)}" title="${esc(COFULL[k]||k)}">${esc(coName(k))}</button> <span class="dt">${esc(k)}</span>`,S.co||null);
+  $('byType').innerHTML=aggTable([...ty.entries()].sort((a,b)=>a[0].localeCompare(b[0])),'Transaction',k=>`<button type="button" class="lnk" data-tt="${esc(k)}">${esc(ttName(k))}</button>`,S.tt==='acq'||S.tt==='all'?null:S.tt);
+  $('byCls').innerHTML=aggTable(byAmt(cl),'Class',k=>`<button type="button" class="lnk" data-cls="${esc(k)}">${esc(k)}</button>`,S.cls||null);
+  const spl=byAmt(sp);
+  $('supHint').textContent='Amount for the current filters'+(spl.length>50?`; top 50 of ${fmtN(spl.length)} suppliers shown, the total covers all`:'')+'. Click a supplier to filter everything.';
+  $('bySup').innerHTML=aggTable(spl.slice(0,50),'Supplier',k=>`<button type="button" class="lnk" data-sup="${esc(k)}">${esc(supName(k)||('Supplier '+k))}</button>`,S.sup);
+  // month / day (ignore From/To so every month stays listed)
+  const mon=new Map(),day=new Map();
+  if(S.mon===null)S.mon=mIdx(D.asofDay);
+  for(const r of R){if(r.day===null||!pass(r,['date']))continue;const k=mIdx(r.day);add(mon,k,r);if(k===S.mon)add(day,r.day,r);}
+  $('byMonth').innerHTML=aggTable([...mon.entries()].sort((a,b)=>b[0]-a[0]),'Month',k=>`<button type="button" class="lnk" data-mon="${k}">${mName(k)}</button>`,S.mon);
+  $('dayTitle').textContent='Day-wise · '+mName(S.mon);
+  $('byDay').innerHTML=aggTable([...day.entries()].sort((a,b)=>a[0]-b[0]),'Posting date',k=>`<button type="button" class="lnk" data-day="${k}">${fmtDay(k)}</button>`);
+  // the transactions, newest first
+  rows.sort((a,b)=>(b.day||0)-(a.day||0)||b.je.localeCompare(a.je)||a.asset.localeCompare(b.asset));
+  const slice=S.all?rows:rows.slice(0,PAGE);
+  const first=S.all?slice.slice(0,400):slice;
+  $('tbl').innerHTML=LHEAD+'<tbody>'+(first.length?first.map((r,i)=>lineRow(r,i)).join(''):'<tr><td colspan="12" class="empty">Nothing matches the filters.</td></tr>')+'</tbody>'+(rows.length?lineFoot(rows):'');
+  const token=++renderToken;let done=first.length;
+  const more=()=>{if(token!==renderToken||done>=slice.length)return;document.querySelector('#tbl tbody').insertAdjacentHTML('beforeend',slice.slice(done,done+600).map((r,i)=>lineRow(r,done+i)).join(''));done+=600;setTimeout(more,0);};
+  setTimeout(more,0);
+  $('tcount').textContent=fmtN(rows.length)+' transactions · '+fmtN(tot.assets.size)+' assets · '+fmtN(tot.sups.size)+' suppliers · amount '+fmtINR(tot.amt);
+  $('pinfo').textContent=!rows.length?'':rows.length<=PAGE||S.all?`All ${fmtN(rows.length)} transactions shown`:`Showing the first ${PAGE} of ${fmtN(rows.length)}`;
+  $('seeAll').hidden=rows.length<=PAGE;$('seeAll').textContent=S.all?'Show first '+PAGE:'See all '+fmtN(rows.length);
+}
+
+function setMonthDates(){const t=new Date(D.asofDay*864e5);const y=t.getUTCFullYear(),m=t.getUTCMonth();const a=Date.UTC(y,m,1)/864e5,b=Date.UTC(y,m+1,0)/864e5;S.from=a;S.to=b;$('dFrom').value=iso(a);$('dTo').value=iso(b);}
+const syncDates=()=>{$('dFrom').value=S.from===null?'':iso(S.from);$('dTo').value=S.to===null?'':iso(S.to);};
+const syncSel=()=>{$('coSel').value=S.co;$('ttSel').value=S.tt;$('clsSel').value=S.cls;$('supSel').value=S.sup===null?'':S.sup;};
+document.addEventListener('click',e=>{
+  const t=e.target.closest('button');if(!t)return;
+  if(t.dataset.asset!==undefined){S.asset=t.dataset.asset;render();reveal('astCard');return;}
+  else if(t.id==='astClose'){S.asset=null;render();return;}
+  else if(t.dataset.co!==undefined){S.co=S.co===t.dataset.co?'':t.dataset.co;syncSel();}
+  else if(t.dataset.tt!==undefined){S.tt=S.tt===t.dataset.tt?'acq':t.dataset.tt;syncSel();}
+  else if(t.dataset.cls!==undefined){S.cls=S.cls===t.dataset.cls?'':t.dataset.cls;syncSel();}
+  else if(t.dataset.sup!==undefined){S.sup=S.sup===t.dataset.sup?null:t.dataset.sup;syncSel();}
+  else if(t.dataset.mon!==undefined){S.mon=+t.dataset.mon;}
+  else if(t.dataset.day!==undefined){const d=+t.dataset.day;S.from=S.to=d;syncDates();}
+  else if(t.dataset.qk){const k=t.dataset.qk;
+    if(k==='today')S.from=S.to=D.asofDay;else if(k==='yest')S.from=S.to=D.asofDay-1;else if(k==='month')setMonthDates();else S.from=S.to=null;
+    syncDates();if(S.from!==null)S.mon=mIdx(S.from);}
+  else if(t.dataset.clr){const c=t.dataset.clr;
+    if(c==='co'||c==='all')S.co='';
+    if(c==='tt'||c==='all')S.tt='acq';
+    if(c==='cls'||c==='all')S.cls='';
+    if(c==='sup'||c==='all')S.sup=null;
+    if(c==='date')S.from=S.to=null,syncDates();
+    if(c==='all')setMonthDates();
+    if(c==='q'||c==='all'){S.q='';$('q').value='';}
+    syncSel();}
+  else if(t.dataset.tile!==undefined){const k=t.dataset.tile;S.tile=S.tile===k?null:k;S.tileAll=false;render();if(S.tile)reveal('tileCard');return;}
+  else if(t.id==='tileAll'){S.tileAll=!S.tileAll;renderTile();return;}
+  else if(t.id==='seeAll'){S.all=!S.all;render();if(!S.all)document.querySelector('.tscroll').scrollTop=0;return;}
+  else return;
+  render();
+});
+$('coSel').addEventListener('change',e=>{S.co=e.target.value;render();});
+$('ttSel').addEventListener('change',e=>{S.tt=e.target.value;render();});
+$('clsSel').addEventListener('change',e=>{S.cls=e.target.value;render();});
+$('supSel').addEventListener('change',e=>{S.sup=e.target.value===''?null:e.target.value;render();});
+$('dFrom').addEventListener('change',e=>{S.from=dayOf(e.target.value);render();});
+$('dTo').addEventListener('change',e=>{S.to=dayOf(e.target.value);render();});
+let qT;$('q').addEventListener('input',e=>{clearTimeout(qT);qT=setTimeout(()=>{S.q=e.target.value.trim().toLowerCase();render();},200);});
+
+const root=document.documentElement;
+function setTheme(t,save){root.dataset.theme=t;for(const b of document.querySelectorAll('#themeSeg button'))b.classList.toggle('on',b.dataset.th===t);if(save){try{localStorage.setItem('spr-theme',t);}catch(e){}}}
+let savedTheme='dark';try{savedTheme=localStorage.getItem('spr-theme')||'dark';}catch(e){}
+setTheme(savedTheme==='light'?'light':'dark',false);
+document.getElementById('themeSeg').addEventListener('click',e=>{const b=e.target.closest('button[data-th]');if(b)setTheme(b.dataset.th,true);});
+
+// ---------------------------------------------------------------- data
+function hayOf(r){return (r.asset+' '+r.desc+' '+r.je+' '+r.text+' '+r.sup+' '+supName(r.sup)+' '+coName(r.co)+' '+r.cls+' '+r.type+' '+(TT[r.type]||'')).toLowerCase();}
+function fillSelects(){
+  const types=[...new Set(R.map(r=>r.type))].sort();
+  $('ttSel').innerHTML='<option value="acq">Acquisitions (100 and 120)</option><option value="all">All transactions</option>'+types.map(t=>`<option value="${esc(t)}">${esc(ttName(t))}</option>`).join('');
+  if(S.tt!=='acq'&&S.tt!=='all'&&!types.includes(S.tt))S.tt='acq';
+  const cl=new Map();for(const r of R)cl.set(r.cls,(cl.get(r.cls)||0)+1);
+  $('clsSel').innerHTML='<option value="">All classes</option>'+[...cl.keys()].sort().map(k=>`<option value="${esc(k)}">Class ${esc(k)}</option>`).join('');
+  if(S.cls&&!cl.has(S.cls))S.cls='';
+  const sl=[...new Set(R.map(r=>r.sup).filter(x=>x!==''))].sort((a,b)=>(supName(a)||'~'+a).localeCompare(supName(b)||'~'+b));
+  $('supSel').innerHTML='<option value="">All suppliers</option>'+sl.map(id=>`<option value="${esc(id)}">${esc(supLabel(id))}</option>`).join('');
+  if(S.sup!==null&&!sl.includes(S.sup))S.sup=null;
+  syncSel();
+}
+function setData(d){
+  D=d;
+  R=d.rows.map(a=>{
+    const r={day:a[0],co:d.companies[a[1]],je:a[2],fy:a[3],asset:a[4],ak:d.companies[a[1]]+'/'+a[4],desc:a[5],cls:d.classes[a[6]],type:d.types[a[7]],dtype:d.docTypes[a[8]],sup:d.suppliers[a[9]],plant:d.plants[a[10]],amt:a[11],text:a[12],pc:d.pcs[a[13]],gl:d.gls[a[14]],lines:a[15]};
+    r.hay='';
+    return r;
+  });
+  for(const r of R)r.hay=hayOf(r);
+  fillSelects();
+}
+// the supplier names come from the purchase order data (id -> name)
+function setPO(j){
+  SUPN=new Map();
+  for(const s of j.suppliers)if(s[1])SUPN.set(s[0],s[1]);
+  if(D){for(const r of R)r.hay=hayOf(r);fillSelects();render();}
+}
+// a link from the Summary page: ?tile=amt&plant=1010&from=2026-10-01&to=2026-10-31 (dates=all clears the dates; company=1000 or type=all / 100 / acq also work); used once, on the first load
+let LINK=(()=>{try{const q=new URLSearchParams(location.search);return ['tile','plant','company','type','from','to','dates'].some(k=>q.has(k))?q:null;}catch(e){return null;}})();
+function applyLink(){
+  if(!LINK)return;const q=LINK;LINK=null;
+  if(q.has('company')&&CO[q.get('company')])S.co=q.get('company');
+  else if(q.has('plant')&&q.get('plant'))S.co=q.get('plant').charAt(0)==='2'?'2000':'1000';
+  if(q.has('type')){const t=q.get('type');if(t==='acq'||t==='all'||R.some(r=>r.type===t))S.tt=t;}
+  if(q.get('dates')==='all'){S.from=S.to=null;}
+  else if(q.has('from')||q.has('to')){S.from=dayOf(q.get('from'));S.to=dayOf(q.get('to'));}
+  syncDates();syncSel();
+  const k=q.get('tile');if(k&&TILE_INFO[k]){S.tile=k;S.tileAll=false;S.reveal=true;}
+}
+function setLive(kind,text){$('liveDot').style.background=kind==='ok'?'var(--good)':kind==='err'?'var(--crit)':'var(--warn)';$('liveTxt').textContent=text;$('refresh').disabled=kind==='busy';}
+const hhmm=ms=>new Date(ms).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+let loading=false;
+async function load(force,auto){
+  if(loading)return;loading=true;
+  if(!auto||!D)setLive('busy',D?'Refreshing from SAP…':'Loading asset transactions from SAP…');
+  // the PO data (supplier names) is fetched in parallel; the page is drawn as soon as the transactions are there
+  const poP=LIVE.get('/api/po',force).then(g=>g.same||!g.res.ok?null:g.j).catch(()=>null);
+  try{
+    const g=await LIVE.get('/api/asset',force),res=g.res,j=g.j;
+    if(g.same){setLive('ok','Live from SAP · updated '+hhmm(g.stamp)+' · '+fmtN(R.length)+' transactions');poP.then(p=>{if(p)setPO(p);});return;}
+    if(!res.ok)throw new Error(j.error||('HTTP '+res.status));
+    setData(j);if(!S.dInit){S.dInit=true;setMonthDates();applyLink();}render();
+    if(S.reveal){S.reveal=false;setTimeout(()=>reveal('tileCard'),150);}
+    setLive('ok','Live from SAP · updated '+hhmm(j.fetchedAt)+' · '+fmtN(R.length)+' transactions');
+    poP.then(p=>{if(p)setPO(p);});
+  }catch(e){
+    const msg=e.message==='Failed to fetch'?'The dashboard server is not running. Start it again with Start_Live_Dashboard.bat.':e.message;
+    setLive('err',msg);
+  }finally{loading=false;}
+}
+$('refresh').addEventListener('click',()=>load(true));
+load(false);
+setInterval(()=>{if(!document.hidden)load(false,true);},LIVE.every);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)load(false,true);});
+})();
+</script>
+<script src="/ui.js" defer></script>
+</body>
+</html>

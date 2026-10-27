@@ -157,11 +157,11 @@ html{scroll-behavior:smooth}
     <div class="seg" id="themeSeg" role="group" aria-label="Colour mode"><button type="button" data-th="light" title="Normal (light) mode">Normal</button><button type="button" data-th="dark" title="Dark mode">Dark</button></div>
   </div>
 </header>
-<nav class="nav"><a href="/summary" class="on">Summary</a><a href="/issue">Store Issue</a><a href="/stock">Store Stock</a><a href="/">Pending PR</a><a href="/po">Pending Purchase Orders</a><a href="/po-approval">PO Approval Pending</a><a href="/invoice">Pending Invoice Entry</a><a href="/purchase">Purchase</a><a href="/price">Price Variance</a><a href="/ageing">Payment Ageing</a></nav></div>
+<nav class="nav"><a href="/summary" class="on">Summary</a><a href="/issue">Store Issue</a><a href="/asset">Capital Issue</a><a href="/stock">Store Stock</a><a href="/">Pending PR</a><a href="/po">Pending Purchase Orders</a><a href="/po-approval">PO Approval Pending</a><a href="/invoice">Pending Invoice Entry</a><a href="/purchase">Purchase</a><a href="/price">Price Variance</a><a href="/ageing">Payment Ageing</a></nav></div>
 <div class="wrap">
   <section class="bar" aria-label="Filters">
     <label class="fld"><span>Plant</span><select id="plantSel"><option value="">All plants</option></select></label>
-    <label class="fld" title="The dates are the PR creation date (Pending PR), the posting date (Store Issue, Purchase), the PO creation date (Pending Purchase Orders, PO Approval Pending) and the delivery date (Pending Invoice Entry). Store Stock is the stock of today."><span>Date from</span><input id="dFrom" type="date"></label>
+    <label class="fld" title="The dates are the PR creation date (Pending PR), the posting date (Store Issue, Capital Issue, Purchase), the PO creation date (Pending Purchase Orders, PO Approval Pending) and the delivery date (Pending Invoice Entry). Store Stock is the stock of today."><span>Date from</span><input id="dFrom" type="date"></label>
     <label class="fld"><span>To</span><input id="dTo" type="date"></label>
     <button type="button" class="btn alt" id="monthBtn">Current month</button>
   </section>
@@ -169,6 +169,7 @@ html{scroll-behavior:smooth}
   <div class="printhead" id="printHead"></div>
   <section class="sumgrid">
     <article class="card sumcard" id="sec-issue"><h2>Store Issue<a class="opn" href="/issue">Open page &rarr;</a></h2><div id="body-issue"></div></article>
+    <article class="card sumcard" id="sec-asset"><h2>Capital Issue<a class="opn" href="/asset">Open page &rarr;</a></h2><div id="body-asset"></div></article>
     <article class="card sumcard" id="sec-stock"><h2>Store Stock<a class="opn" href="/stock">Open page &rarr;</a></h2><div id="body-stock"></div></article>
     <article class="card sumcard" id="sec-pr"><h2>Pending PR<a class="opn" href="/">Open page &rarr;</a></h2><div id="body-pr"></div></article>
     <article class="card sumcard" id="sec-po"><h2>Pending Purchase Orders<a class="opn" href="/po">Open page &rarr;</a></h2><div id="body-po"></div></article>
@@ -308,6 +309,16 @@ function calcAgeing(){
   for(const v of sn.values()){if(v>0.5){give+=v;giveN++;}else if(v<-0.5){get-=v;getN++;}}
   return {give,giveN,get,getN};
 }
+// asset transactions: the acquisitions (types 100 and 120) by posting date; a plant picks its company (1010 = MAL 1000, 2010 = MCPL 2000)
+function prepAsset(d){return d.rows.filter(a=>d.types[a[7]]==='100'||d.types[a[7]]==='120').map(a=>({day:a[0],co:d.companies[a[1]],amt:a[11],ak:d.companies[a[1]]+'/'+a[4]}));}
+function calcAsset(){
+  const R=PREP.asset;if(!R)return null;
+  const coOk=c=>!S.plant||c===(S.plant.charAt(0)==='2'?'2000':'1000');
+  const agg=date=>{let n=0,amt=0,mal=0,malN=0,mcpl=0,mcplN=0;
+    for(const r of R){if(!coOk(r.co)||(date&&!inR(r.day)))continue;n++;amt+=r.amt;if(r.co==='1000'){mal+=r.amt;malN++;}else{mcpl+=r.amt;mcplN++;}}
+    return {n,amt,mal,malN,mcpl,mcplN};};
+  return {sel:agg(true),all:agg(false)};
+}
 function calcStock(){
   const d=RAW.stock;if(!d)return null;
   const cut=cutoffDay(d.asofDay),used=!!d.issuesRead;
@@ -351,7 +362,7 @@ function renderAll(){
   const cur=S.plant;$('plantSel').innerHTML='<option value="">All plants</option>'+[...pl].sort().map(p=>`<option value="${esc(p)}">${esc(p)}</option>`).join('');
   if(cur&&!pl.has(cur)&&pl.size)S.plant='';$('plantSel').value=S.plant;
 
-  const pr=calcPR(),is=calcIssue(),po=calcPO(),ap=calcAppr(),st=calcStock(),pu=calcPurchase(),iv=calcInvoice(),pv=calcPrice(),ag=calcAgeing();
+  const pr=calcPR(),is=calcIssue(),po=calcPO(),ap=calcAppr(),st=calcStock(),pu=calcPurchase(),iv=calcInvoice(),pv=calcPrice(),ag=calcAgeing(),ast=calcAsset();
   const all='All dates: ';
   $('body-issue').innerHTML=status('issue',is&&section([
     tile(fmtINR(is.sel.iss),'Issued (201)',all+fmtINR(is.all.iss),go('/issue','iss','sel')),
@@ -396,12 +407,17 @@ function renderAll(){
   $('body-ageing').innerHTML=status('ageing',ag&&section([
     tile(fmtINR(ag.give),'To give (Dena hai)',fmtN(ag.giveN)+' parties. '+noFilter,'/ageing'),
     tile(fmtINR(ag.get),'To get (Lena hai)',fmtN(ag.getN)+' parties. '+noFilter,'/ageing')]));
+  $('body-asset').innerHTML=status('asset',ast&&section([
+    tile(fmtINR(ast.sel.amt),'Acquisition value (100 + 120)',all+fmtINR(ast.all.amt),go('/asset','cnt','sel')),
+    tile(fmtN(ast.sel.n),'Acquisitions (assets bought)',all+fmtN(ast.all.n),go('/asset','cnt','sel')),
+    tile(fmtINR(ast.sel.mal),'MAL (1000)',fmtN(ast.sel.malN)+' acquisitions. '+all+fmtINR(ast.all.mal),go('/asset','mal','sel')),
+    tile(fmtINR(ast.sel.mcpl),'MCPL (2000)',fmtN(ast.sel.mcplN)+' acquisitions. '+all+fmtINR(ast.all.mcpl),go('/asset','mcpl','sel'))]));
   updateLive();
 }
 
 function setLive(kind,text){$('liveDot').style.background=kind==='ok'?'var(--good)':kind==='err'?'var(--crit)':'var(--warn)';$('liveTxt').textContent=text;$('refresh').disabled=kind==='busy';}
 function updateLive(){
-  const keys=['pr','issue','po','stock','purchase','invoice','ageing'],got=keys.filter(k=>RAW[k]),bad=keys.filter(k=>ERR[k]);
+  const keys=['pr','issue','po','stock','purchase','invoice','ageing','asset'],got=keys.filter(k=>RAW[k]),bad=keys.filter(k=>ERR[k]);
   if(LOADING>0){setLive('busy',`Loading from SAP… ${got.length} of ${keys.length} ready (the first load can take a minute)`);return;}
   if(bad.length&&!got.length){setLive('err',ERR[bad[0]]);return;}
   const t=got.length?Math.min(...got.map(k=>STAMP[k]||RAW[k].fetchedAt||Date.now())):Date.now();
@@ -410,7 +426,7 @@ function updateLive(){
 async function fetchJSON(url){const r=await fetch(url,{cache:'no-store'});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||('HTTP '+r.status));return j;}
 const STAMP={};  // when the server last read each view from SAP (also when nothing changed)
 function load(force,auto){
-  const jobs=[['pr','/api/pr',prepPR],['issue','/api/issue',prepIssue],['po','/api/po',prepPO],['stock','/api/stock',()=>null],['purchase','/api/purchase',prepPurchase],['invoice','/api/invoice',prepInvoice],['ageing','/api/ageing',prepAgeing]];
+  const jobs=[['pr','/api/pr',prepPR],['issue','/api/issue',prepIssue],['po','/api/po',prepPO],['stock','/api/stock',()=>null],['purchase','/api/purchase',prepPurchase],['invoice','/api/invoice',prepInvoice],['ageing','/api/ageing',prepAgeing],['asset','/api/asset',prepAsset]];
   // the first load and the Refresh button show "Loading..."; the 30-second checks draw only when a view has changed
   if(!auto){LOADING=jobs.length;updateLive();}
   let left=jobs.length,changed=0;
@@ -431,7 +447,7 @@ function load(force,auto){
 }
 
 /* ---------- the other pages, one under the other (menu order): Store Issue, Store Stock, Pending PR, ... ---------- */
-const STACK=[['issue','Store Issue','/issue'],['stock','Store Stock','/stock'],['pr','Pending PR','/'],['po','Pending Purchase Orders','/po'],['approval','PO Approval Pending','/po-approval'],['invoice','Pending Invoice Entry','/invoice'],['purchase','Purchase','/purchase'],['price','Price Variance','/price'],['ageing','Payment Ageing','/ageing']];
+const STACK=[['issue','Store Issue','/issue'],['asset','Capital Issue','/asset'],['stock','Store Stock','/stock'],['pr','Pending PR','/'],['po','Pending Purchase Orders','/po'],['approval','PO Approval Pending','/po-approval'],['invoice','Pending Invoice Entry','/invoice'],['purchase','Purchase','/purchase'],['price','Price Variance','/price'],['ageing','Payment Ageing','/ageing']];
 // inside the stack a page has no header, menu, footer or back-to-top button of its own, and its long lists have a fixed height (a page that is as tall as its content must not use vh)
 const EMBED_CSS='.stick,.footer,.totop{display:none!important}.tscroll{max-height:640px!important}html,body{background:transparent!important}';
 const SECS={};
@@ -484,7 +500,7 @@ function stackInit(){
     el.querySelector('.pgbar .in').addEventListener('click',e=>{if(e.target.closest('a'))return;setPg(id,el.classList.contains('folded'));});
   }
   // the menu of the Summary jumps to the page in the stack
-  const map={'/issue':'issue','/stock':'stock','/':'pr','/po':'po','/po-approval':'approval','/invoice':'invoice','/purchase':'purchase','/price':'price','/ageing':'ageing','/summary':'top'};
+  const map={'/issue':'issue','/stock':'stock','/':'pr','/po':'po','/po-approval':'approval','/invoice':'invoice','/purchase':'purchase','/price':'price','/ageing':'ageing','/asset':'asset','/summary':'top'};
   const tabs=[...document.querySelectorAll('.nav a')];
   for(const a of tabs){const id=map[a.getAttribute('href')];if(!id)continue;a.dataset.sec=id;a.addEventListener('click',e=>{e.preventDefault();goSec(id);});}
   // the tab of the page that is in view is lit

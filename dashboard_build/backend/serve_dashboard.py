@@ -29,9 +29,9 @@ import webbrowser
 from concurrent.futures import ThreadPoolExecutor
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from pr_data import (AGEING_FIELDS, AGEING_FILTER, CONSUME_FIELDS, CONSUME_MVTS, FIELDS, INVOICE_FIELDS, INVOICE_FILTER, ISSUE_DATE_FILTER, ISSUE_FIELDS, ISSUE_FILTER, PURCHASE_FIELDS, PURCHASE_FILTER, PO_DATE_FILTER, PO_FIELDS, PO_STATUS_FIELDS, STOCK_FIELDS, STOCK_ORDER,
+from pr_data import (AGEING_FIELDS, AGEING_FILTER, ASSET_FIELDS, ASSET_FILTER, CONSUME_FIELDS, CONSUME_MVTS, FIELDS, INVOICE_FIELDS, INVOICE_FILTER, ISSUE_DATE_FILTER, ISSUE_FIELDS, ISSUE_FILTER, PURCHASE_FIELDS, PURCHASE_FILTER, PO_DATE_FILTER, PO_FIELDS, PO_STATUS_FIELDS, STOCK_FIELDS, STOCK_ORDER,
                      MG_NAMES, PG_NAMES, USER_NAMES,
-                     ageing_compact, consume_fold, invoice_compact, issue_compact, po_compact, purchase_compact, stock_compact, to_compact)
+                     ageing_compact, asset_compact, consume_fold, invoice_compact, issue_compact, po_compact, purchase_compact, stock_compact, to_compact)
 
 HERE = os.path.dirname(os.path.abspath(__file__))  # backend/
 FRONTEND = os.path.join(os.path.dirname(HERE), 'frontend')  # the pages and the logo
@@ -44,6 +44,7 @@ SUMMARY_TPL = os.path.join(FRONTEND, 'summary_template.html')
 PURCHASE_TPL = os.path.join(FRONTEND, 'purchase_template.html')
 INVOICE_TPL = os.path.join(FRONTEND, 'invoice_template.html')
 AGEING_TPL = os.path.join(FRONTEND, 'ageing_template.html')
+ASSET_TPL = os.path.join(FRONTEND, 'asset_template.html')
 PRICE_TPL = os.path.join(FRONTEND, 'price_template.html')
 PO_APPROVAL_TPL = os.path.join(FRONTEND, 'po_approval_template.html')
 LOGO = os.path.join(FRONTEND, 'logo.png')
@@ -59,6 +60,7 @@ PO_STATUS_BASE = 'https://my413077-api.s4hana.cloud.sap/sap/opu/odata/sap/YY1_PO
 STOCK_BASE = 'https://my413077-api.s4hana.cloud.sap/sap/opu/odata/sap/YY1_STORE_STOCK_CDS'
 INVOICE_BASE = 'https://my413077-api.s4hana.cloud.sap/sap/opu/odata/sap/YY1_STORE_INVOICE_VL06_CDS'
 AGEING_BASE = 'https://my413077-api.s4hana.cloud.sap/sap/opu/odata/sap/YY1_STORE_VENDOR_AGEING_CDS'
+ASSET_BASE = 'https://my413077-api.s4hana.cloud.sap/sap/opu/odata/sap/YY1_STORE_ASSET_TR_CDS'
 # the view has a parameter (display currency); the result set is read through it
 STOCK_ENTITY = "YY1_Store_Stock(P_DisplayCurrency='INR')/Results"
 PR_QUERY = {'$select': ','.join(FIELDS), '$orderby': 'PurchaseRequisition,PurchaseRequisitionItem'}
@@ -81,6 +83,11 @@ INVOICE_QUERY = [{'$select': ','.join(INVOICE_FIELDS), '$filter': INVOICE_FILTER
 _AGE_ORDER = 'CompanyCode,AccountingDocument,FiscalYear,AccountingDocumentItem'
 AGEING_QUERY = [{'$select': ','.join(AGEING_FIELDS), '$filter': AGEING_FILTER, '$orderby': _AGE_ORDER},
                 {'$select': ','.join(AGEING_FIELDS), '$orderby': _AGE_ORDER}]
+# asset transactions: about 3,000 lines since June 2024 (the key of the lines is the sort, so the pages do not skip or repeat rows); if SAP refuses the filter all rows are read
+# (about 46,000, mostly depreciation) and asset_compact keeps the transactions
+_AST_ORDER = 'CompanyCode,FiscalYear,AccountingDocument,LedgerGLLineItem'
+ASSET_QUERY = [{'$select': ','.join(ASSET_FIELDS), '$filter': ASSET_FILTER, '$orderby': _AST_ORDER},
+               {'$select': ','.join(ASSET_FIELDS), '$orderby': _AST_ORDER}]
 # goods issues (stock out) since 1 Jan 2026, read together with the stock to find the last use of each material
 CONSUME_QUERY = {'$select': ','.join(CONSUME_FIELDS), '$orderby': _ORDER,
                  '$filter': ISSUE_DATE_FILTER + " and DebitCreditCode eq 'H' and (" + ' or '.join(f"GoodsMovementType_1 eq '{m}'" for m in CONSUME_MVTS) + ')'}
@@ -500,7 +507,7 @@ def stock_view(rows, asof_day, *extra):
     return stock_compact(rows, asof_day, load_stock_locations(), extra[0].state if extra else None)
 
 
-PAGES = {'/': TPL, '/index.html': TPL, '/issue': ISSUE_TPL, '/po': PO_TPL, '/po-approval': PO_APPROVAL_TPL, '/stock': STOCK_TPL, '/summary': SUMMARY_TPL, '/purchase': PURCHASE_TPL, '/invoice': INVOICE_TPL, '/price': PRICE_TPL, '/ageing': AGEING_TPL}
+PAGES = {'/': TPL, '/index.html': TPL, '/issue': ISSUE_TPL, '/po': PO_TPL, '/po-approval': PO_APPROVAL_TPL, '/stock': STOCK_TPL, '/summary': SUMMARY_TPL, '/purchase': PURCHASE_TPL, '/invoice': INVOICE_TPL, '/price': PRICE_TPL, '/ageing': AGEING_TPL, '/asset': ASSET_TPL}
 # User ID -> full name, put into the page like the data (no '<' in names, so it is safe inside a script tag).
 USERS_JSON = json.dumps(USER_NAMES, ensure_ascii=False, separators=(',', ':'))
 PGS_JSON = json.dumps(PG_NAMES, ensure_ascii=False, separators=(',', ':'))
@@ -628,7 +635,9 @@ def main():
     invoice = Sap(INVOICE_BASE, 'YY1_STORE_INVOICE_VL06', INVOICE_QUERY, invoice_compact, user, password, args.ttl, min_refresh=MIN_REFRESH)
     # Payment ageing: about 25,000 open vendor items.
     ageing = Sap(AGEING_BASE, 'YY1_STORE_VENDOR_AGEING', AGEING_QUERY, ageing_view, user, password, args.ttl, min_refresh=MIN_REFRESH)
-    apis = {'/api/pr': sap, '/api/issue': issue, '/api/po': po, '/api/stock': stock, '/api/purchase': purchase, '/api/invoice': invoice, '/api/ageing': ageing}
+    # Asset transactions (acquisitions, retirements, transfers): about 3,000 lines that change a few times a day.
+    asset = Sap(ASSET_BASE, 'YY1_STORE_ASSET_TR', ASSET_QUERY, asset_compact, user, password, args.ttl, min_refresh=MIN_REFRESH)
+    apis = {'/api/pr': sap, '/api/issue': issue, '/api/po': po, '/api/stock': stock, '/api/purchase': purchase, '/api/invoice': invoice, '/api/ageing': ageing, '/api/asset': asset}
     del password
 
     if CLOUD:
@@ -649,7 +658,7 @@ def main():
         typed = None
         # Warm the big issue and PO data in the background (one after the other) so those pages open quickly.
         def warm():
-            for view in (issue, po, stock, ageing):
+            for view in (issue, po, stock, ageing, asset):
                 try:
                     view.payload()
                 except SapError as e:

@@ -44,7 +44,7 @@ def show(title, items, limit=12):
 
 print(f'Checking {BASE}')
 # ---- pages and APIs answer, placeholders are filled
-for p in ('/', '/summary', '/issue', '/po', '/po-approval', '/purchase', '/invoice', '/price', '/ageing', '/stock', '/pricevar.js', '/live.js'):
+for p in ('/', '/summary', '/issue', '/po', '/po-approval', '/purchase', '/invoice', '/price', '/ageing', '/asset', '/stock', '/pricevar.js', '/live.js'):
     try:
         html, dt, h = get(p, False)
         left = [x for x in ('__USERS__', '__PGS__', '__MGS__') if x in html]
@@ -56,7 +56,7 @@ for p in ('/', '/summary', '/issue', '/po', '/po-approval', '/purchase', '/invoi
         fails.append(p)
         print(f'page {p:14} FAILED: {e}')
 D = {}
-for k, p in (('pr', '/api/pr'), ('issue', '/api/issue'), ('po', '/api/po'), ('stock', '/api/stock'), ('purchase', '/api/purchase'), ('invoice', '/api/invoice'), ('ageing', '/api/ageing'), ('ap', '/api/po-approvers')):
+for k, p in (('pr', '/api/pr'), ('issue', '/api/issue'), ('po', '/api/po'), ('stock', '/api/stock'), ('purchase', '/api/purchase'), ('invoice', '/api/invoice'), ('ageing', '/api/ageing'), ('asset', '/api/asset'), ('ap', '/api/po-approvers')):
     try:
         D[k], dt, h = get(p)
         print(f'api  {p:18} ok  ({dt:.1f} s)' + (f'  rows {len(D[k]["rows"]):,}' if 'rows' in D[k] else ''))

@@ -122,11 +122,6 @@ tr.sel td{background:rgba(28,173,228,.12)!important}
 .lpp.zero{color:var(--muted);background:rgba(128,128,128,.14)}
 .lpbar{display:flex;height:6px;border-radius:99px;overflow:hidden;margin-top:9px;background:var(--grid)}
 .lpbar i.l{background:var(--crit)}.lpbar i.p{background:var(--good)}
-.kpc{margin-top:12px}
-.kp{margin:8px 0 0;padding:0;list-style:none;display:grid;gap:9px}
-.kp li{display:flex;gap:10px;align-items:flex-start;font-size:13.5px;line-height:1.5}
-.kp li::before{content:"";flex:none;width:8px;height:8px;margin-top:7px;border-radius:50%;background:var(--brand)}
-.kp li.l::before{background:var(--crit)}.kp li.p::before{background:var(--good)}
 .jump{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 0}
 .jump a{font-size:.78rem;font-weight:600;color:var(--brand-dark);text-decoration:none;border:1px solid var(--brand);border-radius:999px;padding:4px 12px;background:var(--surface)}
 .jump a:hover{background:rgba(28,173,228,.12)}
@@ -163,7 +158,7 @@ tr.tlrow>td{padding:4px 6px 14px!important;background:transparent!important}
     <div class="seg" id="themeSeg" role="group" aria-label="Colour mode"><button type="button" data-th="light" title="Normal (light) mode">Normal</button><button type="button" data-th="dark" title="Dark mode">Dark</button></div>
   </div>
 </header>
-<nav class="nav"><a href="/summary">Summary</a><a href="/issue">Store Issue</a><a href="/stock">Store Stock</a><a href="/">Pending PR</a><a href="/po">Pending Purchase Orders</a><a href="/po-approval">PO Approval Pending</a><a href="/invoice">Pending Invoice Entry</a><a href="/purchase">Purchase</a><a href="/price" class="on">Price Variance</a><a href="/ageing">Payment Ageing</a></nav></div>
+<nav class="nav"><a href="/summary">Summary</a><a href="/issue">Store Issue</a><a href="/asset">Capital Issue</a><a href="/stock">Store Stock</a><a href="/">Pending PR</a><a href="/po">Pending Purchase Orders</a><a href="/po-approval">PO Approval Pending</a><a href="/invoice">Pending Invoice Entry</a><a href="/purchase">Purchase</a><a href="/price" class="on">Price Variance</a><a href="/ageing">Payment Ageing</a></nav></div>
 <div class="wrap">
   <section class="gtabs" id="gtabs" aria-label="RM, Store, Packing"><div class="tile sk"></div><div class="tile sk"></div><div class="tile sk"></div><div class="tile sk"></div></section>
   <p class="hint" id="exNote" style="margin:8px 2px 4px"></p>
@@ -171,21 +166,13 @@ tr.tlrow>td{padding:4px 6px 14px!important;background:transparent!important}
   <section class="bar" aria-label="Filters">
     <label class="fld"><span>Plant</span><select id="plantSel"></select></label>
     <label class="fld"><span>Material type</span><select id="mtSel"></select></label>
-    <label class="fld"><span>Compare the purchases with</span><select id="basisSel"><option value="first">the first PO of the period</option><option value="prev">the PO before the latest</option></select></label>
-    <label class="fld"><span>Change of at least</span><select id="minSel"><option value="0.5">0.5 %</option><option value="1" selected>1 %</option><option value="2">2 %</option><option value="5">5 %</option><option value="10">10 %</option><option value="25">25 %</option></select></label>
     <label class="fld"><span>PO date from</span><input id="dFrom" type="date"></label>
     <label class="fld"><span>To</span><input id="dTo" type="date"></label>
-    <label class="fld"><span>Doubtful changes</span><select id="doubtSel"><option value="hide">Hide</option><option value="show">Show with the rest</option><option value="only">Only the doubtful</option></select></label>
-    <label class="fld"><span>Sort the two lists by</span><select id="sortSel"><option value="impact">Loss / profit (₹)</option><option value="pct">Change %</option><option value="recent">Latest PO date</option><option value="name">Material name</option></select></label>
     <label class="fld grow"><span>Search</span><input id="q" type="search" placeholder="Material number or name, supplier"></label>
   </section>
   <div class="chips" id="chips"></div>
   <section class="kpis" id="kpis"><div class="tile sk"></div><div class="tile sk"></div><div class="tile sk"></div><div class="tile sk"></div><div class="tile sk"></div><div class="tile sk"></div><div class="tile sk"></div></section>
 
-  <section class="card kpc" id="kpCard">
-    <h2>Key points</h2>
-    <ul class="kp" id="kp"></ul>
-  </section>
   <nav class="jump" aria-label="Go to a section"><a href="#sec-charts">Graphs</a><a href="#sec-lists">Rising and falling</a><a href="#sec-top">Biggest losses and profits</a><a href="#sec-grp">By material group</a><a href="#sec-moves">Every price change</a><a href="#sec-months">Month by month</a></nav>
 
   <section class="card topcard" id="tileCard" hidden>
@@ -259,7 +246,7 @@ tr.tlrow>td{padding:4px 6px 14px!important;background:transparent!important}
     <p class="hint">Click a month to filter the whole page to the PO dates of that month.</p>
     <div class="tbox" id="byMonth"></div>
   </section>
-  <details class="notebox"><summary>Notes about these figures</summary><p class="note">The rate of a material is the net value of its purchase order lines in rupees divided by the order quantity (the PO currency converted at the exchange rate of the PO), so it is the price per unit agreed on that PO date. One material and unit has one rate per PO date: lines of the same date are averaged by quantity, and a line worth less than 10% of the biggest line of that day (a free-of-charge item) is left out. The page shows the materials with at least two PO dates. <b>Profit and loss</b>: the reference rate is the rate of the first PO date of the period (or of the PO date before the latest, if you compare with that). Every later purchase is compared with it: (rate of that PO date − reference rate) × the quantity bought on that date. Above the reference rate is a <b>loss</b> (we paid more), below it a <b>profit</b> (we paid less); net = loss − profit. Nothing is sold on this page, so it is the purchase price variance and not a margin. <b>Current rate</b> is the rate of the latest PO date; <b>was</b> is the reference rate. In the table <b>Every price change</b> each change from one PO date to the next of at least the chosen % is one line, with the rate before (and its date), the rate after, the change, and the loss or profit against the PO before ((new rate − old rate) × the quantity of the later PO date). A click on a material opens its graph and the table of every PO date right under it in the list (any number at once; click again or Close to shut one). <b>Doubtful</b> changes are hidden by default: a change of more than +300% or below −75% (usually another item or another unit under the same material number, or a wrong PO price) and a change where the PO item text of the two dates has nothing in common (another size or make); the filter Doubtful changes shows them. <b>Supplier changed</b> means the first and the latest PO went to different suppliers, so a part of the change is the supplier and not the market. For import POs (USD, EUR ...) the rupee rate moves with the exchange rate of the PO as well; the currency pill shows them and the material card shows the rate in that currency. <b>RM, Store, Packing and Others</b>: every PO line goes to the first group that fits, in this order. RM = the lines of materials of material type ZRMA (raw materials), wherever they are delivered. Packing = the FG material: material types ZFGS (finished goods), ZTRG (trading goods) and HAWA, wherever delivered, and any other line delivered to the packing / FG locations GS02 (plant 1030), GS03 (1050) and MDFG (1040). Store = the store material types ZCON (consumables), ZHMI (tools), ZSPR (spares), ZSRM and ZVRP (packaging material), wherever they are delivered (many have no storage location on the PO line), and every other line delivered to one of the store locations of your list (the plant and the storage location of the PO line are in <code>backend/data/stock_locations.csv</code>, 221 locations). Others = every other line (the semi-finished job-work ZSFG, processed scrap). Each group is compared with its own lines, so a material bought in two groups appears in both. Not counted: stock transport orders (ZSTO, no purchase price), items without a material number, lines with zero or negative quantity or value, and the PO lines delivered to the storage locations PS01 to PS06, NPD1 and DROS (dross) of any plant. Only POs created from 1 Jan 2026 are in the data, so the first rate is the first 2026 PO. The data is read from SAP again every 30 seconds while this page is open.</p></details>
+  <details class="notebox"><summary>Notes about these figures</summary><p class="note">The rate of a material is the net value of its purchase order lines in rupees divided by the order quantity (the PO currency converted at the exchange rate of the PO), so it is the price per unit agreed on that PO date. One material and unit has one rate per PO date: lines of the same date are averaged by quantity, and a line worth less than 10% of the biggest line of that day (a free-of-charge item) is left out. The page shows the materials with at least two PO dates. <b>Profit and loss</b>: the reference rate is the rate of the first PO date of the period. Every later purchase is compared with it: (rate of that PO date − reference rate) × the quantity bought on that date. Above the reference rate is a <b>loss</b> (we paid more), below it a <b>profit</b> (we paid less); net = loss − profit. Nothing is sold on this page, so it is the purchase price variance and not a margin. <b>Current rate</b> is the rate of the latest PO date; <b>was</b> is the reference rate. In the table <b>Every price change</b> each change from one PO date to the next of at least 1 % is one line, with the rate before (and its date), the rate after, the change, and the loss or profit against the PO before ((new rate − old rate) × the quantity of the later PO date). A click on a material opens its graph and the table of every PO date right under it in the list (any number at once; click again or Close to shut one). <b>Doubtful</b> changes are hidden by default: a change of more than +300% or below −75% (usually another item or another unit under the same material number, or a wrong PO price) and a change where the PO item text of the two dates has nothing in common (another size or make); the tile Doubtful changes shows them. <b>Supplier changed</b> means the first and the latest PO went to different suppliers, so a part of the change is the supplier and not the market. For import POs (USD, EUR ...) the rupee rate moves with the exchange rate of the PO as well; the currency pill shows them and the material card shows the rate in that currency. <b>RM, Store, Packing and Others</b>: every PO line goes to the first group that fits, in this order. RM = the lines of materials of material type ZRMA (raw materials), wherever they are delivered. Packing = the FG material: material types ZFGS (finished goods), ZTRG (trading goods) and HAWA, wherever delivered, and any other line delivered to the packing / FG locations GS02 (plant 1030), GS03 (1050) and MDFG (1040). Store = the store material types ZCON (consumables), ZHMI (tools), ZSPR (spares), ZSRM and ZVRP (packaging material), wherever they are delivered (many have no storage location on the PO line), and every other line delivered to one of the store locations of your list (the plant and the storage location of the PO line are in <code>backend/data/stock_locations.csv</code>, 221 locations). Others = every other line (the semi-finished job-work ZSFG, processed scrap). Each group is compared with its own lines, so a material bought in two groups appears in both. Not counted: stock transport orders (ZSTO, no purchase price), items without a material number, lines with zero or negative quantity or value, and the PO lines delivered to the storage locations PS01 to PS06, NPD1 and DROS (dross) of any plant. Only POs created from 1 Jan 2026 are in the data, so the first rate is the first 2026 PO. The data is read from SAP again every 30 seconds while this page is open.</p></details>
 </div>
 <footer class="footer">Mittal Group · Price Variance · Source: SAP S/4HANA Cloud, YY1_PO_ITEM_SUPPLIER_CDS</footer>
 
@@ -291,7 +278,8 @@ const iso=d=>new Date(d*864e5).toISOString().slice(0,10);
 const lp=v=>Math.abs(v)<0.5?'<span class="lpp zero">–</span>':v>0?`<span class="lpp loss">loss ${fmtINR(v)}</span>`:`<span class="lpp profit">profit ${fmtINR(-v)}</span>`;
 
 let D=null,CALC=null;
-const S={plant:'',mtype:'',grp:'',basis:'first',min:1,from:null,to:null,doubt:'hide',sort:'impact',q:'',tile:null,open:new Set(),mv:'all',all:{up:false,down:false,moves:false},reveal:null};
+// basis, min, doubt and sort have no filter box any more (26-Oct-2026): the first PO of the period, a change of at least 1 %, doubtful changes hidden, the two lists sorted by loss / profit
+const S={gopen:new Set(),plant:'',mtype:'',grp:'',basis:'first',min:1,from:null,to:null,doubt:'hide',sort:'impact',q:'',tile:null,open:new Set(),mv:'all',all:{up:false,down:false,moves:false},reveal:null};
 
 // ---------------------------------------------------------------- the figures (frontend/pricevar.js), again whenever a filter that changes them changes
 let CMP=null;
@@ -441,13 +429,20 @@ function groupAgg(list){
   for(const r of list){let x=m.get(r.grp);if(!x)m.set(r.grp,x={n:0,loss:0,profit:0,ps:0});x.n++;x.loss+=r.loss;x.profit+=r.profit;x.ps+=r.pct;}
   return m;
 }
-function groupTable(list,kind){
+function groupTable(list,kind,place){
   const net=x=>x.loss-x.profit;
   const rows=[...groupAgg(list).entries()].sort((a,b)=>kind==='up'?net(b[1])-net(a[1]):kind==='down'?net(a[1])-net(b[1]):Math.abs(net(b[1]))-Math.abs(net(a[1])));
   if(!rows.length)return '<div class="empty">Nothing matches the filters.</div>';
   const T=PRICEVAR.totals(list);
+  const order=kind==='up'?(a,b)=>b.impact-a.impact:kind==='down'?(a,b)=>a.impact-b.impact:(a,b)=>Math.abs(b.impact)-Math.abs(a.impact);
+  // a group row opens right here: every material of the group with its price moves, graph and PO dates (a click on a material opens it, as in the lists)
   return `<table><thead><tr><th>Material group</th><th class="num">Materials</th><th class="num">Average change</th><th class="num">Loss</th><th class="num">Profit</th><th class="num">Net</th></tr></thead><tbody>`+
-    rows.map(([g,x])=>`<tr><td>${esc(mgName(g))}</td><td class="num">${fmtN(x.n)}</td><td class="num nw ${x.ps>=0?'up':'dn'}">${sgnPct(x.ps/x.n)}</td><td class="num nw up">${fmtINR(x.loss)}</td><td class="num nw dn">${fmtINR(x.profit)}</td><td class="num nw"><b>${lp(net(x))}</b></td></tr>`).join('')+
+    rows.map(([g,x])=>{
+      const key=place+'|'+g,open=S.gopen.has(key);
+      let sub='';
+      if(open){const gl=list.filter(r=>r.grp===g).sort(order);sub=`<tr class="tlrow subrow"><td colspan="6">${listTable(gl,'No material in this group.',gl,'g|'+key)}</td></tr>`;}
+      return `<tr class="${open?'sel':''}"><td><button type="button" class="lnk" data-gopen="${esc(key)}" aria-expanded="${open}" title="Click to see every material of this group with its details">${open?'▾':'▸'} ${esc(mgName(g))}</button></td><td class="num">${fmtN(x.n)}</td><td class="num nw ${x.ps>=0?'up':'dn'}">${sgnPct(x.ps/x.n)}</td><td class="num nw up">${fmtINR(x.loss)}</td><td class="num nw dn">${fmtINR(x.profit)}</td><td class="num nw"><b>${lp(net(x))}</b></td></tr>`+sub;
+    }).join('')+
     `</tbody><tfoot><tr><td>Total (${fmtN(rows.length)} groups)</td><td class="num">${fmtN(list.length)}</td><td></td><td class="num nw">${fmtINR(T.loss)}</td><td class="num nw">${fmtINR(T.profit)}</td><td class="num nw">${lp(T.net)}</td></tr></tfoot></table>`;
 }
 function renderTile(mats,ups,downs){
@@ -457,9 +452,9 @@ function renderTile(mats,ups,downs){
   let html='';
   if(k==='loss')html=listTable(mats.filter(r=>r.impact>0.5).sort((a,b)=>b.impact-a.impact).slice(0,TOP),'No material with a loss for the filters.',null,'tile');
   else if(k==='profit')html=listTable(mats.filter(r=>r.impact<-0.5).sort((a,b)=>a.impact-b.impact).slice(0,TOP),'No material with a profit for the filters.',null,'tile');
-  else if(k==='net')html=groupTable(mats,'net');
-  else if(k==='up')html=groupTable(ups,'up');
-  else if(k==='down')html=groupTable(downs,'down');
+  else if(k==='net')html=groupTable(mats,'net','gtnet');
+  else if(k==='up')html=groupTable(ups,'up','gtup');
+  else if(k==='down')html=groupTable(downs,'down','gtdown');
   else if(k==='doubt'){const l=CALC.mats.filter(r=>r.doubt&&(r.pct>=S.min||r.pct<=-S.min)&&(!S.q||hay(r).includes(S.q))).sort((a,b)=>Math.abs(b.pct)-Math.abs(a.pct));html=listTable(l.slice(0,100),'No doubtful change.',l,'tile');}
   else if(k==='comp'){
     const m=new Map();
@@ -494,7 +489,6 @@ function render(){
   if(S.grp)c.push(['grp',GRP_TXT[S.grp]]);
   if(S.mtype)c.push(['mtype','Material type: '+mtName(S.mtype)]);
   if(S.from!==null||S.to!==null)c.push(['date','PO date '+(S.from!==null?fmtDay(S.from):'start')+' – '+(S.to!==null?fmtDay(S.to):'today')]);
-  if(S.doubt!=='hide')c.push(['doubt',S.doubt==='show'?'Doubtful changes shown':'Only the doubtful changes']);
   if(S.q)c.push(['q','Search: '+S.q]);
   $('chips').innerHTML=c.map(x=>`<button type="button" class="chip" data-clr="${x[0]}">${esc(x[1])} ×</button>`).join('')+(c.length?'<button type="button" class="chip" data-clr="all">Reset filters</button>':'');
   {
@@ -503,19 +497,6 @@ function render(){
     const defs=[['','All materials',CMP.ALL],['RM',GRP_BTN.RM,CMP.RM],['STORE',GRP_BTN.STORE,CMP.STORE],['PACKING',GRP_BTN.PACKING,CMP.PACKING],...(showOther?[['OTHER',GRP_BTN.OTHER,CMP.OTHER]]:[])];
     $('gtabs').innerHTML=defs.map(([g,label,cm])=>{const ms=pick(cm.mats),u=pick(cm.ups).length,d=pick(cm.downs).length,tt=PRICEVAR.totals(ms);
       return `<button type="button" class="tile tilebtn gt" data-grp="${g}" aria-pressed="${S.grp===g}" title="${esc(GRP_TIP[g])}"><div class="gtn">${esc(label)}</div><div class="gtv">${fmtN(ms.length)} materials · <span class="up">▲ ${fmtN(u)}</span> <span class="dn">▼ ${fmtN(d)}</span></div><div class="gtp">${lp(tt.net)}</div><div class="gts sm">loss ${fmtINR(tt.loss)} · profit ${fmtINR(tt.profit)}</div></button>`;}).join('');
-  }
-  {
-    // the key points, in plain words
-    const lossS=mats.filter(r=>r.impact>0.5).sort((a,b)=>b.impact-a.impact),profS=mats.filter(r=>r.impact<-0.5).sort((a,b)=>a.impact-b.impact);
-    const mmK=monthAgg(mats),msK=[...mmK.entries()].map(([k,x])=>({k,net:x.loss-x.profit})).sort((a,b)=>b.net-a.net);
-    const nm=r=>`<b>${esc(r.text||r.mat)}</b>`,li=(c,h)=>`<li class="${c}"><span>${h}</span></li>`,pts=[];
-    pts.push(li(T.net>0.5?'l':T.net<-0.5?'p':'',`<b>${esc(S.grp?GRP_TXT[S.grp]:'All materials')}:</b> net ${T.net>=0?'loss':'profit'} <b>${fmtINR(Math.abs(T.net))}</b>. On some materials the purchases cost ${fmtINR(T.loss)} more than at the reference rate, on others ${fmtINR(T.profit)} less.`));
-    if(lossS.length){const r=lossS[0],top5=lossS.slice(0,5).reduce((s,x)=>s+x.impact,0);pts.push(li('l',`Biggest loss: ${nm(r)}, ${fmtINR(r.impact)} (${T.loss>0?(r.impact/T.loss*100).toFixed(0):0}% of all the loss), rate ${fmtRate(r.ref.rate)} → ${fmtRate(r.last.rate)}. The 5 biggest losses together: ${fmtINR(top5)}.`));}
-    if(profS.length){const r=profS[0];pts.push(li('p',`Biggest profit: ${nm(r)}, ${fmtINR(-r.impact)}, rate ${fmtRate(r.ref.rate)} → ${fmtRate(r.last.rate)}.`));}
-    if(msK.length>1){const w=msK[0],b=msK[msK.length-1];pts.push(li(w.net>0?'l':'p',`Worst month: <b>${mName(w.k)}</b> (net ${w.net>=0?'loss':'profit'} ${fmtINR(Math.abs(w.net))}); best month: <b>${mName(b.k)}</b> (net ${b.net>=0?'loss':'profit'} ${fmtINR(Math.abs(b.net))}).`));}
-    const upS=ups.slice().sort((a,b)=>b.pct-a.pct)[0],dnS=downs.slice().sort((a,b)=>a.pct-b.pct)[0];
-    pts.push(li('',`The rate rose on <b class="up">${fmtN(ups.length)}</b> materials and fell on <b class="dn">${fmtN(downs.length)}</b> (change of ${S.min}% or more)${upS?`; the sharpest rise is ${nm(upS)} ${sgnPct(upS.pct)}`:''}${dnS?`, the sharpest fall ${nm(dnS)} ${sgnPct(dnS.pct)}`:''}.`));
-    $('kp').innerHTML=mats.length?pts.join(''):'<li><span>No material for these filters.</span></li>';
   }
   $('exNote').textContent=CMP.RM.excluded?`Left out of everything on this page: ${fmtN(CMP.RM.excluded)} PO lines delivered to the storage locations PS01 to PS06, NPD1 and DROS (dross), of any plant (production and job-work stores, not purchases for stock).`:'';
   renderTile(mats,ups,downs);
@@ -546,7 +527,7 @@ function render(){
   $('panProfit').innerHTML=panelsFor('profit',profL);
   const ga=[...groupAgg(mats).entries()].sort((a,b)=>Math.abs(b[1].loss-b[1].profit)-Math.abs(a[1].loss-a[1].profit));
   $('chartGrp').innerHTML=hbars(ga.slice(0,12).map(([g,x])=>({label:mgName(g),value:Math.abs(x.loss-x.profit),cls:x.loss-x.profit>=0?'bl':'bg',tip:`${mgName(g)}: loss ${fmtINR(x.loss)}, profit ${fmtINR(x.profit)}, net ${x.loss-x.profit>=0?'loss':'profit'} ${fmtINR(Math.abs(x.loss-x.profit))} · ${x.n} materials`})),fmtINR,1150,300);
-  $('byGrp').innerHTML=groupTable(mats,'net');
+  $('byGrp').innerHTML=groupTable(mats,'net','gby');
   // every price change
   const all=[];for(const r of mats)for(const mv of r.moves)all.push(mv);
   const mvs=all.filter(m=>S.mv==='all'||(S.mv==='up'?m.pct>0:m.pct<0)).sort((a,b)=>b.day-a.day||Math.abs(b.amt)-Math.abs(a.amt));
@@ -567,6 +548,8 @@ function render(){
 document.addEventListener('click',e=>{
   const cl=e.target.closest('[data-closectx]');
   if(cl){S.open.delete(cl.dataset.closectx);render();return;}
+  const go=e.target.closest('[data-gopen]');
+  if(go){const k=go.dataset.gopen;if(S.gopen.has(k))S.gopen.delete(k);else S.gopen.add(k);render();return;}
   const mt=e.target.closest('[data-mat]');
   if(mt){const c=mt.dataset.ctx;if(S.open.has(c))S.open.delete(c);else S.open.add(c);render();if(S.open.has(c)){const el=document.getElementById(panId(c));if(el)el.scrollIntoView({behavior:'smooth',block:'nearest'});}return;}
   const t=e.target.closest('button');if(!t)return;
@@ -580,19 +563,14 @@ document.addEventListener('click',e=>{
     if(c==='grp'||c==='all'){S.grp='';fillMt();}
     if(c==='mtype'||c==='all'){S.mtype='';$('mtSel').value='';}
     if(c==='date'||c==='all'){S.from=S.to=null;$('dFrom').value=$('dTo').value='';}
-    if(c==='doubt'||c==='all'){S.doubt='hide';$('doubtSel').value='hide';}
     if(c==='q'||c==='all'){S.q='';$('q').value='';}
     calc();render();}
 });
 $('plantSel').addEventListener('change',e=>{S.plant=e.target.value;calc();render();});
 $('mtSel').addEventListener('change',e=>{S.mtype=e.target.value;calc();render();});
 function setGrp(g){S.grp=g;S.open.clear();fillMt();calc();render();}
-$('basisSel').addEventListener('change',e=>{S.basis=e.target.value;calc();render();});
-$('minSel').addEventListener('change',e=>{S.min=+e.target.value;calc();render();});
 $('dFrom').addEventListener('change',e=>{S.from=dayOf(e.target.value);calc();render();});
 $('dTo').addEventListener('change',e=>{S.to=dayOf(e.target.value);calc();render();});
-$('doubtSel').addEventListener('change',e=>{S.doubt=e.target.value;render();});
-$('sortSel').addEventListener('change',e=>{S.sort=e.target.value;render();});
 let qT;$('q').addEventListener('input',e=>{clearTimeout(qT);qT=setTimeout(()=>{S.q=e.target.value.trim().toLowerCase();render();},200);});
 
 const root=document.documentElement;
