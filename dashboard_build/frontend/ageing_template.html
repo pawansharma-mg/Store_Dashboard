@@ -93,6 +93,19 @@ tbody tr:hover td{background:rgba(28,173,228,.07)}
 .plist .card-in{overflow-x:hidden}
 .give .amt{color:var(--crit)}
 .get .amt{color:var(--good)}
+/* a party opened under its row (the same way as a material on the Price Variance page): the items and the materials appear right there */
+.sm{font-size:.72rem;color:var(--muted);font-weight:400}
+tr.tlrow>td{padding:4px 6px 14px!important;background:transparent!important}
+.mp{border:1px solid var(--brand);border-left-width:4px;border-radius:10px;background:rgba(28,173,228,.06);padding:10px 12px;margin:8px 0;scroll-margin-top:150px;white-space:normal;font-weight:400}
+.mph{display:flex;flex-wrap:wrap;align-items:center;gap:8px}.mph b{font-size:.95rem}.mph .btn{margin-left:auto;height:28px}
+/* the panel is as wide as the visible list (it does not stretch the list table, and it stays in view when the list is scrolled sideways on a phone) */
+.plist{container-type:inline-size}
+.plist .mp{position:sticky;left:0;width:calc(100cqw - 12px);box-sizing:border-box}
+.mp .hint{margin:6px 0 0}
+.mp .subh{margin:12px 0 4px}
+.mp .tbox{max-height:360px;background:var(--surface);border-radius:8px}
+.mp td.txtc{min-width:0;max-width:none}
+.plist td.pn .lnk{font-weight:600}
 </style>
 <link rel="stylesheet" href="/ui.css">
 <script src="/live.js"></script>
@@ -123,16 +136,6 @@ tbody tr:hover td{background:rgba(28,173,228,.07)}
     <div class="tbox" id="byTy" style="max-height:none"></div>
   </section>
 
-  <section class="card topcard" id="detCard" hidden>
-    <h2><span id="detTitle"></span><button type="button" class="btn alt" id="detClose" style="margin-left:auto">Close</button></h2>
-    <p class="hint" id="detHint"></p>
-    <h3 class="subh" id="detItemsH">Open items</h3>
-    <div class="tbox" id="detItems"></div>
-    <h3 class="subh" id="detMatH">Materials delivered by this party</h3>
-    <p class="hint" id="detMatHint"></p>
-    <div class="tbox" id="detMats"></div>
-  </section>
-
   <section class="grid">
     <article class="card give" data-detail>
       <h2><span class="sec-badge">1</span>To give (Dena hai) · which party we have to pay</h2>
@@ -155,7 +158,8 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtN=n=>Math.round(n).toLocaleString('en-IN');
 function fmtINR(v){const a=Math.abs(v),s=v<0?'−':'';if(a>=1e7)return s+'₹'+(a/1e7).toFixed(2)+' Cr';if(a>=1e5)return s+'₹'+(a/1e5).toFixed(2)+' L';return s+'₹'+Math.round(a).toLocaleString('en-IN');}
-let D=null,P=[],q='',ty='',POI=null,POJ=null,POS=new Map(),PM=new Map(),sel=null;
+let D=null,P=[],q='',ty='',POI=null,POJ=null,POS=new Map(),PM=new Map(),OPENP=new Set();
+const panId=id=>'pp-'+String(id).replace(/[^A-Za-z0-9]/g,'_');
 const TYPES=['Store','RM','Employees','Group','Others'];
 const TNAME={Store:'Store',RM:'RM (raw material)',Employees:'Employees',Group:'Group companies',Others:'Others'};
 const STORE_MT=['ZCON','ZHMI','ZSPR','ZSRM','ZVRP'];
@@ -177,43 +181,50 @@ function table(list,sign){
   const emp=ty==='Employees',dh=emp?(sign>0?'Taken on':'Given on'):'Dates',dt=sign>0?'Posting dates of the open invoices and credits that make up the amount':'Posting dates of the open debit items (what was paid or given) that make up the amount';
   const showType=ty==='',cols=showType?5:4;
   return `<table><thead><tr><th class="num">#</th><th>Party</th>${showType?'<th>Type</th>':''}<th class="nw" title="${esc(dt)}">${dh}</th><th class="num">Amount</th></tr></thead><tbody>`+
-    list.map((p,i)=>`<tr${p.id===sel?' class="sel"':''}><td class="num">${i+1}</td><td class="pn"><button type="button" class="lnk" data-party="${esc(p.id)}" title="${esc('Party '+p.id+(p.gstin?' · GSTIN '+p.gstin:'')+' · '+fmtN(p.n)+' open items · click for the items and materials')}">${esc(p.name)}</button>${p.city?`<span class="cty">${esc(p.city)}</span>`:''}</td>${showType?`<td class="nw">${esc(TNAME[p.type]||p.type)}</td>`:''}<td class="nw">${dates(p,sign)}</td><td class="num nw amt" title="₹ ${Math.round(sign*p.net).toLocaleString('en-IN')}">${fmtINR(sign*p.net)}</td></tr>`).join('')+
+    list.map((p,i)=>{const open=OPENP.has(p.id);return `<tr${open?' class="sel"':''}><td class="num">${i+1}</td><td class="pn"><button type="button" class="lnk" data-party="${esc(p.id)}" aria-expanded="${open}" title="${esc('Party '+p.id+(p.gstin?' · GSTIN '+p.gstin:'')+' · '+fmtN(p.n)+' open items · click to open the items and materials right here')}">${open?'▾':'▸'} ${esc(p.name)}</button>${p.city?`<span class="cty">${esc(p.city)}</span>`:''}</td>${showType?`<td class="nw">${esc(TNAME[p.type]||p.type)}</td>`:''}<td class="nw">${dates(p,sign)}</td><td class="num nw amt" title="₹ ${Math.round(sign*p.net).toLocaleString('en-IN')}">${fmtINR(sign*p.net)}</td></tr>`+(open?`<tr class="tlrow subrow"><td colspan="${cols}">${partyPanel(p)}</td></tr>`:'');}).join('')+
     `</tbody><tfoot><tr><td></td><td>Total (${fmtN(list.length)} parties)</td>${showType?'<td></td>':''}<td></td><td class="num nw">${fmtINR(tot)}</td></tr></tfoot></table>`;
 }
 // ---------------------------------------------------------------- the details of one party
+// a party opens under its row (like a material on the Price Variance page) and stays open until it is closed, any number of them at once
 const DET_LIMIT=500;
-function renderDetail(){
-  const card=$('detCard');
-  const p=sel!==null?PM.get(sel):null;
-  if(!p){card.hidden=true;return;}
-  card.hidden=false;
+function partyPanel(p){
   const emp=p.type==='Employees',net=p.net;
-  $('detTitle').textContent=p.name+' · '+TNAME[p.type]+' · '+(net>0.5?'to give '+fmtINR(net):net<-0.5?'to get '+fmtINR(-net):'nothing open');
-  $('detHint').textContent='Party '+p.id+(p.city?' · '+p.city:'')+(p.gstin?' · GSTIN '+p.gstin:'')+' · '+fmtN(p.items.length)+' open items'+(emp?'. Given = what the company paid or gave (debit item), Taken = what was taken back or settled (credit item); the date is the posting date.':'. Invoice / credit = what we owe, Payment / debit = what was paid or given and is not cleared yet.');
+  const title=p.name+' · '+TNAME[p.type]+' · '+(net>0.5?'to give '+fmtINR(net):net<-0.5?'to get '+fmtINR(-net):'nothing open');
+  const hint='Party '+p.id+(p.city?' · '+p.city:'')+(p.gstin?' · GSTIN '+p.gstin:'')+' · '+fmtN(p.items.length)+' open items'+(emp?'. Given = what the company paid or gave (debit item), Taken = what was taken back or settled (credit item); the date is the posting date.':'. Invoice / credit = what we owe, Payment / debit = what was paid or given and is not cleared yet.');
   const items=p.items.slice().sort((a,b)=>(a.post||0)-(b.post||0)||a.doc.localeCompare(b.doc));
   const kind=r=>emp?(r.pay<0?'Given':'Taken / settled'):(r.pay<0?'Payment / debit':'Invoice / credit');
   const shownI=items.slice(0,DET_LIMIT);
-  $('detItemsH').textContent=emp?'Dates and amounts: when it was given and when it was taken':'Open items';
-  $('detItems').innerHTML=`<table><thead><tr><th>Posting date</th><th>Document</th><th>Doc type</th><th>Reference</th><th>Text</th><th>Due date</th><th class="num">Past due</th><th>${emp?'Given / taken':'Kind'}</th><th class="num">Amount</th></tr></thead><tbody>`+
-    shownI.map(r=>{const od=r.due===null?null:D.asofDay-r.due;return `<tr><td class="nw">${fmtDay(r.post)}</td><td class="nw">${esc(r.doc)}/${r.item}</td><td class="nw">${esc(r.type)}</td><td class="nw">${esc(r.ref||'–')}</td><td class="txtc">${esc(r.text||'–')}</td><td class="nw">${fmtDay(r.due)}</td><td class="num nw">${od===null?'–':od>0?`<span class="od">${fmtN(od)} d</span>`:od===0?'due today':fmtN(-od)+' d to go'}</td><td class="nw">${kind(r)}</td><td class="num nw ${r.pay<0?'dr':'amt'}" title="${r.cur!=='INR'?esc(r.cur+' '+Math.abs(r.fx).toLocaleString('en-IN',{maximumFractionDigits:2})):''}">${fmtINR(r.pay)}</td></tr>`;}).join('')+
-    `</tbody><tfoot><tr><td colspan="8">Total (${fmtN(items.length)} items${items.length>DET_LIMIT?', the first '+fmtN(DET_LIMIT)+' shown':''}) · net ${net>0.5?'to give':net<-0.5?'to get':''}</td><td class="num nw">${fmtINR(Math.abs(net))}</td></tr></tfoot></table>`;
+  let h=`<div class="mp" id="${panId(p.id)}"><div class="mph"><b>${esc(title)}</b><button type="button" class="btn alt" data-closep="${esc(p.id)}">Close</button></div><p class="hint">${esc(hint)}</p>`;
+  h+=`<h3 class="subh">${emp?'Dates and amounts: when it was given and when it was taken':'Open items'}</h3>`;
+  h+=`<div class="tbox"><table><thead><tr><th>Posting date · document</th><th>Reference · text</th><th>Due date</th><th class="num">Amount</th></tr></thead><tbody>`+
+    shownI.map(r=>{const od=r.due===null?null:D.asofDay-r.due;
+      const odTxt=od===null?'':od>0?`<span class="od">${fmtN(od)} d past due</span>`:od===0?'due today':fmtN(-od)+' d to go';
+      const rt=(r.ref&&r.text)?`${esc(r.ref)}<div class="sm">${esc(r.text)}</div>`:esc(r.ref||r.text||'–');
+      return `<tr><td class="nw">${fmtDay(r.post)}<div class="sm">${esc(r.doc)}/${r.item} · ${esc(r.type)}</div></td><td class="txtc">${rt}</td><td class="nw">${fmtDay(r.due)}<div class="sm">${odTxt}</div></td><td class="num nw ${r.pay<0?'dr':'amt'}" title="${r.cur!=='INR'?esc(r.cur+' '+Math.abs(r.fx).toLocaleString('en-IN',{maximumFractionDigits:2})):''}">${fmtINR(r.pay)}<div class="sm">${esc(kind(r))}</div></td></tr>`;}).join('')+
+    `</tbody><tfoot><tr><td colspan="3">Total (${fmtN(items.length)} items${items.length>DET_LIMIT?', the first '+fmtN(DET_LIMIT)+' shown':''}) · net ${net>0.5?'to give':net<-0.5?'to get':''}</td><td class="num nw">${fmtINR(Math.abs(net))}</td></tr></tfoot></table></div>`;
   // the materials: what the party delivered on its purchase orders since 1 Jan 2026
-  $('detMatH').hidden=$('detMatHint').hidden=$('detMats').hidden=emp;
-  if(emp)return;
-  if(!POJ){$('detMatHint').textContent='Loading the purchase order data…';$('detMats').innerHTML='';return;}
-  const rows=POS.get(p.id)||[],m=new Map();
-  for(const a of rows){
-    const qty=a[15],gr=a[22]||0,rate=a[24]>0?a[24]:(POJ.curs[a[14]]==='INR'?1:0),code=POJ.mats[a[8]]||'',name=POJ.texts[a[9]]||'',unit=POJ.units[a[13]];
-    const k=(code||name)+'|'+unit;let x=m.get(k);if(!x)m.set(k,x={code,name,unit,pos:new Set(),qty:0,gr:0,val:0,still:0});
-    x.pos.add(a[2]);x.qty+=qty;x.gr+=gr;x.still+=a[23]||0;if(qty>0&&gr)x.val+=a[17]*gr/qty*rate;
+  if(!emp){
+    h+='<h3 class="subh">Materials delivered by this party</h3>';
+    if(!POJ){h+='<p class="hint">Loading the purchase order data…</p>';}
+    else{
+      const rows=POS.get(p.id)||[],m=new Map();
+      for(const a of rows){
+        const qty=a[15],gr=a[22]||0,rate=a[24]>0?a[24]:(POJ.curs[a[14]]==='INR'?1:0),code=POJ.mats[a[8]]||'',name=POJ.texts[a[9]]||'',unit=POJ.units[a[13]];
+        const k=(code||name)+'|'+unit;let x=m.get(k);if(!x)m.set(k,x={code,name,unit,pos:new Set(),qty:0,gr:0,val:0,still:0});
+        x.pos.add(a[2]);x.qty+=qty;x.gr+=gr;x.still+=a[23]||0;if(qty>0&&gr)x.val+=a[17]*gr/qty*rate;
+      }
+      const list=[...m.values()].sort((a,b)=>b.val-a.val||b.qty-a.qty);
+      const delivered=list.filter(x=>x.gr>0);
+      h+=`<p class="hint">${rows.length?`${fmtN(rows.length)} PO items of this party since 1 Jan 2026: ${fmtN(delivered.length)} materials delivered, the biggest delivered value first (the invoices of these deliveries are among the open items above; SAP does not say which).`:'This party has no purchase order since 1 Jan 2026 (it is an older party, a bank, a deposit or an employee account), so its materials cannot be shown. The text of the open items above says what each entry is for.'}</p>`;
+      if(list.length){
+        const shownM=list.slice(0,50),q3=n=>n.toLocaleString('en-IN',{maximumFractionDigits:3});
+        h+=`<div class="tbox"><table><thead><tr><th>Material</th><th class="num">Delivered</th><th class="num">Delivered value</th><th class="num">Still to deliver</th></tr></thead><tbody>`+
+          shownM.map(x=>`<tr><td class="txtc">${esc(x.name||x.code||'–')}<div class="sm">${esc(x.code||'–')} · ${fmtN(x.pos.size)} PO${x.pos.size===1?'':'s'}</div></td><td class="num nw">${q3(x.gr)} ${esc(x.unit)}<div class="sm">of ${q3(x.qty)} ordered</div></td><td class="num nw"><b>${x.val?fmtINR(x.val):'–'}</b></td><td class="num nw">${q3(x.still)} ${esc(x.unit)}</td></tr>`).join('')+
+          `</tbody><tfoot><tr><td colspan="2">Total (${fmtN(list.length)} materials${list.length>50?', the first 50 shown':''})</td><td class="num nw">${fmtINR(list.reduce((s,x)=>s+x.val,0))}</td><td></td></tr></tfoot></table></div>`;
+      }
+    }
   }
-  const list=[...m.values()].sort((a,b)=>b.val-a.val||b.qty-a.qty);
-  const delivered=list.filter(x=>x.gr>0);
-  $('detMatHint').textContent=rows.length?`${fmtN(rows.length)} PO items of this party since 1 Jan 2026: ${fmtN(delivered.length)} materials delivered, the biggest delivered value first (the invoices of these deliveries are among the open items above; SAP does not say which).`:'This party has no purchase order since 1 Jan 2026 (it is an older party, a bank, a deposit or an employee account), so its materials cannot be shown. The text of the open items above says what each entry is for.';
-  const shownM=list.slice(0,50);
-  $('detMats').innerHTML=!list.length?'':`<table><thead><tr><th>Material</th><th>Description</th><th class="num">POs</th><th class="num">Ordered</th><th class="num">Delivered</th><th class="num">Delivered value</th><th class="num">Still to deliver</th></tr></thead><tbody>`+
-    shownM.map(x=>`<tr><td class="nw">${esc(x.code||'–')}</td><td class="txtc">${esc(x.name)}</td><td class="num">${fmtN(x.pos.size)}</td><td class="num nw">${x.qty.toLocaleString('en-IN',{maximumFractionDigits:3})} ${esc(x.unit)}</td><td class="num nw">${x.gr.toLocaleString('en-IN',{maximumFractionDigits:3})} ${esc(x.unit)}</td><td class="num nw"><b>${x.val?fmtINR(x.val):'–'}</b></td><td class="num nw">${x.still.toLocaleString('en-IN',{maximumFractionDigits:3})} ${esc(x.unit)}</td></tr>`).join('')+
-    `</tbody><tfoot><tr><td colspan="5">Total (${fmtN(list.length)} materials${list.length>50?', the first 50 shown':''})</td><td class="num nw">${fmtINR(list.reduce((s,x)=>s+x.val,0))}</td><td></td></tr></tfoot></table>`;
+  return h+'</div>';
 }
 function render(){
   if(!D)return;
@@ -235,12 +246,12 @@ function render(){
   $('getHint').textContent=q||ty?`${base}${fmtN(get.length)} parties${q?' match the search':''}, the biggest amount first.`:`${fmtN(get.length)} parties, the biggest amount first.`;
   $('give').innerHTML=table(give,1);$('get').innerHTML=table(get,-1);
   $('tySel').value=ty;
-  renderDetail();
 }
 document.addEventListener('click',e=>{
   const pb=e.target.closest('button[data-party]');
-  if(pb){sel=sel===pb.dataset.party?null:pb.dataset.party;render();if(sel!==null){const c=$('detCard');if(c&&!c.hidden)c.scrollIntoView({behavior:'smooth',block:'start'});}return;}
-  if(e.target.closest('#detClose')){sel=null;render();return;}
+  if(pb){const id=pb.dataset.party;if(OPENP.has(id))OPENP.delete(id);else OPENP.add(id);render();if(OPENP.has(id)){const el=$(panId(id));if(el)el.scrollIntoView({behavior:'smooth',block:'nearest'});}return;}
+  const cp=e.target.closest('[data-closep]');
+  if(cp){const id=cp.dataset.closep;OPENP.delete(id);render();const r=document.querySelector('button[data-party="'+id.replace(/["\\]/g,'')+'"]');if(r)r.scrollIntoView({block:'nearest'});return;}
   const b=e.target.closest('button[data-ty]');if(!b)return;ty=ty===b.dataset.ty?'':b.dataset.ty;render();});
 $('tySel').addEventListener('change',e=>{ty=e.target.value;render();});
 let qT;$('q').addEventListener('input',e=>{clearTimeout(qT);qT=setTimeout(()=>{q=e.target.value.trim().toLowerCase();render();},200);});

@@ -338,8 +338,8 @@ function render(){
   $('byMonth').innerHTML=aggTable([...mon.entries()].sort((a,b)=>b[0]-a[0]),'Month',k=>`<button type="button" class="lnk" data-mon="${k}">${mName(k)}</button>`,S.mon);
   $('dayTitle').textContent='Day-wise purchase · '+mName(S.mon);
   $('byDay').innerHTML=aggTable([...day.entries()].sort((a,b)=>a[0]-b[0]),'Posting date',k=>`<button type="button" class="lnk" data-day="${k}">${fmtDay(k)}</button>`);
-  // the lines, newest first
-  rows.sort((a,b)=>(b.day||0)-(a.day||0)||b.doc.localeCompare(a.doc));
+  // the lines, the biggest value first (user, 28-Oct-2026); the newest first among equal values
+  rows.sort((a,b)=>b.val-a.val||(b.day||0)-(a.day||0)||b.doc.localeCompare(a.doc));
   const slice=S.all?rows:rows.slice(0,PAGE);
   const first=S.all?slice.slice(0,400):slice;
   $('tbl').innerHTML=LHEAD+'<tbody>'+(first.length?first.map((r,i)=>lineRow(r,i)).join(''):'<tr><td colspan="16" class="empty">Nothing matches the filters.</td></tr>')+'</tbody>'+(rows.length?lineFoot(rows):'');

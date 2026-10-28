@@ -132,6 +132,7 @@ section[id^="sec-"]{scroll-margin-top:150px}
 @media (prefers-reduced-motion:reduce){.tile.sk{animation:none}}
 /* a material opened under its row: its numbers, its graph and every PO date */
 tr.tlrow>td{padding:4px 6px 14px!important;background:transparent!important}
+#tileCard h2 .csvbtn{order:2}#tileCard h2 #tileHide{order:3;margin-left:8px;height:26px;font-size:.72rem;padding:0 12px}
 .mp{border:1px solid var(--brand);border-left-width:4px;border-radius:10px;background:rgba(28,173,228,.06);padding:10px 12px;margin:8px 0;scroll-margin-top:150px}
 .mph{display:flex;flex-wrap:wrap;align-items:center;gap:8px}.mph b{font-size:.95rem}.mph .btn{margin-left:auto;height:28px}
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:8px;margin:10px 0 4px}
@@ -160,9 +161,9 @@ tr.tlrow>td{padding:4px 6px 14px!important;background:transparent!important}
 </header>
 <nav class="nav"><a href="/summary">Summary</a><a href="/issue">Store Issue</a><a href="/asset">Capital Issue</a><a href="/stock">Store Stock</a><a href="/">Pending PR</a><a href="/po">Pending Purchase Orders</a><a href="/po-approval">PO Approval Pending</a><a href="/invoice">Pending Invoice Entry</a><a href="/purchase">Purchase</a><a href="/price" class="on">Price Variance</a><a href="/ageing">Payment Ageing</a></nav></div>
 <div class="wrap">
-  <section class="gtabs" id="gtabs" aria-label="RM, Store, Packing"><div class="tile sk"></div><div class="tile sk"></div><div class="tile sk"></div><div class="tile sk"></div></section>
+  <section class="gtabs" id="gtabs" aria-label="RM, Store, Silver Gold Medal"><div class="tile sk"></div><div class="tile sk"></div><div class="tile sk"></div><div class="tile sk"></div></section>
   <p class="hint" id="exNote" style="margin:8px 2px 4px"></p>
-  <details class="notebox" style="margin:0 0 14px"><summary>What are RM, Store and Packing?</summary><p class="note" style="margin-top:8px"><b>RM</b> = raw materials (material type ZRMA: copper, zinc, nickel, scrap, ingots), wherever they are delivered. <b>Packing</b> = the FG material: finished goods and trading goods (ZFGS, ZTRG, HAWA: coins, medals, trophies, gifts, jugs ...) and whatever comes into the packing / FG locations GS02, GS03 and MDFG. <b>Store</b> = the store materials (ZCON consumables, ZHMI tools, ZSPR spares, ZSRM, ZVRP packaging material), also when the PO line has no storage location, and every other purchase delivered to a store location of your list. <b>Others</b> = the rest; it is shown only when it holds a material. A line goes to the first group that fits, in this order: RM, Packing, Store, Others. The same filters apply to every tab. Click a tab again to go back to All.</p></details>
+  <details class="notebox" style="margin:0 0 14px"><summary>What are RM, Silver · Gold · Medal and Store?</summary><p class="note" style="margin-top:8px"><b>RM</b> = raw materials: every material whose number starts with 11 (the 11 series: copper, zinc, nickel, scrap, ingots), wherever it is delivered, and what the RM purchase itself buys (purchasing group 020, VP Purchase, on a purchase order ZDRM, ZIRM or ZTRD) even when the number is not 11: Copper Wire Rod and Copper Ingot (numbered 12…, plant 1010), Lead Scrap Radio and two brass strips. <b>Silver · Gold · Medal</b> = the silver, gold and medal department: the trading and finished goods of the plants 1030, 1040 and 1050 (silver and gold coins, bullion, silver articles, medals, trophies, gifts, jugs ...) and whatever comes into their locations GS02, GS03 and MDFG. <b>Store</b> = everything else: consumables, spares, tools, store raw materials and the other purchases of the plants. The first two digits of a material number are its type: 11… = RM, 12… = trading goods (silver / gold / medal), 13… spares, 14… consumables, 16… tools and 18… store raw materials (these four are Store), letters (FG-…, B30-…) = finished or semi-finished goods. A line goes to the first group that fits, in this order: RM, Silver · Gold · Medal, Store. The same filters apply to every tab. Click a tab again to go back to All.</p></details>
   <section class="bar" aria-label="Filters">
     <label class="fld"><span>Plant</span><select id="plantSel"></select></label>
     <label class="fld"><span>Material type</span><select id="mtSel"></select></label>
@@ -176,7 +177,7 @@ tr.tlrow>td{padding:4px 6px 14px!important;background:transparent!important}
   <nav class="jump" aria-label="Go to a section"><a href="#sec-charts">Graphs</a><a href="#sec-lists">Rising and falling</a><a href="#sec-top">Biggest losses and profits</a><a href="#sec-grp">By material group</a><a href="#sec-moves">Every price change</a><a href="#sec-months">Month by month</a></nav>
 
   <section class="card topcard" id="tileCard" hidden>
-    <h2><span id="tileTitle"></span></h2>
+    <h2><span id="tileTitle"></span><button type="button" class="btn alt opn" id="tileHide" title="Close this card">Hide</button></h2>
     <p class="hint" id="tileHint"></p>
     <div class="tbox plist" id="tileBox"></div>
   </section>
@@ -292,9 +293,9 @@ function calc(){
   CALC=CMP[S.grp||'ALL'];
   CALC.byKey=new Map(CALC.mats.map(r=>[r.key,r]));
 }
-const GRP_TXT={'':'All materials',RM:'RM (raw material)',STORE:'Store',PACKING:'Packing (FG material)',OTHER:'Others'};
-const GRP_BTN={RM:'RM · raw material',STORE:'Store',PACKING:'Packing · FG material',OTHER:'Others'};
-const GRP_TIP={'':'Every material',RM:'Raw materials: material type ZRMA (copper, zinc, nickel, scrap, ingots), wherever they are delivered',STORE:'The store materials (consumables, tools, spares, packaging material) and every other purchase delivered to a store location of your list',PACKING:'The FG material: finished goods, trading goods (coins, medals, trophies, gifts, jugs ...) and what comes into the packing / FG locations GS02, GS03, MDFG',OTHER:'Everything else'};
+const GRP_TXT={'':'All materials',RM:'RM (raw material)',STORE:'Store',PACKING:'Silver · Gold · Medal',OTHER:'Others'};
+const GRP_BTN={RM:'RM · raw material',STORE:'Store',PACKING:'Silver · Gold · Medal',OTHER:'Others'};
+const GRP_TIP={'':'Every material',RM:'Raw materials: the material number starts with 11 (copper, zinc, nickel, scrap, ingots) and what the RM purchase buys (group 020), e.g. Copper Wire Rod and Copper Ingot',STORE:'Everything else: consumables, spares, tools, store raw materials and the other purchases',PACKING:'The silver, gold and medal department: coins, bullion, silver articles, medals, trophies, gifts, jugs (trading and finished goods of the plants 1030, 1040, 1050 and what comes into GS02, GS03, MDFG)',OTHER:'Everything else'};
 const hay=r=>r._hay||(r._hay=(r.mat+' '+r.text+' '+r.days.map(d=>d.sups.join(' ')).join(' ')).toLowerCase());
 const reason=r=>r.big?'very large change':r.textDiff?'item text differs':'';
 const okM=r=>(S.doubt==='show'||(S.doubt==='hide'?!r.doubt:r.doubt))&&(!S.q||hay(r).includes(S.q));
@@ -553,6 +554,7 @@ document.addEventListener('click',e=>{
   const mt=e.target.closest('[data-mat]');
   if(mt){const c=mt.dataset.ctx;if(S.open.has(c))S.open.delete(c);else S.open.add(c);render();if(S.open.has(c)){const el=document.getElementById(panId(c));if(el)el.scrollIntoView({behavior:'smooth',block:'nearest'});}return;}
   const t=e.target.closest('button');if(!t)return;
+  if(t.id==='tileHide'){S.tile=null;render();const kp=$('kpis');if(kp)kp.scrollIntoView({behavior:'smooth',block:'nearest'});return;}
   if(t.dataset.tile!==undefined){const k=t.dataset.tile;S.tile=S.tile===k?null:k;render();if(S.tile)reveal('tileCard');return;}
   if(t.dataset.all!==undefined){S.all[t.dataset.all]=!S.all[t.dataset.all];render();return;}
   if(t.dataset.mv!==undefined){S.mv=t.dataset.mv;S.all.moves=false;render();return;}
@@ -593,7 +595,7 @@ function fillMt(){
   if(!D)return;
   const gOf=PRICEVAR.classifier(D);
   const mt=[...new Set(D.rows.filter(a=>S.grp===''||gOf(a)===S.grp).map(a=>D.mtypes[a[11]]))].filter(Boolean).sort();
-  $('mtSel').innerHTML='<option value="">All material types'+(S.grp?' of '+{RM:'RM',STORE:'Store',PACKING:'Packing',OTHER:'Others'}[S.grp]:'')+'</option>'+mt.map(t=>`<option value="${esc(t)}">${esc(mtName(t))}</option>`).join('');
+  $('mtSel').innerHTML='<option value="">All material types'+(S.grp?' of '+{RM:'RM',STORE:'Store',PACKING:'Silver · Gold · Medal',OTHER:'Others'}[S.grp]:'')+'</option>'+mt.map(t=>`<option value="${esc(t)}">${esc(mtName(t))}</option>`).join('');
   if(S.mtype&&!mt.includes(S.mtype))S.mtype='';
   $('mtSel').value=S.mtype;
 }

@@ -13,15 +13,16 @@
    Above the reference rate = LOSS (we paid more than at the reference rate), below it = PROFIT (we paid less). Per material: loss, profit and
    impact = loss - profit (positive = net loss). Nothing is sold here, so this is the purchase price variance, not a margin.
 
-   Groups (option grp), decided per PO line, in this order:
-     'RM'      the line is of a material of SAP material type ZRMA (Raw materials: copper, zinc, nickel, scrap, ingots; bought on the RM purchase orders ZDRM / ZIRM by
-               purchasing group 020), wherever it is delivered;
-     'PACKING' the FG (finished goods) material: material types ZFGS (finished goods), ZTRG (trading goods) and HAWA, wherever delivered, and any other line delivered to a
-               packing / FG location (PACK_LOCS: 1030/GS02, 1050/GS03, 1040/MDFG, where the finished and trading goods come in: coins, medals, trophies, gifts, lota / jugs);
-     'STORE'   the store material types (ZCON consumables, ZHMI tools, ZSPR spares, ZSRM, ZVRP packaging material) wherever delivered (many of them have no storage location on
-               the PO line), and any other line delivered to one of the store locations of backend/data/stock_locations.csv (plant + storage location, sent with the PO data
-               as po.storeLocs);
-     'OTHER'   everything else (the semi-finished job-work ZSFG, processed scrap ...);
+   Groups (option grp), decided per PO line, in this order (user, 28-Oct-2026: "RM ka material analysis karke RM me, Silver Gold Medal depart, baki Store"):
+     'RM'      raw material: the material number starts with 11 (the 11 series, SAP type ZRMA: copper, zinc, nickel, scrap, ingots; the first two digits of a number are its
+               type) except a finished-goods type (one medal is numbered 11...), wherever it is delivered; and what the RM purchase itself buys although the number is not 11:
+               purchasing group 020 (VP Purchase) on a purchase order ZDRM / ZIRM / ZTRD (RM_PG, RM_PO): Copper Wire Rod 1200000292 and Copper Ingot 1200000410 (12... =
+               trading goods by number, plant 1010, location ML93), Lead Scrap Radio 1200001480 and two brass strips (ZSFG, plant 2010);
+     'PACKING' the SILVER / GOLD / MEDAL department (key kept as PACKING for the old links): the finished and trading goods of the plants 1030, 1040 and 1050 (SGM_PLANTS: material
+               types ZFGS, ZTRG, HAWA = silver and gold coins, bullion, silver articles, medals, trophies, gifts, lota / jugs) and any line delivered to their locations
+               PACK_LOCS (1030/GS02, 1050/GS03, 1040/MDFG);
+     'STORE'   everything else (the rest is Store): consumables, spares, tools, store raw materials, the other lines of the plants 1010, 2010 ... A trading good of another plant
+               (e.g. the lead wire 1200000398 of plant 1010) is Store too;
      ''        all.
    A material bought in two groups is compared in each group with its own lines.
 
@@ -42,21 +43,24 @@
 (function () {
   var STORE_MT = ['ZCON', 'ZHMI', 'ZSPR', 'ZSRM', 'ZVRP'];
   var RM_MT = ['ZRMA'];
+  var RM_CODE = '11';                       // the 11 series of the material number = raw material
+  var RM_PG = ['020'];                      // purchasing group 020 = VP Purchase, the RM purchase
+  var RM_PO = ['ZDRM', 'ZIRM', 'ZTRD'];     // the purchase orders it buys on (a stock transport order ZSTO is not a purchase)
+  var SGM_PLANTS = ['1030', '1040', '1050'];  // the silver / gold / medal department
   var FG_MT = ['ZFGS', 'ZTRG', 'HAWA'];
   var PACK_LOCS = ['1030|GS02', '1050|GS03', '1040|MDFG'];
   var EXCLUDE_LOCS = ['PS01', 'PS02', 'PS03', 'PS04', 'PS05', 'PS06', 'NPD1', 'DROS', 'DROSS'];  // storage codes, any plant
   var norm = function (s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]/g, ''); };
   var meet = function (a, b) { for (var x of a) if (b.has(x)) return true; return false; };
 
-  // which group a PO line belongs to (see the top); with no list of store locations in the data every line that is not RM or FG counts as Store
+  // which group a PO line belongs to (see the top): RM, the silver / gold / medal department (PACKING), and everything else is Store
   function classifier(po) {
-    var set = po.storeLocs ? new Set(po.storeLocs.map(function (l) { return l[0] + '|' + l[1]; })) : null;
     return function (a) {
-      var mt = po.mtypes[a[11]], loc = po.plants[a[6]] + '|' + (po.slocs[a[7]] || '');
-      if (RM_MT.indexOf(mt) >= 0) return 'RM';
-      if (FG_MT.indexOf(mt) >= 0 || PACK_LOCS.indexOf(loc) >= 0) return 'PACKING';
-      if (STORE_MT.indexOf(mt) >= 0 || !set || set.has(loc)) return 'STORE';
-      return 'OTHER';
+      var mt = po.mtypes[a[11]], plant = po.plants[a[6]], loc = plant + '|' + (po.slocs[a[7]] || '');
+      if ((String(po.mats[a[8]] || '').indexOf(RM_CODE) === 0 && FG_MT.indexOf(mt) < 0) ||
+          (RM_PG.indexOf(po.pgs[a[19]]) >= 0 && RM_PO.indexOf(po.types[a[4]]) >= 0)) return 'RM';
+      if (PACK_LOCS.indexOf(loc) >= 0 || (FG_MT.indexOf(mt) >= 0 && SGM_PLANTS.indexOf(plant) >= 0)) return 'PACKING';
+      return 'STORE';
     };
   }
 
@@ -137,5 +141,5 @@
     for (var r of list) { loss += r.loss; profit += r.profit; }
     return { loss: loss, profit: profit, net: loss - profit };
   }
-  window.PRICEVAR = { compute: compute, totals: totals, classifier: classifier, STORE_MT: STORE_MT, RM_MT: RM_MT, FG_MT: FG_MT, PACK_LOCS: PACK_LOCS, EXCLUDE_LOCS: EXCLUDE_LOCS };
+  window.PRICEVAR = { compute: compute, totals: totals, classifier: classifier, STORE_MT: STORE_MT, RM_MT: RM_MT, RM_CODE: RM_CODE, RM_PG: RM_PG, RM_PO: RM_PO, SGM_PLANTS: SGM_PLANTS, FG_MT: FG_MT, PACK_LOCS: PACK_LOCS, EXCLUDE_LOCS: EXCLUDE_LOCS };
 })();
