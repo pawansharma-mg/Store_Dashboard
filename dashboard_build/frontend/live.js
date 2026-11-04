@@ -22,3 +22,25 @@
     forget: function (url) { delete tags[url]; }
   };
 })();
+
+// Ageing (days) shared by the pages: one set of buckets, one pill, small helpers.
+// age = days from a date to the as-of day of the data (D.asofDay, the day the server read SAP).
+(function () {
+  var EDGES = [7, 15, 30, 60, 90, 180, 365];
+  var LABELS = ['0–7 days', '8–15 days', '16–30 days', '31–60 days', '61–90 days', '91–180 days', '181–365 days', 'Over 1 year'];
+  function bucket(d) { for (var i = 0; i < EDGES.length; i++) if (d <= EDGES[i]) return i; return EDGES.length; }
+  // "123 d" in a coloured pill: green = young, red = old
+  function pill(d, tip) {
+    if (d === null || d === undefined || isNaN(d)) return '<span title="No date">–</span>';
+    d = Math.max(0, Math.round(d));
+    return '<span class="agep a' + bucket(d) + '"' + (tip ? ' title="' + String(tip).replace(/"/g, '&quot;') + '"' : '') + '>' + d.toLocaleString('en-IN') + ' d</span>';
+  }
+  // "1 yr 2 mo" style text for long ages (tooltips)
+  function words(d) {
+    d = Math.max(0, Math.round(d));
+    if (d < 31) return d + (d === 1 ? ' day' : ' days');
+    if (d < 365) return Math.floor(d / 30) + ' mo ' + (d % 30) + ' d';
+    return Math.floor(d / 365) + ' yr ' + Math.floor((d % 365) / 30) + ' mo';
+  }
+  window.AGE = { EDGES: EDGES, LABELS: LABELS, N: LABELS.length, bucket: bucket, label: function (d) { return LABELS[bucket(d)]; }, pill: pill, words: words };
+})();

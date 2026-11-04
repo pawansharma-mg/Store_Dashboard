@@ -106,6 +106,10 @@ tr.tlrow>td{padding:4px 6px 14px!important;background:transparent!important}
 .mp .tbox{max-height:360px;background:var(--surface);border-radius:8px}
 .mp td.txtc{min-width:0;max-width:none}
 .plist td.pn .lnk{font-weight:600}
+.agecards{margin-top:12px}
+.abtn{font:inherit;font-size:.78rem;border:0;background:none;color:var(--brand-dark);text-decoration:underline;cursor:pointer;padding:0 0 0 6px}
+.pd{color:var(--crit);font-weight:700}
+.agesum td,.agesum th{text-align:right;white-space:nowrap}
 </style>
 <link rel="stylesheet" href="/ui.css">
 <script src="/live.js"></script>
@@ -126,6 +130,7 @@ tr.tlrow>td{padding:4px 6px 14px!important;background:transparent!important}
 <div class="wrap">
   <section class="bar" aria-label="Filters">
     <label class="fld"><span>Party type</span><select id="tySel"><option value="">All parties</option><option value="Store">Store</option><option value="RM">RM (raw material)</option><option value="Employees">Employees</option><option value="Group">Group companies</option><option value="Others">Others</option></select></label>
+    <label class="fld"><span>Sort the lists by</span><select id="sortSel"><option value="amt">Biggest amount</option><option value="old">Oldest unpaid first</option><option value="pd">Biggest past due amount</option></select></label>
     <label class="fld grow"><span>Search party</span><input id="q" type="search" placeholder="Party name, number, city or GSTIN"></label>
   </section>
   <section class="kpis" id="kpis"></section>
@@ -136,13 +141,26 @@ tr.tlrow>td{padding:4px 6px 14px!important;background:transparent!important}
     <div class="tbox" id="byTy" style="max-height:none"></div>
   </section>
 
+  <section class="grid agecards">
+    <article class="card give" data-keep-open>
+      <h2>Ageing · To give (Dena hai) · days past the due date</h2>
+      <p class="hint" id="ageGHint"></p>
+      <div class="tbox" id="byAgeG"></div>
+    </article>
+    <article class="card get" data-keep-open>
+      <h2>Ageing · To get (Lena hai) · days since it was given</h2>
+      <p class="hint" id="ageTHint"></p>
+      <div class="tbox" id="byAgeT"></div>
+    </article>
+  </section>
+
   <section class="grid">
-    <article class="card give" data-detail>
+    <article class="card give" data-detail data-keep-open>
       <h2><span class="sec-badge">1</span>To give (Dena hai) · which party we have to pay</h2>
       <p class="hint" id="giveHint"></p>
       <div class="tbox plist" id="give"></div>
     </article>
-    <article class="card get" data-detail>
+    <article class="card get" data-detail data-keep-open>
       <h2><span class="sec-badge">2</span>To get (Lena hai) · which party has to pay us</h2>
       <p class="hint" id="getHint"></p>
       <div class="tbox plist" id="get"></div>
@@ -158,7 +176,12 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtN=n=>Math.round(n).toLocaleString('en-IN');
 function fmtINR(v){const a=Math.abs(v),s=v<0?'−':'';if(a>=1e7)return s+'₹'+(a/1e7).toFixed(2)+' Cr';if(a>=1e5)return s+'₹'+(a/1e5).toFixed(2)+' L';return s+'₹'+Math.round(a).toLocaleString('en-IN');}
-let D=null,P=[],q='',ty='',POI=null,POJ=null,POS=new Map(),PM=new Map(),OPENP=new Set();
+let D=null,P=[],q='',ty='',POI=null,POJ=null,POS=new Map(),PM=new Map(),OPENP=new Set(),SORT='amt',AB={g:null,t:null};
+// ageing: To give = what is still unpaid by days past the due date; To get = what was given and is not settled by days since the posting date.
+// The payments / debit items that are not cleared yet are set against the oldest invoices first (a party's open items always net to its amount).
+const EDGES=[0,30,60,90,180,365],GL=['Not yet due','1–30 d','31–60 d','61–90 d','91–180 d','181–365 d','Over 1 yr'],TL=['Today','1–30 d','31–60 d','61–90 d','91–180 d','181–365 d','Over 1 yr'];
+const bkt=n=>{for(let i=0;i<EDGES.length;i++)if(n<=EDGES[i])return i;return EDGES.length;};
+const dpill=(n,i,tip,notdue)=>`<span class="agep a${i}" title="${esc(tip||'')}">${notdue&&n<=0?'not due':fmtN(Math.max(0,n))+' d'}</span>`;
 const panId=id=>'pp-'+String(id).replace(/[^A-Za-z0-9]/g,'_');
 const TYPES=['Store','RM','Employees','Group','Others'];
 const TNAME={Store:'Store',RM:'RM (raw material)',Employees:'Employees',Group:'Group companies',Others:'Others'};
@@ -179,10 +202,21 @@ function table(list,sign){
   if(!list.length)return '<div class="empty">No party matches.</div>';
   const tot=list.reduce((s,p)=>s+sign*p.net,0);
   const emp=ty==='Employees',dh=emp?(sign>0?'Taken on':'Given on'):'Dates',dt=sign>0?'Posting dates of the open invoices and credits that make up the amount':'Posting dates of the open debit items (what was paid or given) that make up the amount';
-  const showType=ty==='',cols=showType?5:4;
-  return `<table><thead><tr><th class="num">#</th><th>Party</th>${showType?'<th>Type</th>':''}<th class="nw" title="${esc(dt)}">${dh}</th><th class="num">Amount</th></tr></thead><tbody>`+
-    list.map((p,i)=>{const open=OPENP.has(p.id);return `<tr${open?' class="sel"':''}><td class="num">${i+1}</td><td class="pn"><button type="button" class="lnk" data-party="${esc(p.id)}" aria-expanded="${open}" title="${esc('Party '+p.id+(p.gstin?' · GSTIN '+p.gstin:'')+' · '+fmtN(p.n)+' open items · click to open the items and materials right here')}">${open?'▾':'▸'} ${esc(p.name)}</button>${p.city?`<span class="cty">${esc(p.city)}</span>`:''}</td>${showType?`<td class="nw">${esc(TNAME[p.type]||p.type)}</td>`:''}<td class="nw">${dates(p,sign)}</td><td class="num nw amt" title="₹ ${Math.round(sign*p.net).toLocaleString('en-IN')}">${fmtINR(sign*p.net)}</td></tr>`+(open?`<tr class="tlrow subrow"><td colspan="${cols}">${partyPanel(p)}</td></tr>`:'');}).join('')+
-    `</tbody><tfoot><tr><td></td><td>Total (${fmtN(list.length)} parties)</td>${showType?'<td></td>':''}<td></td><td class="num nw">${fmtINR(tot)}</td></tr></tfoot></table>`;
+  const showType=ty==='',cols=(showType?5:4)+(sign>0?2:1);
+  const pdTot=list.reduce((s,p)=>s+p.pastDue,0);
+  const ageH=sign>0?'<th class="num nw" title="The unpaid amount that is past its due date">Past due</th><th class="num nw" title="How many days past the due date the oldest unpaid invoice is">Oldest</th>':'<th class="num nw" title="How many days ago the oldest money that is not settled was given">Given since</th>';
+  return `<table><thead><tr><th class="num">#</th><th>Party</th>${showType?'<th>Type</th>':''}<th class="nw" title="${esc(dt)}">${dh}</th><th class="num">Amount</th>${ageH}</tr></thead><tbody>`+
+    list.map((p,i)=>{const open=OPENP.has(p.id);return `<tr${open?' class="sel"':''}><td class="num">${i+1}</td><td class="pn"><button type="button" class="lnk" data-party="${esc(p.id)}" aria-expanded="${open}" title="${esc('Party '+p.id+(p.gstin?' · GSTIN '+p.gstin:'')+' · '+fmtN(p.n)+' open items · click to open the items and materials right here')}">${open?'▾':'▸'} ${esc(p.name)}</button>${p.city?`<span class="cty">${esc(p.city)}</span>`:''}</td>${showType?`<td class="nw">${esc(TNAME[p.type]||p.type)}</td>`:''}<td class="nw">${dates(p,sign)}</td><td class="num nw amt" title="₹ ${Math.round(sign*p.net).toLocaleString('en-IN')}">${fmtINR(sign*p.net)}</td>${ageCells(p,sign)}</tr>`+(open?`<tr class="tlrow subrow"><td colspan="${cols}">${partyPanel(p)}</td></tr>`:'');}).join('')+
+    `</tbody><tfoot><tr><td></td><td>Total (${fmtN(list.length)} parties)</td>${showType?'<td></td>':''}<td></td><td class="num nw">${fmtINR(tot)}</td>${sign>0?`<td class="num nw pd">${fmtINR(pdTot)}</td><td></td>`:'<td></td>'}</tr></tfoot></table>`;
+}
+function ageCells(p,sign){
+  if(sign>0){
+    if(p.maxOver===null)return '<td></td><td></td>';
+    const i=bkt(p.maxOver);
+    return `<td class="num nw ${p.pastDue>0?'pd':''}" title="₹ ${Math.round(p.pastDue).toLocaleString('en-IN')}">${p.pastDue>0.5?fmtINR(p.pastDue):'–'}</td><td class="num nw">${dpill(p.maxOver,i,p.maxOver>0?fmtN(p.maxOver)+' days past the due date (the oldest unpaid invoice)':'Nothing is past its due date',true)}</td>`;
+  }
+  if(p.oldGet===null)return '<td></td>';
+  return `<td class="num nw">${dpill(p.oldGet,bkt(p.oldGet),fmtN(p.oldGet)+' days since the oldest unsettled money was given')}</td>`;
 }
 // ---------------------------------------------------------------- the details of one party
 // a party opens under its row (like a material on the Price Variance page) and stays open until it is closed, any number of them at once
@@ -195,13 +229,18 @@ function partyPanel(p){
   const kind=r=>emp?(r.pay<0?'Given':'Taken / settled'):(r.pay<0?'Payment / debit':'Invoice / credit');
   const shownI=items.slice(0,DET_LIMIT);
   let h=`<div class="mp" id="${panId(p.id)}"><div class="mph"><b>${esc(title)}</b><button type="button" class="btn alt" data-closep="${esc(p.id)}">Close</button></div><p class="hint">${esc(hint)}</p>`;
+  if(net>0.5||net<-0.5){
+    const lab=net>0.5?GL:TL,ab=net>0.5?p.gb:p.tb;
+    h+=`<h3 class="subh">${net>0.5?'Ageing: what is still unpaid, by days past the due date':'Ageing: what was given and is not settled, by days since it was given'}</h3><p class="hint">Payments and debit items that are not cleared yet are set against the oldest invoices first, so the amounts add up to ${fmtINR(Math.abs(net))}.</p>`;
+    h+=`<div class="tbox"><table class="agesum"><thead><tr>${lab.map(x=>`<th>${x}</th>`).join('')}<th>Total</th></tr></thead><tbody><tr>${ab.map((v,i)=>`<td${v>0.5?'':' style="color:var(--muted)"'}>${v>0.5?fmtINR(v):'–'}</td>`).join('')}<td><b>${fmtINR(Math.abs(net))}</b></td></tr></tbody></table></div>`;
+  }
   h+=`<h3 class="subh">${emp?'Dates and amounts: when it was given and when it was taken':'Open items'}</h3>`;
-  h+=`<div class="tbox"><table><thead><tr><th>Posting date · document</th><th>Reference · text</th><th>Due date</th><th class="num">Amount</th></tr></thead><tbody>`+
+  h+=`<div class="tbox"><table><thead><tr><th>Posting date · document</th><th class="num" title="Days since the posting date">Age</th><th>Reference · text</th><th>Due date</th><th class="num">Amount</th></tr></thead><tbody>`+
     shownI.map(r=>{const od=r.due===null?null:D.asofDay-r.due;
       const odTxt=od===null?'':od>0?`<span class="od">${fmtN(od)} d past due</span>`:od===0?'due today':fmtN(-od)+' d to go';
       const rt=(r.ref&&r.text)?`${esc(r.ref)}<div class="sm">${esc(r.text)}</div>`:esc(r.ref||r.text||'–');
-      return `<tr><td class="nw">${fmtDay(r.post)}<div class="sm">${esc(r.doc)}/${r.item} · ${esc(r.type)}</div></td><td class="txtc">${rt}</td><td class="nw">${fmtDay(r.due)}<div class="sm">${odTxt}</div></td><td class="num nw ${r.pay<0?'dr':'amt'}" title="${r.cur!=='INR'?esc(r.cur+' '+Math.abs(r.fx).toLocaleString('en-IN',{maximumFractionDigits:2})):''}">${fmtINR(r.pay)}<div class="sm">${esc(kind(r))}</div></td></tr>`;}).join('')+
-    `</tbody><tfoot><tr><td colspan="3">Total (${fmtN(items.length)} items${items.length>DET_LIMIT?', the first '+fmtN(DET_LIMIT)+' shown':''}) · net ${net>0.5?'to give':net<-0.5?'to get':''}</td><td class="num nw">${fmtINR(Math.abs(net))}</td></tr></tfoot></table></div>`;
+      return `<tr><td class="nw">${fmtDay(r.post)}<div class="sm">${esc(r.doc)}/${r.item} · ${esc(r.type)}</div></td><td class="num nw">${AGE.pill(D.asofDay-r.post,AGE.words(D.asofDay-r.post)+' since the posting date')}</td><td class="txtc">${rt}</td><td class="nw">${fmtDay(r.due)}<div class="sm">${odTxt}</div></td><td class="num nw ${r.pay<0?'dr':'amt'}" title="${r.cur!=='INR'?esc(r.cur+' '+Math.abs(r.fx).toLocaleString('en-IN',{maximumFractionDigits:2})):''}">${fmtINR(r.pay)}<div class="sm">${esc(kind(r))}</div></td></tr>`;}).join('')+
+    `</tbody><tfoot><tr><td colspan="4">Total (${fmtN(items.length)} items${items.length>DET_LIMIT?', the first '+fmtN(DET_LIMIT)+' shown':''}) · net ${net>0.5?'to give':net<-0.5?'to get':''}</td><td class="num nw">${fmtINR(Math.abs(net))}</td></tr></tfoot></table></div>`;
   // the materials: what the party delivered on its purchase orders since 1 Jan 2026
   if(!emp){
     h+='<h3 class="subh">Materials delivered by this party</h3>';
@@ -230,30 +269,51 @@ function render(){
   if(!D)return;
   const bySearch=q?P.filter(p=>p.hay.includes(q)):P;
   // the table of the types ignores the type filter, the lists and the tiles follow it
-  const tt=new Map(TYPES.map(k=>[k,{g:0,gv:0,t:0,tv:0}]));
-  for(const p of bySearch){const x=tt.get(p.type);if(p.net>0.5){x.g++;x.gv+=p.net;}else if(p.net<-0.5){x.t++;x.tv-=p.net;}}
+  const tt=new Map(TYPES.map(k=>[k,{g:0,gv:0,t:0,tv:0,pd:0}]));
+  for(const p of bySearch){const x=tt.get(p.type);if(p.net>0.5){x.g++;x.gv+=p.net;x.pd+=p.pastDue;}else if(p.net<-0.5){x.t++;x.tv-=p.net;}}
   const shown=ty?bySearch.filter(p=>p.type===ty):bySearch;
-  const give=shown.filter(p=>p.net>0.5).sort((a,b)=>b.net-a.net),get=shown.filter(p=>p.net<-0.5).sort((a,b)=>a.net-b.net);
-  const sumG=give.reduce((s,p)=>s+p.net,0),sumT=get.reduce((s,p)=>s-p.net,0);
+  const giveAll=shown.filter(p=>p.net>0.5),getAll=shown.filter(p=>p.net<-0.5);
+  const give=(AB.g===null?giveAll:giveAll.filter(p=>p.gb[AB.g]>0.5)).sort(SORT==='old'?(a,b)=>(b.maxOver===null?-1e9:b.maxOver)-(a.maxOver===null?-1e9:a.maxOver)||b.net-a.net:SORT==='pd'?(a,b)=>b.pastDue-a.pastDue||b.net-a.net:(a,b)=>b.net-a.net);
+  const get=(AB.t===null?getAll:getAll.filter(p=>p.tb[AB.t]>0.5)).sort(SORT==='old'||SORT==='pd'?(a,b)=>(b.oldGet===null?-1e9:b.oldGet)-(a.oldGet===null?-1e9:a.oldGet)||a.net-b.net:(a,b)=>a.net-b.net);
+  const sumG=giveAll.reduce((s,p)=>s+p.net,0),sumT=getAll.reduce((s,p)=>s-p.net,0);
+  const pdAll=giveAll.reduce((s,p)=>s+p.pastDue,0),oldP=giveAll.reduce((m,p)=>p.maxOver!==null&&(m===null||p.maxOver>m.maxOver)?p:m,null),oldT=getAll.reduce((m,p)=>p.oldGet!==null&&(m===null||p.oldGet>m.oldGet)?p:m,null);
   const label=ty?TNAME[ty]+' \u00b7 ':'';
-  $('kpis').innerHTML=tile(fmtINR(sumG),`${label}To give (Dena hai) \u00b7 ${fmtN(give.length)} parties`)+tile(fmtINR(sumT),`${label}To get (Lena hai) \u00b7 ${fmtN(get.length)} parties`)+tile(fmtINR(sumG-sumT),`${label}Net we have to give`);
-  let tg=0,gv=0,tt2=0,tv=0;for(const x of tt.values()){tg+=x.g;gv+=x.gv;tt2+=x.t;tv+=x.tv;}
-  $('byTy').innerHTML=`<table><thead><tr><th>Party type</th><th class="num">To give: parties</th><th class="num">To give (Dena)</th><th class="num">To get: parties</th><th class="num">To get (Lena)</th><th class="num">Net we have to give</th></tr></thead><tbody>`+
-    TYPES.map(k=>{const x=tt.get(k);return `<tr${ty===k?' class="sel"':''}><td><button type="button" class="lnk" data-ty="${k}">${esc(TNAME[k])}</button></td><td class="num">${fmtN(x.g)}</td><td class="num nw">${fmtINR(x.gv)}</td><td class="num">${fmtN(x.t)}</td><td class="num nw">${fmtINR(x.tv)}</td><td class="num nw"><b>${fmtINR(x.gv-x.tv)}</b></td></tr>`;}).join('')+
-    `</tbody><tfoot><tr><td>All parties</td><td class="num">${fmtN(tg)}</td><td class="num nw">${fmtINR(gv)}</td><td class="num">${fmtN(tt2)}</td><td class="num nw">${fmtINR(tv)}</td><td class="num nw">${fmtINR(gv-tv)}</td></tr></tfoot></table>`;
+  $('kpis').innerHTML=tile(fmtINR(sumG),`${label}To give (Dena hai) \u00b7 ${fmtN(give.length)} parties`)+tile(fmtINR(sumT),`${label}To get (Lena hai) \u00b7 ${fmtN(get.length)} parties`)+tile(fmtINR(sumG-sumT),`${label}Net we have to give`)+tile(fmtINR(pdAll),`${label}Past due (of the To give) \u00b7 ${sumG>0?Math.round(pdAll/sumG*100):0}% of it`)+(oldP&&oldP.maxOver>0?tile(fmtN(oldP.maxOver)+' days',`${label}Oldest unpaid invoice past its due date \u00b7 ${oldP.name}`):'')+(oldT?tile(fmtN(oldT.oldGet)+' days',`${label}Oldest money given and not settled \u00b7 ${oldT.name}`):'');
+  let tg=0,gv=0,tt2=0,tv=0,tpd=0;for(const x of tt.values()){tg+=x.g;gv+=x.gv;tt2+=x.t;tv+=x.tv;tpd+=x.pd;}
+  $('byTy').innerHTML=`<table><thead><tr><th>Party type</th><th class="num">To give: parties</th><th class="num">To give (Dena)</th><th class="num" title="Of the To give: the unpaid amount that is past its due date">Past due</th><th class="num">To get: parties</th><th class="num">To get (Lena)</th><th class="num">Net we have to give</th></tr></thead><tbody>`+
+    TYPES.map(k=>{const x=tt.get(k);return `<tr${ty===k?' class="sel"':''}><td><button type="button" class="lnk" data-ty="${k}">${esc(TNAME[k])}</button></td><td class="num">${fmtN(x.g)}</td><td class="num nw">${fmtINR(x.gv)}</td><td class="num nw pd">${fmtINR(x.pd)}</td><td class="num">${fmtN(x.t)}</td><td class="num nw">${fmtINR(x.tv)}</td><td class="num nw"><b>${fmtINR(x.gv-x.tv)}</b></td></tr>`;}).join('')+
+    `</tbody><tfoot><tr><td>All parties</td><td class="num">${fmtN(tg)}</td><td class="num nw">${fmtINR(gv)}</td><td class="num nw pd">${fmtINR(tpd)}</td><td class="num">${fmtN(tt2)}</td><td class="num nw">${fmtINR(tv)}</td><td class="num nw">${fmtINR(gv-tv)}</td></tr></tfoot></table>`;
   const base=ty?TNAME[ty]+': ':'';
   $('giveHint').textContent=q||ty?`${base}${fmtN(give.length)} parties${q?' match the search':''}, the biggest amount first.`:`${fmtN(give.length)} parties, the biggest amount first.`;
   $('getHint').textContent=q||ty?`${base}${fmtN(get.length)} parties${q?' match the search':''}, the biggest amount first.`:`${fmtN(get.length)} parties, the biggest amount first.`;
   $('give').innerHTML=table(give,1);$('get').innerHTML=table(get,-1);
+  // the ageing cards follow the party type and the search, not the bucket filter
+  const ageTable=(side,list)=>{
+    const lab=side==='g'?GL:TL,key=side==='g'?'gb':'tb',tot=list.reduce((s,p)=>s+Math.abs(p.net),0);
+    const rows=lab.map((l,i)=>{let n=0,v=0;for(const p of list)if(p[key][i]>0.5){n++;v+=p[key][i];}return [l,i,n,v];});
+    return `<table><thead><tr><th>${side==='g'?'Past the due date':'Given'}</th><th class="num">Parties</th><th class="num">Amount</th><th class="num">Share</th></tr></thead><tbody>`+
+      rows.map(([l,i,n,v])=>`<tr${AB[side]===i?' class="sel"':''}><td><button type="button" class="lnk" data-ab="${side}${i}"><span class="agep a${i}" style="display:inline-block;width:10px;height:10px;padding:0;margin-right:7px;vertical-align:middle"></span>${esc(l)}</button></td><td class="num">${fmtN(n)}</td><td class="num nw">${fmtINR(v)}</td><td class="num">${tot>0?(v/tot*100).toFixed(1)+'%':'–'}</td></tr>`).join('')+
+      `</tbody><tfoot><tr><td>Total</td><td class="num">${fmtN(list.length)}</td><td class="num nw">${fmtINR(tot)}</td><td class="num">${tot>0?'100%':'–'}</td></tr></tfoot></table>`;
+  };
+  $('byAgeG').innerHTML=ageTable('g',giveAll);$('byAgeT').innerHTML=ageTable('t',getAll);
+  $('ageGHint').innerHTML='The unpaid amount of the parties we have to pay, by days past the due date of the invoice. Payments and debit items that are not cleared yet are set against the oldest invoices first, so the total is the To give amount. Click a row to list only the parties that have an amount in that age.'+(AB.g!==null?`<button type="button" class="abtn" data-abclr="g">Show all parties</button>`:'');
+  $('ageTHint').innerHTML='The money we gave (payments and advances not matched to an invoice yet) by days since it was given, the oldest money set against first. Click a row to list only the parties that have an amount in that age.'+(AB.t!==null?`<button type="button" class="abtn" data-abclr="t">Show all parties</button>`:'');
+  if(AB.g!==null)$('giveHint').textContent+=' Only the parties with an unpaid amount that is '+GL[AB.g]+(AB.g?' past the due date':'')+'.';
+  if(AB.t!==null)$('getHint').textContent+=' Only the parties with money given '+TL[AB.t]+(AB.t?' ago':'')+' that is not settled.';
   $('tySel').value=ty;
 }
 document.addEventListener('click',e=>{
+  const ab=e.target.closest('button[data-ab]');
+  if(ab){const side=ab.dataset.ab[0],i=+ab.dataset.ab.slice(1);AB[side]=AB[side]===i?null:i;render();return;}
+  const ac=e.target.closest('button[data-abclr]');
+  if(ac){AB[ac.dataset.abclr]=null;render();return;}
   const pb=e.target.closest('button[data-party]');
   if(pb){const id=pb.dataset.party;if(OPENP.has(id))OPENP.delete(id);else OPENP.add(id);render();if(OPENP.has(id)){const el=$(panId(id));if(el)el.scrollIntoView({behavior:'smooth',block:'nearest'});}return;}
   const cp=e.target.closest('[data-closep]');
   if(cp){const id=cp.dataset.closep;OPENP.delete(id);render();const r=document.querySelector('button[data-party="'+id.replace(/["\\]/g,'')+'"]');if(r)r.scrollIntoView({block:'nearest'});return;}
   const b=e.target.closest('button[data-ty]');if(!b)return;ty=ty===b.dataset.ty?'':b.dataset.ty;render();});
 $('tySel').addEventListener('change',e=>{ty=e.target.value;render();});
+$('sortSel').addEventListener('change',e=>{SORT=e.target.value;render();});
 let qT;$('q').addEventListener('input',e=>{clearTimeout(qT);qT=setTimeout(()=>{q=e.target.value.trim().toLowerCase();render();},200);});
 
 const root=document.documentElement;
@@ -277,7 +337,31 @@ function setData(d){
     }
   }
   P=[...m.values()];PM=m;
+  for(const p of P)calcAge(p);
   classifyAll();
+}
+function calcAge(p){
+  const asof=D.asofDay;
+  p.gb=new Array(7).fill(0);p.tb=new Array(7).fill(0);p.pastDue=0;p.maxOver=null;p.oldGet=null;p.oldAge=null;
+  const cr=p.items.filter(r=>r.pay>0).sort((a,b)=>(a.due===null?a.post:a.due)-(b.due===null?b.post:b.due));
+  const dr=p.items.filter(r=>r.pay<0).sort((a,b)=>(a.post||0)-(b.post||0));
+  if(p.net>0.5){
+    let rem=dr.reduce((s,r)=>s-r.pay,0);
+    for(const c of cr){
+      const use=Math.min(rem,c.pay);rem-=use;const left=c.pay-use;if(left<=0.005)continue;
+      const od=asof-(c.due===null?c.post:c.due);p.gb[bkt(od)]+=left;
+      if(od>0)p.pastDue+=left;
+      if(p.maxOver===null||od>p.maxOver)p.maxOver=od;
+      const ag=asof-c.post;if(p.oldAge===null||ag>p.oldAge)p.oldAge=ag;
+    }
+  }else if(p.net<-0.5){
+    let rem=cr.reduce((s,r)=>s+r.pay,0);
+    for(const d of dr){
+      const use=Math.min(rem,-d.pay);rem-=use;const left=-d.pay-use;if(left<=0.005)continue;
+      const ag=asof-d.post;p.tb[bkt(ag)]+=left;
+      if(p.oldGet===null||ag>p.oldGet)p.oldGet=ag;
+    }
+  }
 }
 // the type of a party: the hand-made list, the employee account group, the Mittal companies, its purchase orders (Store or RM), then the RM account group / name
 function classify(p){

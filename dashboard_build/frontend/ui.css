@@ -515,3 +515,17 @@ html[data-density="compact"] .pagehead h2{font-size:1.45rem}
   .tools #foldAll,.tools .densebtn{font-size:0;padding:0 11px}
   .tools #foldAll::before,.tools .densebtn::before{margin-right:0;width:16px;height:16px}
 }
+/* the Download menu opens over the tabs of the menu bar: the header is above the bar (at some window widths a tab was under the pointer and a click on Summary / Details opened another page) */
+.stick .top{position:relative;z-index:5}.stick .nav{position:relative;z-index:1}
+/* the name of the last column of a column chart ends at the right edge of the chart (with 12 months on a phone it was centred in a narrow column and went past the edge of the page) */
+.uc-col:last-child .uc-lab{align-self:flex-end}
+
+/* ageing pill (age.js): days since a date, green = young ... red = old */
+.agep{display:inline-block;padding:1px 9px;border-radius:999px;font-size:.74rem;font-weight:700;white-space:nowrap}
+.agep.a0{color:var(--good);background:rgba(12,163,12,.14)}
+.agep.a1{color:#4d8f00;background:rgba(120,190,0,.16)}
+.agep.a2{color:#8a6a00;background:rgba(250,178,25,.22)}
+.agep.a3{color:#b45309;background:rgba(245,158,11,.22)}
+.agep.a4{color:#c2410c;background:rgba(236,131,90,.22)}
+.agep.a5{color:#b91c1c;background:rgba(220,70,70,.16)}
+.agep.a6,.agep.a7{color:#fff;background:var(--crit)}

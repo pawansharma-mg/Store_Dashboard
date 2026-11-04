@@ -16,6 +16,7 @@ import gzip
 import hashlib
 import json
 import os
+import pickle
 import re
 import socket
 import sys
@@ -29,9 +30,9 @@ import webbrowser
 from concurrent.futures import ThreadPoolExecutor
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from pr_data import (AGEING_FIELDS, AGEING_FILTER, ASSET_FIELDS, ASSET_FILTER, CONSUME_FIELDS, CONSUME_MVTS, FIELDS, INVOICE_FIELDS, INVOICE_FILTER, ISSUE_DATE_FILTER, ISSUE_FIELDS, ISSUE_FILTER, PURCHASE_FIELDS, PURCHASE_FILTER, PO_DATE_FILTER, PO_FIELDS, PO_STATUS_FIELDS, STOCK_FIELDS, STOCK_ORDER,
+from pr_data import (EXCLUDE_PLANTS, AGEING_FIELDS, AGEING_FILTER, ASSET_FIELDS, ASSET_FILTER, CONSUME_FIELDS, CONSUME_MVTS, FIELDS, INVOICE_FIELDS, INVOICE_FILTER, ISSUE_DATE_FILTER, ISSUE_FIELDS, ISSUE_FILTER, PURCHASE_FIELDS, PURCHASE_FILTER, PO_DATE_FILTER, PO_FIELDS, PO_STATUS_FIELDS, STOCK_FIELDS, STOCK_ORDER,
                      MG_NAMES, PG_NAMES, USER_NAMES,
-                     ageing_compact, asset_compact, consume_fold, invoice_compact, issue_compact, po_compact, purchase_compact, stock_compact, to_compact)
+                     ageing_compact, asset_compact, consume_fold, move_fold, moves_compact, MOVE_FIELDS, MOVE_FROM, invoice_compact, issue_compact, po_compact, purchase_compact, stock_compact, to_compact)
 
 HERE = os.path.dirname(os.path.abspath(__file__))  # backend/
 FRONTEND = os.path.join(os.path.dirname(HERE), 'frontend')  # the pages and the logo
@@ -93,6 +94,16 @@ CONSUME_QUERY = {'$select': ','.join(CONSUME_FIELDS), '$orderby': _ORDER,
                  '$filter': ISSUE_DATE_FILTER + " and DebitCreditCode eq 'H' and (" + ' or '.join(f"GoodsMovementType_1 eq '{m}'" for m in CONSUME_MVTS) + ')'}
 
 
+MOVES_FULL_EVERY = 21600  # the whole movement history (about 1.2 million lines, 2-3 minutes) is read again every 6 hours; in between only the last MOVES_RECENT_DAYS days
+MOVES_RECENT_DAYS = 10
+MOVE_QUERY = {'$select': ','.join(MOVE_FIELDS), '$orderby': _ORDER, '$filter': f"PostingDate ge datetime'{MOVE_FROM}T00:00:00'"}
+
+
+def move_recent_query(days=MOVES_RECENT_DAYS):
+    since = (_dt.datetime.utcfromtimestamp(time.time() + 5.5 * 3600) - _dt.timedelta(days=days)).date().isoformat()
+    return {**MOVE_QUERY, '$filter': f"PostingDate ge datetime'{since}T00:00:00'"}
+
+
 def consume_recent_query(days=7):
     """The same query for the last `days` days only (about 1 call instead of 60): the frequent refreshes read this and add it to the state of
     the last full read; a full read still happens every FULL_EVERY seconds."""
@@ -102,16 +113,53 @@ def consume_recent_query(days=7):
 
 FULL_EVERY = 1800  # seconds between two full reads of an incremental extra (the 30-second refreshes read only the recent days)
 MIN_REFRESH = 10   # the Refresh button reads SAP again at once, but not more often than this many seconds
-WAIT_FRESH = 6     # a request that finds old data waits this long for the new data (small views are ready by then), else it answers with the old data
+WAIT_FRESH = 2     # a request that finds old data waits this long for the new data (small views are ready by then), else it answers with the old data at once; the page asks again after 30 s
 DEFAULT_USER = 'POWERBI_USER_PRD'
 PAGE = 5000
+# The data of every view is also kept on disk (backend/cache, local PC only) after each read from SAP. A start of the dashboard on the same day shows the data of the last
+# run at once and reads SAP again in the background, so the pages do not wait a minute or more for the first load. The files are dropped when they are from another day
+# (the pages take today's date from the data) or when the program files changed (the data layout may have changed).
+CACHE_DIR = os.path.join(HERE, 'cache')
+IST = 5.5 * 3600
+
+
+def _source_version():
+    h = hashlib.sha1()
+    for name in ('serve_dashboard.py', 'pr_data.py'):
+        try:
+            with open(os.path.join(HERE, name), 'rb') as f:
+                h.update(f.read())
+        except OSError:
+            pass
+    return h.hexdigest()[:16]
+
+
+SOURCE_VERSION = _source_version()
 CLOUD = bool(os.environ.get('K_SERVICE'))
 CSP = ("default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; "
        "base-uri 'none'; form-action 'none'; frame-ancestors 'self'")
 
 
+LOG_FILE = os.path.join(HERE, 'server.log')  # the same lines as in the window, kept for the last runs (local PC only)
+try:  # the file stays small: when it is over 500 KB at the start only its last 300 lines are kept
+    if os.path.getsize(LOG_FILE) > 500_000:
+        with open(LOG_FILE, encoding='utf-8', errors='replace') as _f:
+            _tail = _f.readlines()[-300:]
+        with open(LOG_FILE, 'w', encoding='utf-8') as _f:
+            _f.writelines(_tail)
+except OSError:
+    pass
+
+
 def log(msg):
-    print(f'[{time.strftime("%H:%M:%S")}] {msg}', flush=True)
+    line = f'[{time.strftime("%H:%M:%S")}] {msg}'
+    print(line, flush=True)
+    if not CLOUD:
+        try:
+            with open(LOG_FILE, 'a', encoding='utf-8') as f:
+                f.write(f'{time.strftime("%Y-%m-%d")} {line}\n')
+        except OSError:
+            pass
 
 
 def env_secret(name):
@@ -197,6 +245,52 @@ class Sap:
         self.cache = None          # (fetched_at, raw_json_bytes, gzipped_bytes, digest of the data, fetched_at in ms)
         self._done = None          # set when the running background refresh has finished
         self._xstate = {}          # extra index -> (state of the last read, time of the last full read), for the incremental extras
+        self.key = None            # name of the disk cache file (set for the local PC)
+        self.drop_plants = True    # rows of EXCLUDE_PLANTS are dropped after the read (the asset view does it in asset_compact: only one of its lines carries the plant)
+        self._saved = (None, 0)    # digest and time of the last write to the disk
+
+    def _path(self):
+        return os.path.join(CACHE_DIR, self.key + '.cache')
+
+    def save_disk(self):
+        """Writes the data of the last read (and the state of the incremental reads) to backend/cache, when it changed or every 5 minutes."""
+        c = self.cache
+        if not self.key or CLOUD or not c:
+            return
+        if self._saved[0] == c[3] and time.time() - self._saved[1] < 300:
+            return
+        try:
+            os.makedirs(CACHE_DIR, exist_ok=True)
+            tmp = self._path() + '.tmp'
+            with open(tmp, 'wb') as f:
+                pickle.dump({'v': SOURCE_VERSION, 'fetched_at': c[0], 'gz': c[2], 'digest': c[3], 'stamp': c[4], 'xstate': self._xstate}, f, protocol=4)
+            os.replace(tmp, self._path())
+            self._saved = (c[3], time.time())
+        except Exception as e:  # a disk problem must never stop the dashboard
+            log(f'{self.key}: could not save the data to the disk ({e})')
+
+    def load_disk(self):
+        """Takes the data of the last run from backend/cache when it is from today and was made by the same program files. True when it was used."""
+        if not self.key or CLOUD:
+            return False
+        try:
+            with open(self._path(), 'rb') as f:
+                d = pickle.load(f)
+            if d.get('v') != SOURCE_VERSION:
+                return False
+            if int((d['fetched_at'] + IST) // 86400) != int((time.time() + IST) // 86400):
+                return False
+            gz = d['gz']
+            raw = gzip.decompress(gz)
+            self.cache = (d['fetched_at'], raw, gz, d['digest'], d['stamp'])
+            self._xstate = d.get('xstate') or {}
+            self._saved = (d['digest'], time.time())
+            return True
+        except FileNotFoundError:
+            return False
+        except Exception as e:
+            log(f'{self.key}: the saved data could not be read ({e}); it is read from SAP')
+            return False
 
     def _get(self, url):
         """One SAP call. A network hiccup (timeout, connection reset) or a 502 / 503 / 504 is tried again up to 3 times; the login and
@@ -295,7 +389,11 @@ class Sap:
         return Folded(state, n) if fold else rows
 
     def _refresh(self):
+        t0 = time.time()
         rows = self._fetch_rows()
+        n_all = len(rows)
+        if self.drop_plants and EXCLUDE_PLANTS:
+            rows = [r for r in rows if (r.get('Plant') or '') not in EXCLUDE_PLANTS]
         extra, used = [], []
         for i, x in enumerate(self.extra):
             try:
@@ -325,7 +423,8 @@ class Sap:
         stamp = int(time.time() * 1000)
         raw = body[:-1] + b',"fetchedAt":' + str(stamp).encode('ascii') + b'}'
         self.cache = (time.time(), raw, gzip.compress(raw, 6), digest, stamp)
-        log(f'fetched {len(rows):,} rows from SAP ({self.entity})' + ''.join(f' + {len(x):,} ({e})' for x, (_, e, *_) in zip(extra, used)))
+        log(f'fetched {n_all:,} rows from SAP ({self.entity})' + (f' (plants {", ".join(EXCLUDE_PLANTS)} left out: {n_all - len(rows):,})' if n_all != len(rows) else '') + ''.join(f' + {len(x):,} ({e})' for x, (_, e, *_) in zip(extra, used)) + f' in {time.time() - t0:.1f} s')
+        self.save_disk()
         return self.cache[1:]
 
     def _refresh_in_background(self, done):
@@ -452,7 +551,7 @@ def load_stock_locations():
     try:
         with open(STOCK_LOCATIONS_FILE, newline='', encoding='utf-8-sig') as f:
             for r in csv.reader(f):
-                if len(r) >= 2 and r[0].strip() and r[1].strip() and r[0].strip().lower() != 'plant':
+                if len(r) >= 2 and r[0].strip() and r[1].strip() and r[0].strip().lower() != 'plant' and r[0].strip() not in EXCLUDE_PLANTS:
                     out[(r[0].strip(), r[1].strip())] = ((r[3].strip() if len(r) > 3 else '') or 'Store', r[2].strip() if len(r) > 2 else '')
     except FileNotFoundError:
         pass
@@ -505,6 +604,31 @@ def purchase_view(rows, asof_day):
 
 def stock_view(rows, asof_day, *extra):
     return stock_compact(rows, asof_day, load_stock_locations(), extra[0].state if extra else None)
+
+
+class MoveSap(Sap):
+    """The goods movement history of the listed store locations (for the stock of a past date). The first read takes the whole history, later reads only the last days; the state is
+    kept per document line, so nothing is counted twice."""
+
+    def _refresh(self):
+        t0 = time.time()
+        listed = load_stock_locations()
+        listed_set = set(listed) if listed else None
+        prev = self._xstate.get(0)
+        full = not prev or time.time() - prev[1] >= MOVES_FULL_EVERY
+        q = MOVE_QUERY if full else move_recent_query()
+        res = self._fetch_rows(self.base, self.entity, [q], lambda st, rows: move_fold(st, rows, listed_set), init=None if full else dict(prev[0]))
+        self._xstate[0] = (res.state, time.time() if full else prev[1])
+        asof_day = int((time.time() + 5.5 * 3600) // 86400)
+        data = moves_compact(res.state, asof_day, listed)
+        body = json.dumps(data, separators=(',', ':'), ensure_ascii=False).encode('utf-8')
+        digest = hashlib.sha1(body).hexdigest()[:20]
+        stamp = int(time.time() * 1000)
+        raw = body[:-1] + b',"fetchedAt":' + str(stamp).encode('ascii') + b'}'
+        self.cache = (time.time(), raw, gzip.compress(raw, 6), digest, stamp)
+        log(f'goods movements of the store locations: read {res.n:,} lines ({"whole history" if full else "last days"}), {len(res.state["lines"]):,} kept, in {time.time() - t0:.1f} s')
+        self.save_disk()
+        return self.cache[1:]
 
 
 PAGES = {'/': TPL, '/index.html': TPL, '/issue': ISSUE_TPL, '/po': PO_TPL, '/po-approval': PO_APPROVAL_TPL, '/stock': STOCK_TPL, '/summary': SUMMARY_TPL, '/purchase': PURCHASE_TPL, '/invoice': INVOICE_TPL, '/price': PRICE_TPL, '/ageing': AGEING_TPL, '/asset': ASSET_TPL}
@@ -637,32 +761,50 @@ def main():
     ageing = Sap(AGEING_BASE, 'YY1_STORE_VENDOR_AGEING', AGEING_QUERY, ageing_view, user, password, args.ttl, min_refresh=MIN_REFRESH)
     # Asset transactions (acquisitions, retirements, transfers): about 3,000 lines that change a few times a day.
     asset = Sap(ASSET_BASE, 'YY1_STORE_ASSET_TR', ASSET_QUERY, asset_compact, user, password, args.ttl, min_refresh=MIN_REFRESH)
-    apis = {'/api/pr': sap, '/api/issue': issue, '/api/po': po, '/api/stock': stock, '/api/purchase': purchase, '/api/invoice': invoice, '/api/ageing': ageing, '/api/asset': asset}
+    asset.drop_plants = False
+    # The goods movements of the listed store locations: with them the stock of an earlier day is rebuilt from the stock of today (day wise / month wise stock).
+    stockmoves = MoveSap(ISSUE_BASE, 'YY1_Store_Reservation', MOVE_QUERY, None, user, password, args.ttl, min_refresh=MIN_REFRESH)
+    apis = {'/api/pr': sap, '/api/issue': issue, '/api/po': po, '/api/stock': stock, '/api/purchase': purchase, '/api/invoice': invoice, '/api/ageing': ageing, '/api/asset': asset, '/api/stockmoves': stockmoves}
     del password
+    restored = []
+    for path, view in apis.items():
+        view.key = path.rsplit('/', 1)[-1]
+        if view.load_disk():
+            restored.append(view.key)
 
     if CLOUD:
         # Listen right away so Cloud Run sees a healthy container; the first dashboard visit loads the data.
         host = '0.0.0.0'
     else:
-        print('Checking SAP login and loading data ...')
-        try:
-            sap.payload()
-        except SapError as e:
-            print('\nStopped:', e)
-            if saved and e.status == 401:
-                forget_login()  # never retry a rejected password on its own; the next start asks again
-                print('The saved password was removed. Start the dashboard again and type the current password.')
-            sys.exit(1)
+        if sap.cache is None:
+            print('Checking SAP login and loading data ...')
+            try:
+                sap.payload()
+            except SapError as e:
+                print('\nStopped:', e)
+                if saved and e.status == 401:
+                    forget_login()  # never retry a rejected password on its own; the next start asks again
+                    print('The saved password was removed. Start the dashboard again and type the current password.')
+                sys.exit(1)
+        else:
+            print('Showing the data of the last run at once (' + ', '.join(restored) + '); SAP is read again in the background ...')
         if typed and not os.environ.get('SAP_PASSWORD') and save_login(*typed):
             print('Login saved in Windows Credential Manager. Next time the dashboard starts without asking.')
         typed = None
-        # Warm the big issue and PO data in the background (one after the other) so those pages open quickly.
+        # Read every view in the background, three at a time (the biggest first), so the pages do not wait for their first load; the data of the last run
+        # (restored from the disk) is shown meanwhile.
         def warm():
-            for view in (issue, po, stock, ageing, asset):
+            def one(view):
                 try:
                     view.payload()
                 except SapError as e:
                     log(f'{view.entity} data not loaded: {e}')
+                if Sap.auth_failed and saved:
+                    forget_login()
+                    log('SAP rejected the saved password; it was removed. Close this window, start the dashboard again and type the current password.')
+            with ThreadPoolExecutor(max_workers=3) as ex:
+                list(ex.map(one, (stock, po, issue, ageing, purchase, sap, invoice, asset, stockmoves)))
+            log('every view is ready (a view that was restored from the disk is being read from SAP again in the background)')
         threading.Thread(target=warm, daemon=True).start()
         host = '0.0.0.0' if args.lan else '127.0.0.1'
 

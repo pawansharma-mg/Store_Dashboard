@@ -146,40 +146,45 @@ tr.sel td{background:rgba(28,173,228,.14)!important}
   </section>
 
   <section class="grid">
-    <article class="card">
-      <h2><span class="sec-badge">1</span>Month-wise</h2>
+    <article class="card" data-keep-open>
+      <h2><span class="sec-badge">1</span>Ageing · days since the posting</h2>
+      <p class="hint">How old the transactions are, counted from the posting date to today, with the amount. Click a row to filter everything to that age.</p>
+      <div class="tbox" id="byAge"></div>
+    </article>
+    <article class="card" data-keep-open>
+      <h2><span class="sec-badge">2</span>Month-wise</h2>
       <p class="hint">By posting date. Click a month to see it day by day.</p>
       <div class="tbox" id="byMonth"></div>
     </article>
-    <article class="card">
-      <h2><span class="sec-badge">2</span><span id="dayTitle">Day-wise</span></h2>
+    <article class="card" data-keep-open>
+      <h2><span class="sec-badge">3</span><span id="dayTitle">Day-wise</span></h2>
       <p class="hint">Click a date to filter everything to that day.</p>
       <div class="tbox" id="byDay"></div>
     </article>
     <article class="card">
-      <h2><span class="sec-badge">3</span>Company wise</h2>
+      <h2><span class="sec-badge">4</span>Company wise</h2>
       <p class="hint">MAL = Mittal Appliances Ltd (company 1000, plant 1010), MCPL = Mittal Coin Pvt Ltd (company 2000, plant 2010). Click a company to filter everything.</p>
       <div class="tbox" id="byCo"></div>
     </article>
     <article class="card">
-      <h2><span class="sec-badge">4</span>Transaction type wise</h2>
+      <h2><span class="sec-badge">5</span>Transaction type wise</h2>
       <p class="hint">Acquisitions are types 100 and 120; the others move or retire what is already there. Click a type to filter everything.</p>
       <div class="tbox" id="byType"></div>
     </article>
     <article class="card">
-      <h2><span class="sec-badge">5</span>Asset class wise</h2>
+      <h2><span class="sec-badge">6</span>Asset class wise</h2>
       <p class="hint">Click a class to filter everything.</p>
       <div class="tbox" id="byCls"></div>
     </article>
     <article class="card">
-      <h2><span class="sec-badge">6</span>Supplier wise</h2>
+      <h2><span class="sec-badge">7</span>Supplier wise</h2>
       <p class="hint" id="supHint">Top 50 by amount for the current filters. Click a supplier to filter everything.</p>
       <div class="tbox" id="bySup"></div>
     </article>
   </section>
 
   <section class="card tablecard">
-    <h2><span class="sec-badge">7</span>Capital issue transactions</h2>
+    <h2><span class="sec-badge">8</span>Capital issue transactions</h2>
     <p class="hint" id="tcount"></p>
     <div class="tscroll"><table id="tbl"></table></div>
     <div class="pager"><span id="pinfo"></span><div><button class="btn" id="seeAll" type="button">See all</button></div></div>
@@ -211,7 +216,7 @@ const TT={'100':'External acquisition','105':'Credit memo to an acquisition','11
 const ttName=c=>TT[c]?c+' · '+TT[c]:'Type '+c;
 
 let D=null,R=[],CUR=null,renderToken=0,tileToken=0,SUPN=new Map();
-const S={tile:null,tileAll:false,all:false,co:'',tt:'acq',cls:'',sup:null,asset:null,from:null,to:null,q:'',mon:null};
+const S={tile:null,tileAll:false,all:false,co:'',tt:'acq',cls:'',sup:null,asset:null,age:null,from:null,to:null,q:'',mon:null};
 const supName=id=>SUPN.get(id)||'';
 const supLabel=id=>id===''?'(no supplier)':supName(id)?supName(id)+' ('+id+')':'Supplier '+id;
 const supCell=id=>id===''?'–':`<span title="${esc('Supplier '+id)}">${esc(supName(id)||('Supplier '+id))}</span>`;
@@ -222,6 +227,7 @@ function pass(r,skip){
   if(!skip.includes('tt')){if(S.tt==='acq'){if(!ACQ.includes(r.type))return false;}else if(S.tt!=='all'&&r.type!==S.tt)return false;}
   if(!skip.includes('cls')&&S.cls&&r.cls!==S.cls)return false;
   if(!skip.includes('sup')&&S.sup!==null&&r.sup!==S.sup)return false;
+  if(!skip.includes('age')&&S.age!==null&&r.ab!==S.age)return false;
   if(!skip.includes('date')&&S.from!==null&&!(r.day>=S.from))return false;
   if(!skip.includes('date')&&S.to!==null&&!(r.day<=S.to))return false;
   if(S.q&&!r.hay.includes(S.q))return false;
@@ -245,20 +251,20 @@ function aggTable(list,head,cell,sel){
 }
 
 // ---------------------------------------------------------------- the transactions
-const LHEAD='<thead><tr><th class="num">#</th><th>Posting date</th><th>Company</th><th>Asset</th><th>Description</th><th>Supplier</th><th>Transaction</th><th class="num">Amount</th><th>Journal entry</th><th>Class</th><th>Plant</th><th>Text</th></tr></thead>';
+const LHEAD='<thead><tr><th class="num">#</th><th>Posting date</th><th class="num" title="Days since the posting date">Age</th><th>Company</th><th>Asset</th><th>Description</th><th>Supplier</th><th>Transaction</th><th class="num">Amount</th><th>Journal entry</th><th>Class</th><th>Plant</th><th>Text</th></tr></thead>';
 const typePill=t=>`<span class="pill ${ACQ.includes(t)?'acq':'oth'}" title="${esc(ttName(t))}">${esc(t)}</span> ${esc(TT[t]||'')}`;
-const lineRow=(r,i)=>`<tr><td class="num">${i+1}</td><td class="nw">${r.day===null?'–':fmtDay(r.day)}</td><td class="nw" title="${esc(COFULL[r.co]||r.co)}">${esc(coName(r.co))}</td><td class="nw"><button type="button" class="lnk" data-asset="${esc(r.ak)}" title="All transactions of this asset">${esc(r.asset)}</button></td><td class="descc">${esc(r.desc)}</td><td class="supc">${supCell(r.sup)}</td><td class="nw">${typePill(r.type)}</td><td class="num nw amt ${r.amt<-0.5?'neg':''}" title="${esc(fullINR(r.amt))}">${fmtINR(r.amt)}</td><td class="nw">${esc(r.je)} <span class="dt" title="Journal entry type">${esc(r.dtype)}</span></td><td>${esc(r.cls)}</td><td>${esc(r.plant||'–')}</td><td class="txtc">${esc(r.text||'–')}</td></tr>`;
+const lineRow=(r,i)=>`<tr><td class="num">${i+1}</td><td class="nw">${r.day===null?'–':fmtDay(r.day)}</td><td class="num nw">${AGE.pill(r.age,r.age===null?'':AGE.words(r.age)+' since the posting date')}</td><td class="nw" title="${esc(COFULL[r.co]||r.co)}">${esc(coName(r.co))}</td><td class="nw"><button type="button" class="lnk" data-asset="${esc(r.ak)}" title="All transactions of this asset">${esc(r.asset)}</button></td><td class="descc">${esc(r.desc)}</td><td class="supc">${supCell(r.sup)}</td><td class="nw">${typePill(r.type)}</td><td class="num nw amt ${r.amt<-0.5?'neg':''}" title="${esc(fullINR(r.amt))}">${fmtINR(r.amt)}</td><td class="nw">${esc(r.je)} <span class="dt" title="Journal entry type">${esc(r.dtype)}</span></td><td>${esc(r.cls)}</td><td>${esc(r.plant||'–')}</td><td class="txtc">${esc(r.text||'–')}</td></tr>`;
 const sumAmt=rows=>rows.reduce((s,r)=>s+r.amt,0);
-const lineFoot=rows=>`<tfoot><tr><td colspan="7">Total (${fmtN(rows.length)} transactions, ${fmtN(new Set(rows.map(r=>r.ak)).size)} assets)</td><td class="num nw">${fmtINR(sumAmt(rows))}</td><td colspan="4"></td></tr></tfoot>`;
-const newest=a=>a.slice().sort((x,y)=>(y.day||0)-(x.day||0)||y.je.localeCompare(x.je)||x.asset.localeCompare(y.asset));
+const lineFoot=rows=>`<tfoot><tr><td colspan="8">Total (${fmtN(rows.length)} transactions, ${fmtN(new Set(rows.map(r=>r.ak)).size)} assets)</td><td class="num nw">${fmtINR(sumAmt(rows))}</td><td colspan="4"></td></tr></tfoot>`;
+const newest=a=>a.slice().sort((x,y)=>Math.abs(y.amt)-Math.abs(x.amt)||(y.day||0)-(x.day||0)||y.je.localeCompare(x.je)||x.asset.localeCompare(y.asset));  // the most amount first
 
 // ---------------------------------------------------------------- details of a tile
 const TILE_INFO={
-  cnt:['Transactions','Every transaction of the current filters, newest first.'],
+  cnt:['Transactions','Every transaction of the current filters, the most amount first.'],
   assets:['Assets','The assets that have a transaction in the current filters, the biggest amount first.'],
   sups:['Suppliers','The suppliers of the transactions in the current filters, the biggest amount first.'],
-  mal:['MAL (Mittal Appliances Ltd, 1000)','The transactions of company 1000 for the current filters (the company filter is not applied), newest first.'],
-  mcpl:['MCPL (Mittal Coin Pvt Ltd, 2000)','The transactions of company 2000 for the current filters (the company filter is not applied), newest first.']
+  mal:['MAL (Mittal Appliances Ltd, 1000)','The transactions of company 1000 for the current filters (the company filter is not applied), the most amount first.'],
+  mcpl:['MCPL (Mittal Coin Pvt Ltd, 2000)','The transactions of company 2000 for the current filters (the company filter is not applied), the most amount first.']
 };
 function renderTile(){
   const k=S.tile;
@@ -342,6 +348,7 @@ function render(){
   if(S.co)c.push(['co','Company: '+(CO[S.co]||S.co)]);
   if(S.tt!=='acq')c.push(['tt',S.tt==='all'?'All transactions':'Transaction: '+ttName(S.tt)]);
   if(S.cls)c.push(['cls','Class '+S.cls]);
+  if(S.age!==null)c.push(['age','Posted: '+AGE.LABELS[S.age]+' ago']);
   if(S.sup!==null)c.push(['sup','Supplier: '+(supName(S.sup)||S.sup)]);
   if(S.from!==null||S.to!==null)c.push(['date','Posting date '+(S.from!==null?fmtDay(S.from):'start')+' – '+(S.to!==null?fmtDay(S.to):'today')]);
   if(S.q)c.push(['q','Search: '+S.q]);
@@ -361,6 +368,8 @@ function render(){
   $('supHint').textContent='Amount for the current filters'+(spl.length>50?`; top 50 of ${fmtN(spl.length)} suppliers shown, the total covers all`:'')+'. Click a supplier to filter everything.';
   $('bySup').innerHTML=aggTable(spl.slice(0,50),'Supplier',k=>`<button type="button" class="lnk" data-sup="${esc(k)}">${esc(supName(k)||('Supplier '+k))}</button>`,S.sup);
   // month / day (ignore From/To so every month stays listed)
+  const agm=new Map();for(const r of R)if(r.ab>=0&&pass(r,['age']))add(agm,r.ab,r);
+  $('byAge').innerHTML=aggTable([...agm.entries()].sort((a,b)=>a[0]-b[0]),'Posted',k=>`<button type="button" class="lnk" data-age="${k}">${AGE.LABELS[k]}</button>`,S.age);
   const mon=new Map(),day=new Map();
   if(S.mon===null)S.mon=mIdx(D.asofDay);
   for(const r of R){if(r.day===null||!pass(r,['date']))continue;const k=mIdx(r.day);add(mon,k,r);if(k===S.mon)add(day,r.day,r);}
@@ -368,10 +377,10 @@ function render(){
   $('dayTitle').textContent='Day-wise · '+mName(S.mon);
   $('byDay').innerHTML=aggTable([...day.entries()].sort((a,b)=>a[0]-b[0]),'Posting date',k=>`<button type="button" class="lnk" data-day="${k}">${fmtDay(k)}</button>`);
   // the transactions, newest first
-  rows.sort((a,b)=>(b.day||0)-(a.day||0)||b.je.localeCompare(a.je)||a.asset.localeCompare(b.asset));
+  rows.sort((a,b)=>Math.abs(b.amt)-Math.abs(a.amt)||(b.day||0)-(a.day||0)||b.je.localeCompare(a.je)||a.asset.localeCompare(b.asset));
   const slice=S.all?rows:rows.slice(0,PAGE);
   const first=S.all?slice.slice(0,400):slice;
-  $('tbl').innerHTML=LHEAD+'<tbody>'+(first.length?first.map((r,i)=>lineRow(r,i)).join(''):'<tr><td colspan="12" class="empty">Nothing matches the filters.</td></tr>')+'</tbody>'+(rows.length?lineFoot(rows):'');
+  $('tbl').innerHTML=LHEAD+'<tbody>'+(first.length?first.map((r,i)=>lineRow(r,i)).join(''):'<tr><td colspan="13" class="empty">Nothing matches the filters.</td></tr>')+'</tbody>'+(rows.length?lineFoot(rows):'');
   const token=++renderToken;let done=first.length;
   const more=()=>{if(token!==renderToken||done>=slice.length)return;document.querySelector('#tbl tbody').insertAdjacentHTML('beforeend',slice.slice(done,done+600).map((r,i)=>lineRow(r,done+i)).join(''));done+=600;setTimeout(more,0);};
   setTimeout(more,0);
@@ -391,6 +400,7 @@ document.addEventListener('click',e=>{
   else if(t.dataset.tt!==undefined){S.tt=S.tt===t.dataset.tt?'acq':t.dataset.tt;syncSel();}
   else if(t.dataset.cls!==undefined){S.cls=S.cls===t.dataset.cls?'':t.dataset.cls;syncSel();}
   else if(t.dataset.sup!==undefined){S.sup=S.sup===t.dataset.sup?null:t.dataset.sup;syncSel();}
+  else if(t.dataset.age!==undefined){const v=+t.dataset.age;S.age=S.age===v?null:v;}
   else if(t.dataset.mon!==undefined){S.mon=+t.dataset.mon;}
   else if(t.dataset.day!==undefined){const d=+t.dataset.day;S.from=S.to=d;syncDates();}
   else if(t.dataset.qk){const k=t.dataset.qk;
@@ -400,6 +410,7 @@ document.addEventListener('click',e=>{
     if(c==='co'||c==='all')S.co='';
     if(c==='tt'||c==='all')S.tt='acq';
     if(c==='cls'||c==='all')S.cls='';
+    if(c==='age'||c==='all')S.age=null;
     if(c==='sup'||c==='all')S.sup=null;
     if(c==='date')S.from=S.to=null,syncDates();
     if(c==='all')setMonthDates();
@@ -444,6 +455,7 @@ function setData(d){
   R=d.rows.map(a=>{
     const r={day:a[0],co:d.companies[a[1]],je:a[2],fy:a[3],asset:a[4],ak:d.companies[a[1]]+'/'+a[4],desc:a[5],cls:d.classes[a[6]],type:d.types[a[7]],dtype:d.docTypes[a[8]],sup:d.suppliers[a[9]],plant:d.plants[a[10]],amt:a[11],text:a[12],pc:d.pcs[a[13]],gl:d.gls[a[14]],lines:a[15]};
     r.hay='';
+    r.age=r.day===null?null:Math.max(0,d.asofDay-r.day);r.ab=r.age===null?-1:AGE.bucket(r.age);
     return r;
   });
   for(const r of R)r.hay=hayOf(r);

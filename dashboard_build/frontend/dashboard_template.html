@@ -239,7 +239,6 @@ tbody tr:hover td{background:rgba(28,173,228,.07)}
   <section class="bar" aria-label="Filters">
     <label class="fld"><span>Plant</span><select id="plantSel"></select></label>
     <label class="fld"><span>PR type</span><select id="typeSel"></select></label>
-    <label class="fld"><span>PR source</span><select id="srcSel"><option value="">All PRs</option><option value="manual">Manual PRs (departments)</option><option value="mrp">MRP PRs (MRP run)</option></select></label>
     <label class="fld"><span>PR creation date from</span><input id="dFrom" type="date"></label>
     <label class="fld"><span>PR creation date to</span><input id="dTo" type="date"></label>
     <label class="fld grow"><span>Search</span><input id="q" type="search" placeholder="PR number, material, description, storage location"></label>
@@ -255,30 +254,25 @@ tbody tr:hover td{background:rgba(28,173,228,.07)}
     <div class="pager"><span id="tileInfo"></span><div class="btns"><button id="tileAll" type="button">See all</button></div></div>
   </section>
 
-  <section class="card srccard" style="margin-top:12px">
-    <h2><span class="sec-badge">1</span>Manual PRs and MRP PRs</h2>
-    <p class="hint">MRP PRs are the requisitions the MRP run proposes (created by the user "MRP Controll", PR type NB); manual PRs are the ones the departments raised. Follows the other filters. Click a line to see only those PRs (click again to remove), or use the filter "PR source".</p>
-    <div class="tbox" id="bySrc"></div>
-  </section>
 
   <section class="grid">
     <article class="card">
-      <h2><span class="sec-badge">2</span>Ageing</h2>
+      <h2><span class="sec-badge">1</span>Ageing</h2>
       <p class="hint">Days since the PR was created. Click a bar to filter the list.</p>
       <div id="age"></div>
     </article>
     <article class="card">
-      <h2><span class="sec-badge">3</span>Plant and PO status</h2>
+      <h2><span class="sec-badge">2</span>Plant and PO status</h2>
       <p class="hint">Pending items per plant. Click a plant to filter.</p>
       <div id="plant"></div>
       <div class="legend" id="plantLegend"></div>
     </article>
     <article class="card">
-      <div class="cardhead"><h2><span class="sec-badge">4</span>Top 10 by</h2><div class="sc small" id="dimCtl" role="group" aria-label="Group by"></div></div>
+      <div class="cardhead"><h2><span class="sec-badge">3</span>Top 10 by</h2><div class="sc small" id="dimCtl" role="group" aria-label="Group by"></div></div>
       <div id="dim"></div>
     </article>
     <article class="card">
-      <h2><span class="sec-badge">5</span>Created per month</h2>
+      <h2><span class="sec-badge">4</span>Created per month</h2>
       <p class="hint">Items in view by the month their PR was created, every month. Months outside the PR creation date range are faded.</p>
       <div id="month"></div>
     </article>
@@ -286,12 +280,12 @@ tbody tr:hover td{background:rgba(28,173,228,.07)}
 
   <section class="grid">
     <article class="card">
-      <h2><span class="sec-badge">6</span>Pending PR by purchasing group</h2>
+      <h2><span class="sec-badge">5</span>Pending PR by purchasing group</h2>
       <p class="hint">Open items with quantity still to order, as in ME5A. Follows the plant, date and search filters.</p>
       <div class="tbox" id="byPg"></div>
     </article>
     <article class="card">
-      <h2><span class="sec-badge">7</span>Pending PR by user</h2>
+      <h2><span class="sec-badge">6</span>Pending PR by user</h2>
       <p class="hint">Created by is the SAP user ID; requisitioner is the name typed on the PR (often blank).</p>
       <div class="tbox" id="byUser"></div>
     </article>
@@ -299,19 +293,19 @@ tbody tr:hover td{background:rgba(28,173,228,.07)}
 
   <section class="grid">
     <article class="card">
-      <h2><span class="sec-badge">8</span>Month-wise pending</h2>
+      <h2><span class="sec-badge">7</span>Month-wise pending</h2>
       <p class="hint">By requisition date, as in ME5A. Click a month to see it day by day.</p>
       <div class="tbox" id="byMonth"></div>
     </article>
     <article class="card">
-      <h2><span class="sec-badge">9</span><span id="dayTitle">Day-wise pending</span></h2>
+      <h2><span class="sec-badge">8</span><span id="dayTitle">Day-wise pending</span></h2>
       <p class="hint">Click a date to filter the whole dashboard and the item list to that day.</p>
       <div class="tbox" id="byDay"></div>
     </article>
   </section>
 
   <section class="card tablecard">
-    <div class="cardhead"><h2><span class="sec-badge">10</span>Item list</h2><span id="tcount" class="hint" style="margin:0"></span></div>
+    <div class="cardhead"><h2><span class="sec-badge">9</span>Item list</h2><span id="tcount" class="hint" style="margin:0"></span></div>
     <div class="tscroll"><table id="tbl"></table></div>
     <div class="pager"><span id="pinfo"></span><div class="btns"><button id="seeAll" type="button">See all</button></div></div>
   </section>
@@ -351,7 +345,7 @@ const fmtDay=d=>new Date(d*864e5).toLocaleDateString('en-GB',{day:'2-digit',mont
 const pct=(a,b)=>b?Math.round(a/b*100):0;
 function ageBucket(a){for(let i=0;i<AGE_EDGES.length;i++)if(a<=AGE_EDGES[i])return i;return 7;}
 
-const DEF={all:false,status:0,plant:'',type:'',src:'',age:-1,dim:'sloc',dimVal:null,flag:'',q:'',from:null,to:null,mon:null,sort:{k:'age',d:-1},page:0};
+const DEF={all:false,status:0,plant:'',type:'',age:-1,dim:'sloc',dimVal:null,flag:'',q:'',from:null,to:null,mon:null,sort:{k:'amt',d:-1},page:0};
 const S=JSON.parse(JSON.stringify(DEF));
 
 function pass(r,skip){
@@ -359,7 +353,6 @@ function pass(r,skip){
   if(!skip.includes('status')&&S.status>=0&&r.st!==S.status)return false;
   if(!skip.includes('plant')&&S.plant&&r.plant!==S.plant)return false;
   if(S.type&&r.type!==S.type)return false;
-  if(!skip.includes('src')&&S.src&&(S.src==='mrp')!==r.mrp)return false;  // PR source: mrp = created by the MRP run, manual = raised by a department
   if(!skip.includes('age')&&S.age>=0&&r.bk!==S.age)return false;
   if(!skip.includes('dim')&&S.dimVal!==null&&r[S.dim]!==S.dimVal)return false;
   if(S.flag==='overdue'&&!r.od)return false;
@@ -375,7 +368,6 @@ function renderChips(){
   const c=[];
   if(S.plant)c.push(['plant','Plant '+S.plant]);
   if(S.type)c.push(['type','PR type '+typeName(S.type)]);
-  if(S.src)c.push(['src',S.src==='mrp'?'MRP PRs only':'Manual PRs only (MRP left out)']);
   if(S.age>=0)c.push(['age','Age '+AGE_LABELS[S.age]+' days']);
   if(S.dimVal!==null)c.push(['dim',DIMS[S.dim].name+': '+dimLabel(S.dimVal)]);
   if(S.flag)c.push(['flag',S.flag==='overdue'?'Delivery date passed':'Quantity to check']);
@@ -402,7 +394,7 @@ function renderKPIs(rows){
 
 // details of a tile
 const TILE_INFO={
-  items:['Pending PRs','One row per pending PR of the current filters, oldest first.'],
+  items:['Pending PRs','One row per pending PR of the current filters, the PR with the most value first.'],
   value:['Net value of the pending items','Where the value sits for the current filters. Items with a quantity above 10 lakh (probably a typing mistake) are left out of the value.'],
   overdue:['Delivery date passed','Items whose delivery date is before today, longest overdue first.'],
   old:['Older than 1 year','Items whose PR was created more than 365 days ago, oldest first.'],
@@ -426,7 +418,7 @@ function renderTile(rows){
   // one row per PR
   const byPr=()=>{const m=new Map();for(const r of rows){let x=m.get(r.pr);if(!x)m.set(r.pr,x={pr:r.pr,prDay:r.prDay,age:r.age,type:r.type,plant:r.plant,user:r.user,n:0,amt:0,od:0,sts:new Set()});x.n++;if(!r.sus)x.amt+=r.amt;if(r.od)x.od++;x.sts.add(r.st);}return [...m.values()];};
   if(k==='items'){
-    const prs=byPr().sort((a,b)=>b.age-a.age||a.pr.localeCompare(b.pr));list=prs;
+    const prs=byPr().sort((a,b)=>b.amt-a.amt||b.age-a.age||a.pr.localeCompare(b.pr));list=prs;
     thead='<thead><tr><th>#</th><th>PR</th><th>PR date</th><th class="num">Age (d)</th><th>PR type</th><th>Plant</th><th class="num">Items</th><th class="num">Value</th><th class="num">Delivery date passed</th><th>Created by</th><th>Status</th></tr></thead>';
     rowFn=(x,i)=>`<tr><td>${i+1}</td><td class="nw">${esc(x.pr)}</td><td class="nw">${fmtDay(x.prDay)}</td><td class="num">${fmtN(x.age)}</td><td class="nw">${esc(x.type)}</td><td>${esc(x.plant)}</td><td class="num">${fmtN(x.n)}</td><td class="num nw">${fmtINR(x.amt)}</td><td class="num">${x.od?fmtN(x.od):'–'}</td><td class="nw" title="${esc(uTip(x.user))}">${esc(uName(x.user))}</td><td class="nw">${[...x.sts].sort().map(i=>STATUS[i]).join(' / ')}</td></tr>`;
   }else if(k==='value'){
@@ -522,7 +514,7 @@ const COLS=[
  {k:'pr',t:'PR / item'},{k:'type',t:'PR type'},{k:'plant',t:'Plant'},{k:'sloc',t:'S.Loc'},{k:'pg',t:'Purch. group'},{k:'mat',t:'Material'},{k:'text',t:'Description'},
  {k:'user',t:'Created by'},{k:'req',t:'Requisitioner'},
  {k:'pend',t:'Open qty',num:1},{k:'amt',t:'Value',num:1},{k:'prDay',t:'PR date'},{k:'age',t:'Age (d)',num:1},{k:'delDay',t:'Delivery'},{k:'st',t:'Status'}];
-function sortVal(r,k){if(k==='pr')return r.pr+'/'+r.item;if(k==='user')return uName(r.user);if(k==='pg')return pgName(r.pg);return r[k];}
+function sortVal(r,k){if(k==='pr')return r.pr+'/'+r.item;if(k==='amt')return r.sus?-1:r.amt;if(k==='user')return uName(r.user);if(k==='pg')return pgName(r.pg);return r[k];}
 function renderTable(rows){
   const {k,d}=S.sort;
   rows=rows.slice().sort((a,b)=>{
@@ -570,19 +562,6 @@ const byCount=m=>[...m.entries()].sort((a,b)=>b[1].prs.size-a[1].prs.size||b[1].
 const plainCells=k=>k.split('\u0000').map(c=>`<td class="nw">${esc(c)}</td>`).join('');
 const userCells=k=>{const [u,rq]=k.split('\u0000');return `<td class="nw" title="${esc(uTip(u))}">${esc(uName(u))}</td><td class="nw">${esc(rq)}</td>`;};
 
-function renderSrc(){
-  const m=new Map();
-  for(const r of R){if(!pass(r,['src']))continue;const k=r.mrp?'mrp':'manual';let x=m.get(k);if(!x)m.set(k,x={prs:new Set(),n:0,amt:0,od:0,old:0});x.prs.add(r.pr);x.n++;if(!r.sus)x.amt+=r.amt;if(r.od)x.od++;if(r.age>365)x.old++;}
-  const list=['manual','mrp'].filter(k=>m.has(k)).map(k=>[k,m.get(k)]);
-  if(!list.length){$('bySrc').innerHTML='<div class="empty">No pending items match the filters.</div>';return;}
-  const tot={prs:new Set(),n:0,amt:0,od:0,old:0};for(const [,x] of list){x.prs.forEach(p=>tot.prs.add(p));tot.n+=x.n;tot.amt+=x.amt;tot.od+=x.od;tot.old+=x.old;}
-  const nums=x=>`<td class="num">${fmtN(x.prs.size)}</td><td class="num">${fmtN(x.n)}</td><td class="num nw">${fmtINR(x.amt)}</td><td class="num">${fmtN(x.od)}</td><td class="num">${fmtN(x.old)}</td>`;
-  const LAB={manual:'Manual PRs (raised by the departments)',mrp:'MRP PRs (created by the MRP run)'};
-  $('bySrc').innerHTML=`<table><thead><tr><th>PR source</th><th class="num">Pending PRs</th><th class="num">Items</th><th class="num">Value</th><th class="num">Delivery date passed</th><th class="num">Older than 1 year</th></tr></thead><tbody>`+
-    list.map(([k,x])=>`<tr${k===S.src?' class="sel"':''}><td><button type="button" class="lnk" data-src="${k}">${LAB[k]}</button></td>${nums(x)}</tr>`).join('')+
-    `</tbody><tfoot><tr><td>Total</td>${nums(tot)}</tr></tfoot></table>`;
-}
-
 function renderPending(){
   const pg=new Map(),us=new Map();
   for(const r of R){if(pass(r,['status'])){addAgg(pg,r.pg,r);addAgg(us,r.user+'\u0000'+r.req,r);}}
@@ -609,12 +588,12 @@ function renderMonthDay(){
 
 function render(){
   const rows=R.filter(r=>pass(r));
-  renderChips();renderKPIs(rows);renderTile(rows);renderAge();renderPlant();renderDim();renderMonth();renderTable(rows);renderSrc();renderPending();renderMonthDay();
+  renderChips();renderKPIs(rows);renderTile(rows);renderAge();renderPlant();renderDim();renderMonth();renderTable(rows);renderPending();renderMonthDay();
 }
 function setMonthDates(){const t=new Date(D.asofDay*864e5);const y=t.getUTCFullYear(),m=t.getUTCMonth();const a=Date.UTC(y,m,1)/864e5,b=Date.UTC(y,m+1,0)/864e5;S.from=a;S.to=b;$('dFrom').value=new Date(a*864e5).toISOString().slice(0,10);$('dTo').value=new Date(b*864e5).toISOString().slice(0,10);}
 function reset(keepStatus){
   const st=S.status;Object.assign(S,JSON.parse(JSON.stringify(DEF)));if(keepStatus)S.status=st;
-  $('q').value='';$('plantSel').value='';$('typeSel').value='';$('srcSel').value='';$('dFrom').value='';$('dTo').value='';
+  $('q').value='';$('plantSel').value='';$('typeSel').value='';$('dFrom').value='';$('dTo').value='';
   if(D)setMonthDates();  // Reset goes back to the current month
 }
 
@@ -622,7 +601,6 @@ function reset(keepStatus){
 document.addEventListener('click',e=>{
   const t=e.target.closest('button');if(!t)return;
   if(t.dataset.st!==undefined){S.status=+t.dataset.st;S.page=0;}
-  else if(t.dataset.src!==undefined){S.src=S.src===t.dataset.src?'':t.dataset.src;$('srcSel').value=S.src;S.page=0;}
   else if(t.dataset.age!==undefined){const i=+t.dataset.age;S.age=S.age===i?-1:i;S.page=0;}
   else if(t.dataset.plant!==undefined){S.plant=S.plant===t.dataset.plant?'':t.dataset.plant;$('plantSel').value=S.plant;S.page=0;}
   else if(t.dataset.val!==undefined){S.dimVal=S.dimVal===t.dataset.val?null:t.dataset.val;S.page=0;}
@@ -635,7 +613,6 @@ document.addEventListener('click',e=>{
     if(c==='all')reset(false);
     else if(c==='plant'){S.plant='';$('plantSel').value='';}
     else if(c==='type'){S.type='';$('typeSel').value='';}
-    else if(c==='src'){S.src='';$('srcSel').value='';}
     else if(c==='age')S.age=-1;else if(c==='dim')S.dimVal=null;else if(c==='flag')S.flag='';
     else if(c==='q'){S.q='';$('q').value='';}
     else if(c==='date'){S.from=S.to=null;$('dFrom').value='';$('dTo').value='';}
@@ -652,7 +629,6 @@ document.addEventListener('click',e=>{
 });
 $('plantSel').addEventListener('change',e=>{S.plant=e.target.value;S.page=0;render();});
 $('typeSel').addEventListener('change',e=>{S.type=e.target.value;S.page=0;render();});
-$('srcSel').addEventListener('change',e=>{S.src=e.target.value;S.page=0;render();});
 let qT;$('q').addEventListener('input',e=>{clearTimeout(qT);qT=setTimeout(()=>{S.q=e.target.value.trim().toLowerCase();S.page=0;render();},150);});
 // <input type="date"> gives YYYY-MM-DD, which Date.parse reads as UTC midnight: same day numbers as prDay.
 const dayOf=v=>v?Math.floor(Date.parse(v)/864e5):null;
@@ -687,11 +663,11 @@ function setData(d){
   R=d.rows.map(a=>{
     const r={pr:a[0],item:a[1],plant:D.plants[a[2]],sloc:D.slocs[a[3]],pg:D.pgs[a[4]],type:D.types[a[5]],mat:a[6],text:a[7],qty:a[8],pend:a[9],unit:D.units[a[10]],amt:a[11],prDay:a[12],delDay:a[13],st:a[14],closed:a[15],user:D.users[a[16]],po:a[17],req:D.reqs?D.reqs[a[18]]:'(blank)'};
     r.age=D.asofDay-r.prDay; r.bk=ageBucket(r.age); r.sus=r.qty>1e6;
-    r.mrp=/^MRP/i.test(r.user);  // the MRP run creates its PRs under the user "MRP Controll" (PR type NB)
+    r.mrp=/^MRP/i.test(r.user);  // the MRP run creates its PRs under the user "MRP Controll" (PR type NB): these are not shown
     r.od=r.delDay!==null&&r.delDay<D.asofDay;
     r.hay=(r.pr+' '+r.mat+' '+r.text+' '+r.sloc+' '+r.po+' '+r.user+' '+uName(r.user)+' '+(USER_NAMES[r.user]?USER_NAMES[r.user][1]:'')+' '+r.req).toLowerCase();
     return r;
-  }).filter(r=>r.pend>0&&!r.closed); // pending like ME5A: some quantity still not ordered, item not closed
+  }).filter(r=>r.pend>0&&!r.closed&&!r.mrp); // pending like ME5A: some quantity still not ordered, item not closed; the PRs of the MRP run (user MRP Controll) are left out (user, 3-Nov-2026)
   M0=Infinity;for(const r of R){const k=mIdx(r.prDay);if(k<M0)M0=k;}
   M1=mIdx(D.asofDay);
   $('asof').textContent=fmtDay(D.asofDay);
@@ -712,7 +688,6 @@ let LINK=(()=>{try{const q=new URLSearchParams(location.search);return q.has('ti
 function applyLink(){
   if(!LINK)return;const q=LINK;LINK=null;
   if(q.has('plant')){S.plant=q.get('plant')||'';if(![...$('plantSel').options].some(o=>o.value===S.plant))S.plant='';$('plantSel').value=S.plant;}
-  if(q.has('src')){const v=q.get('src');S.src=v==='mrp'||v==='manual'?v:'';$('srcSel').value=S.src;}
   if(q.get('dates')==='all'){S.from=S.to=null;$('dFrom').value=$('dTo').value='';}
   else if(q.has('from')||q.has('to')){S.from=dayOf(q.get('from'));S.to=dayOf(q.get('to'));$('dFrom').value=S.from===null?'':new Date(S.from*864e5).toISOString().slice(0,10);$('dTo').value=S.to===null?'':new Date(S.to*864e5).toISOString().slice(0,10);}
   const k=q.get('tile');if(k&&TILE_INFO[k]){TILE=k;TILEALL=false;REVEAL=true;}

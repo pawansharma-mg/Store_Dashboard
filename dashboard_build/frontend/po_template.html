@@ -162,50 +162,55 @@ tr.sel td{background:rgba(28,173,228,.14)!important}
   </section>
 
   <section class="grid">
+    <article class="card" id="ageCard">
+      <h2><span class="sec-badge">1</span>Ageing · pending delivery</h2>
+      <p class="hint" id="ageHint">How long the items still to be delivered have been waiting, counted from the date chosen above (days to today). Click a row to filter everything to that age.</p>
+      <div class="tbox" id="byAge"></div>
+    </article>
     <article class="card">
-      <h2><span class="sec-badge">1</span>Supplier wise PO value</h2>
+      <h2><span class="sec-badge">2</span>Supplier wise PO value</h2>
       <p class="hint" id="supHint">Net order value (INR) of the PO items. Click a supplier to filter everything.</p>
       <div class="tbox" id="bySup"></div>
     </article>
-    <article class="card">
-      <h2><span class="sec-badge">2</span>PO type wise</h2>
+    <article class="card" data-keep-open>
+      <h2><span class="sec-badge">3</span>PO type wise</h2>
       <p class="hint">Click a PO type to filter everything.</p>
       <div class="tbox" id="byType"></div>
     </article>
     <article class="card">
-      <h2><span class="sec-badge">3</span>Material type wise</h2>
+      <h2><span class="sec-badge">4</span>Material type wise</h2>
       <p class="hint">PO items by material type. The yellow line adds up the Store material types (ZCON, ZHMI, ZSPR, ZSRM, ZVRP); they are listed under it (↳), then the other types. Click the yellow line to see only the Store POs. The total at the bottom counts every type once. Items without a material (services, asset text items) have no type.</p>
       <div class="tbox" id="byMt"></div>
     </article>
     <article class="card">
-      <h2><span class="sec-badge">4</span>Plant wise</h2>
+      <h2><span class="sec-badge">5</span>Plant wise</h2>
       <p class="hint">Click a plant to filter everything.</p>
       <div class="tbox" id="byPlant"></div>
     </article>
     <article class="card">
-      <h2><span class="sec-badge">5</span>Material group wise</h2>
+      <h2><span class="sec-badge">6</span>Material group wise</h2>
       <p class="hint">Click a material group to filter everything.</p>
       <div class="tbox" id="byGrp"></div>
     </article>
     <article class="card">
-      <h2><span class="sec-badge">6</span>Purchasing group wise</h2>
+      <h2><span class="sec-badge">7</span>Purchasing group wise</h2>
       <p class="hint">Click a purchasing group to filter everything.</p>
       <div class="tbox" id="byPg"></div>
     </article>
     <article class="card">
-      <h2><span class="sec-badge">7</span>Month-wise POs</h2>
+      <h2><span class="sec-badge">8</span>Month-wise POs</h2>
       <p class="hint">By the date chosen above (PO date or Created on). Click a month to see it day by day.</p>
       <div class="tbox" id="byMonth"></div>
     </article>
     <article class="card">
-      <h2><span class="sec-badge">8</span><span id="dayTitle">Day-wise POs</span></h2>
+      <h2><span class="sec-badge">9</span><span id="dayTitle">Day-wise POs</span></h2>
       <p class="hint">Click a date to filter everything to that day.</p>
       <div class="tbox" id="byDay"></div>
     </article>
   </section>
 
   <section class="card tablecard">
-    <h2><span class="sec-badge">9</span>PO items</h2>
+    <h2><span class="sec-badge">10</span>PO items</h2>
     <p class="hint" id="tcount"></p>
     <div class="tscroll"><table id="tbl"></table></div>
     <div class="pager"><span id="pinfo"></span><div><button class="btn" id="seeAll" type="button">See all</button></div></div>
@@ -254,7 +259,7 @@ const mName=k=>MON[k%12]+' '+Math.floor(k/12);
 const dayOf=v=>v?Math.floor(Date.parse(v)/864e5):null;
 
 let D=null,R=[],renderToken=0,CUR=null,tileToken=0;
-const S={tile:null,tileAll:false,all:false,plant:'',type:null,mt:null,sup:null,del:'pending',rel:'',dt:'cr',grp:null,pg:null,from:null,to:null,q:'',mon:null,page:0};
+const S={tile:null,tileAll:false,all:false,plant:'',type:null,mt:null,sup:null,del:'pending',rel:'',dt:'cr',grp:null,pg:null,age:null,from:null,to:null,q:'',mon:null,page:0};
 
 function pass(r,skip){
   skip=skip||[];
@@ -264,6 +269,7 @@ function pass(r,skip){
   if(!skip.includes('sup')&&S.sup!==null&&r.sup!==S.sup)return false;
   if(!skip.includes('grp')&&S.grp!==null&&r.grp!==S.grp)return false;
   if(!skip.includes('pg')&&S.pg!==null&&r.pg!==S.pg)return false;
+  if(!skip.includes('age')&&S.age!==null&&r.bk!==S.age)return false;
   if(S.del==='pending'&&!(r.still>0))return false;
   if(S.del===''&&r.st==='nogr')return false;
   if(S.del&&S.del!=='pending'&&S.del!=='every'&&r.st!==S.del)return false;
@@ -314,15 +320,16 @@ const qCap=(m,max)=>{const e=[...m.entries()];if(e.length<=max)return qtyTxt(m);
 // one unit per line (a PO can mix KG, PC, M2 ...); the CSV export joins the lines with " + " (class qlist)
 const qtyTxt=m=>m.size&&[...m.values()].every(v=>v===0)?'0':[...m.entries()].map(([u,v])=>v.toLocaleString('en-IN',{maximumFractionDigits:3})+' '+esc(u)).join('<br>')||'–';
 const relTxt=p=>p==='03'?'In Approval':p==='08'?'Rejected':'Released';
-const poHead=first=>`<thead><tr><th>${first}</th><th>PO</th><th>Created on</th><th>Supplier</th><th>PO type</th><th>Plant</th><th class="num">Items</th><th class="num">Items pending</th><th class="num">Net value</th><th class="num qh">Delivered value</th><th class="num qh">Value to be delivered</th><th class="num qh">Delivered quantity</th><th class="num qh">Quantity to be delivered</th><th>Release</th></tr></thead>`;
-const poRow=(x,i)=>`<tr><td>${i+1}</td><td class="nw">${esc(x.po)}</td><td class="nw">${x.day===null?'–':fmtDay(x.day)}</td><td class="supc" title="${esc('Supplier '+D.suppliers[x.sup][0])}">${esc(D.suppliers[x.sup][1]||D.suppliers[x.sup][0])}</td><td class="nw" title="${esc(typeName(x.type))}">${esc(x.type)}</td><td class="nw">${esc([...x.plants].sort().join(' / '))}</td><td class="num">${fmtN(x.n)}</td><td class="num">${fmtN(x.still)}</td><td class="num nw">${fv(x.amt,x)}</td><td class="num nw">${x.dlv?fmtINR(x.dlv):(x.fx>0&&x.amt===0?fv(0,x):'–')}</td><td class="num nw qtd">${fv(x.pend,x)}</td><td class="num nw qlist">${qtyTxt(x.g)}</td><td class="num nw qtd qlist">${qtyTxt(x.q)}</td><td class="nw">${relTxt(x.rel)}</td></tr>`;
+const poHead=first=>`<thead><tr><th>${first}</th><th>PO</th><th>Created on</th><th class="num" title="Days the PO has waited for delivery (only POs with items still to be delivered)">Age</th><th>Supplier</th><th>PO type</th><th>Plant</th><th class="num">Items</th><th class="num">Items pending</th><th class="num">Net value</th><th class="num qh">Delivered value</th><th class="num qh">Value to be delivered</th><th class="num qh">Delivered quantity</th><th class="num qh">Quantity to be delivered</th><th>Release</th></tr></thead>`;
+const poAge=x=>x.still>0&&x.day!==null?Math.max(0,D.asofDay-x.day):null;
+const poRow=(x,i)=>`<tr><td>${i+1}</td><td class="nw">${esc(x.po)}</td><td class="nw">${x.day===null?'–':fmtDay(x.day)}</td><td class="num nw">${AGE.pill(poAge(x),poAge(x)===null?'':AGE.words(poAge(x))+' since the PO date chosen above')}</td><td class="supc" title="${esc('Supplier '+D.suppliers[x.sup][0])}">${esc(D.suppliers[x.sup][1]||D.suppliers[x.sup][0])}</td><td class="nw" title="${esc(typeName(x.type))}">${esc(x.type)}</td><td class="nw">${esc([...x.plants].sort().join(' / '))}</td><td class="num">${fmtN(x.n)}</td><td class="num">${fmtN(x.still)}</td><td class="num nw">${fv(x.amt,x)}</td><td class="num nw">${x.dlv?fmtINR(x.dlv):(x.fx>0&&x.amt===0?fv(0,x):'–')}</td><td class="num nw qtd">${fv(x.pend,x)}</td><td class="num nw qlist">${qtyTxt(x.g)}</td><td class="num nw qtd qlist">${qtyTxt(x.q)}</td><td class="nw">${relTxt(x.rel)}</td></tr>`;
 // units with a zero total are left out when another unit has some (a list of "0 PC", "0 SET" ... says nothing)
 const nzQ=m=>{const e=[...m].filter(([,v])=>v!==0);return e.length?new Map(e):m;};
 // total row of a list of purchase orders (the whole list, not only the rows shown): items, values in rupees, quantities per unit (first 3 units, then "+ N more units")
 function poFoot(list){
   const tt={n:0,still:0,amt:0,dlv:0,pend:0,q:new Map(),g:new Map()};
   for(const x of list){tt.n+=x.n;tt.still+=x.still;tt.amt+=x.amt;tt.dlv+=x.dlv;tt.pend+=x.pend;for(const [u,v] of x.q)tt.q.set(u,(tt.q.get(u)||0)+v);for(const [u,v] of x.g)tt.g.set(u,(tt.g.get(u)||0)+v);}
-  return `<tfoot><tr><td colspan="6">Total (${fmtN(list.length)} purchase orders)</td><td class="num">${fmtN(tt.n)}</td><td class="num">${fmtN(tt.still)}</td><td class="num nw">${fmtINR(tt.amt)}</td><td class="num nw">${fmtINR(tt.dlv)}</td><td class="num nw">${fmtINR(tt.pend)}</td><td class="num nw qlist">${qCap(nzQ(tt.g),3)}</td><td class="num nw qlist">${qCap(nzQ(tt.q),3)}</td><td></td></tr></tfoot>`;
+  return `<tfoot><tr><td colspan="7">Total (${fmtN(list.length)} purchase orders)</td><td class="num">${fmtN(tt.n)}</td><td class="num">${fmtN(tt.still)}</td><td class="num nw">${fmtINR(tt.amt)}</td><td class="num nw">${fmtINR(tt.dlv)}</td><td class="num nw">${fmtINR(tt.pend)}</td><td class="num nw qlist">${qCap(nzQ(tt.g),3)}</td><td class="num nw qlist">${qCap(nzQ(tt.q),3)}</td><td></td></tr></tfoot>`;
 }
 // total row of the PO items list, over all the items of the current filters
 function listFoot(rows){
@@ -346,9 +353,10 @@ const TILE_INFO={
   val:['Total order value','The full order value (INR) of the PO items of the current filters, the part already delivered included: by PO type, by plant, and the 10 purchase orders with the most value.'],
   delivered:['Delivered value','Value (INR) of the goods already received (delivered quantity x price) for the current filters, most delivered value first.'],
   open:['Value still to be delivered','Purchase orders with a value still to be delivered (INR) for the current filters, most value to deliver first, with its value, the quantity still to be delivered and the quantity already delivered (per unit when the items of a PO have different units).'],
-  pos:['Purchase orders','Every purchase order of the current filters, newest first.'],
+  pos:['Purchase orders','Every purchase order of the current filters, the one with the most net value first.'],
   items:['PO items','PO items of the current filters by delivery status, and the items with the most value first.'],
-  sups:['Suppliers','Suppliers of the current filters, most net value first.']
+  sups:['Suppliers','Suppliers of the current filters, most net value first.'],
+  age:['Ageing of the pending deliveries','How long the items still to be delivered have been waiting (days from the date chosen above to today): by age group, and the 10 purchase orders waiting longest.']
 };
 const ST_TXT={open:'Not delivered',partly:'Partly delivered',done:'Delivered',nogr:'No GR (nothing left, nothing received)',nodata:'No status data'};
 function renderTile(){
@@ -368,12 +376,17 @@ function renderTile(){
   }else if(k==='open'){
     list=poList(rows).filter(x=>x.pend>0||x.still>0).sort((a,b)=>b.pend-a.pend||b.still-a.still);thead=poHead('#');rowFn=poRow;foot=poFoot;unit='purchase orders';
   }else if(k==='pos'){
-    list=poList(rows).sort((a,b)=>(b.day||0)-(a.day||0)||b.po.localeCompare(a.po));thead=poHead('#');rowFn=poRow;foot=poFoot;unit='purchase orders';
+    list=poList(rows).sort((a,b)=>b.amt-a.amt||(b.day||0)-(a.day||0)||b.po.localeCompare(a.po));thead=poHead('#');rowFn=poRow;foot=poFoot;unit='purchase orders';
   }else if(k==='items'){
     const sm=new Map();for(const r of rows){let x=sm.get(r.st);if(!x)sm.set(r.st,x=agg());x.n++;x.pos.add(r.po);addQ(x.q,r);x.amt+=r.amtI;x.pend+=r.pendI;if(r.cur!=='INR')x.fx++;}
     html='<h3 class="subh">By delivery status</h3>'+aggTable([...sm.entries()].sort((a,b)=>b[1].amt-a[1].amt),'Delivery',x=>esc(ST_TXT[x]||x))+'<h3 class="subh">Items with the most value (first 25)</h3>';
     const top=rows.filter(r=>r.rate>0).sort((a,b)=>b.amtI-a.amtI).slice(0,25);
     html+=top.length?`<table><thead><tr><th>#</th><th>PO</th><th>Item</th><th>Supplier</th><th>Material</th><th class="num">Order quantity</th><th class="num">Quantity to be delivered</th><th class="num">Net value</th><th class="num">Value to be delivered</th></tr></thead><tbody>${top.map((r,i)=>`<tr><td>${i+1}</td><td class="nw">${esc(r.po)}</td><td>${r.item}</td><td class="supc">${esc(D.suppliers[r.sup][1]||D.suppliers[r.sup][0])}</td><td class="matc">${r.mat?`<span class="matno">${esc(r.mat)}</span><br>`:''}${esc(r.text)}</td><td class="num nw">${r.qty.toLocaleString('en-IN',{maximumFractionDigits:3})} ${esc(r.unit)}</td><td class="num nw">${r.still===null?'–':r.still.toLocaleString('en-IN',{maximumFractionDigits:3})+' '+esc(r.unit)}</td><td class="num nw">${fmtAmt(r.amt,r.cur)}</td><td class="num nw">${r.pendAmt?fmtAmt(r.pendAmt,r.cur):'–'}</td></tr>`).join('')}</tbody></table>`:none;
+  }else if(k==='age'){
+    const ag=new Map();for(const r of rows)if(r.bk>=0)add(ag,r.bk,r);
+    const old=poList(rows.filter(r=>r.bk>=0)).filter(x=>poAge(x)!==null).sort((a,b)=>poAge(b)-poAge(a)||b.pend-a.pend).slice(0,10);
+    html='<h3 class="subh">By age</h3>'+aggTable([...ag.entries()].sort((a,b)=>a[0]-b[0]),'Waiting for',x=>esc(AGE.LABELS[x]))+
+      '<h3 class="subh">The 10 purchase orders waiting longest</h3>'+(old.length?`<table>${poHead('#')}<tbody>${old.map(poRow).join('')}</tbody>${poFoot(old)}</table>`:none);
   }else if(k==='sups'){
     const m=new Map();for(const r of rows)add(m,r.sup,r);
     list=byValue(m);unit='suppliers';
@@ -396,18 +409,18 @@ function renderTile(){
 const reveal=id=>{const el=$(id);if(el&&!el.hidden)el.scrollIntoView({behavior:'smooth',block:'start'});};
 
 // the columns of the PO items list, in this order (the row cells in rowHtml and these headers share the keys)
-const COLS=['n','po','item','qty','gr','still','price','amt','dlv','pend','del','rel','sup','mat','mtp','type','plant','sloc','pg','pday','cday','user'];
-const HEAD={n:'<th class="num">#</th>',po:'<th>PO</th>',item:'<th>Item</th>',pday:'<th>PO date</th>',cday:'<th>Created on</th>',user:'<th>Created by</th>',type:'<th>PO type</th>',sup:'<th>Supplier</th>',mat:'<th>Material</th>',mtp:'<th>Material type</th>',plant:'<th>Plant</th>',sloc:'<th>S.Loc</th>',pg:'<th>Purch. group</th>',qty:'<th class="num qh">Order quantity</th>',gr:'<th class="num qh">Delivered quantity</th>',still:'<th class="num qtd qh">Quantity to be delivered</th>',price:'<th class="num">Price</th>',amt:'<th class="num">Net value</th>',dlv:'<th class="num qh">Delivered value</th>',pend:'<th class="num qtd qh">Value to be delivered</th>',del:'<th>Delivery</th>',rel:'<th>Release</th>'};
+const COLS=['n','po','item','qty','gr','still','price','amt','dlv','pend','del','rel','sup','mat','mtp','type','plant','sloc','pg','pday','cday','age','user'];
+const HEAD={n:'<th class="num">#</th>',po:'<th>PO</th>',item:'<th>Item</th>',pday:'<th>PO date</th>',cday:'<th>Created on</th>',age:'<th class="num" title="Days the item has waited for delivery (only items still to be delivered), from the date chosen above">Age</th>',user:'<th>Created by</th>',type:'<th>PO type</th>',sup:'<th>Supplier</th>',mat:'<th>Material</th>',mtp:'<th>Material type</th>',plant:'<th>Plant</th>',sloc:'<th>S.Loc</th>',pg:'<th>Purch. group</th>',qty:'<th class="num qh">Order quantity</th>',gr:'<th class="num qh">Delivered quantity</th>',still:'<th class="num qtd qh">Quantity to be delivered</th>',price:'<th class="num">Price</th>',amt:'<th class="num">Net value</th>',dlv:'<th class="num qh">Delivered value</th>',pend:'<th class="num qtd qh">Value to be delivered</th>',del:'<th>Delivery</th>',rel:'<th>Release</th>'};
 
 function render(){
   if(!D)return;  // the data is still loading
   const rows=R.filter(r=>pass(r));
   // KPIs
-  let amt=0,open=0,dlv=0,fx=0,ast=0;const pos=new Set(),sups=new Set();
-  for(const r of rows){pos.add(r.po);sups.add(r.sup);amt+=r.amtI;open+=r.pendI;dlv+=r.dlvI;if(r.type==='ZAST')ast+=r.pendI;if(r.cur!=='INR')fx++;}
+  let amt=0,open=0,dlv=0,fx=0,ast=0,oldest=-1,aw=0,aq=0;const pos=new Set(),sups=new Set();
+  for(const r of rows){pos.add(r.po);sups.add(r.sup);amt+=r.amtI;open+=r.pendI;dlv+=r.dlvI;if(r.type==='ZAST')ast+=r.pendI;if(r.cur!=='INR')fx++;if(r.age!==null){if(r.age>oldest)oldest=r.age;aw+=r.age*r.pendI;aq+=r.pendI;}}
   CUR={rows,amt,open,dlv};
   // every tile opens its details under the tiles
-  $('kpis').innerHTML=[[fmtINR(amt),'Total order value (INR)'+(fx?` · includes ${fmtN(fx)} other-currency items converted to INR at the PO's exchange rate`:''),'val'],[fmtINR(dlv),'Delivered value (INR) · goods already received','delivered'],[fmtINR(open),'Pending value (INR) · still to be delivered'+(ast?` · incl. ${fmtINR(ast)} of asset POs`:''),'open'],[fmtN(pos.size),'Purchase orders','pos'],[fmtN(rows.length),'PO items','items'],[fmtN(sups.size),'Suppliers','sups']]
+  $('kpis').innerHTML=[[fmtINR(amt),'Total order value (INR)'+(fx?` · includes ${fmtN(fx)} other-currency items converted to INR at the PO's exchange rate`:''),'val'],[fmtINR(dlv),'Delivered value (INR) · goods already received','delivered'],[fmtINR(open),'Pending value (INR) · still to be delivered'+(ast?` · incl. ${fmtINR(ast)} of asset POs`:''),'open'],[fmtN(pos.size),'Purchase orders','pos'],[fmtN(rows.length),'PO items','items'],[fmtN(sups.size),'Suppliers','sups'],...(oldest>=0?[[oldest.toLocaleString('en-IN')+' days','Oldest item still to be delivered'+(aq>0?' · value-weighted average '+Math.round(aw/aq)+' days':''),'age']]:[])]
     .map(t=>`<button type="button" class="tile tilebtn" data-tile="${t[2]}" aria-expanded="${S.tile===t[2]}"><div class="tv">${t[0]}</div><div class="tl">${t[1]}</div>${S.tile===t[2]?'<div class="ts">click to hide</div>':''}</button>`).join('');
   renderTile();
   // chips
@@ -418,14 +431,16 @@ function render(){
   if(S.sup!==null)c.push(['sup','Supplier: '+supLabel(S.sup)]);
   if(S.grp!==null)c.push(['grp','Material group: '+mgName(S.grp)]);
   if(S.pg!==null)c.push(['pg','Purch. group: '+pgName(S.pg)]);
+  if(S.age!==null)c.push(['age','Pending for: '+(S.age===-2?'no date':AGE.LABELS[S.age])]);
   if(S.del&&S.del!=='every')c.push(['del',DEL_TXT[S.del]]);
   if(S.rel)c.push(['rel',REL_TXT[S.rel]]);
   if(S.from!==null||S.to!==null)c.push(['date',(S.dt==='po'?'PO date ':'Created on ')+(S.from!==null?fmtDay(S.from):'start')+' – '+(S.to!==null?fmtDay(S.to):'today')]);
   if(S.q)c.push(['q','Search: '+S.q]);
   $('chips').innerHTML=c.map(x=>`<button type="button" class="chip" data-clr="${x[0]}">${esc(x[1])} ×</button>`).join('')+(c.length?'<button type="button" class="chip" data-clr="all">Reset filters</button>':'');
   // each table ignores its own filter, so the list stays when you pick a row
-  const sp=new Map(),ty=new Map(),pl=new Map(),gr=new Map(),pgm=new Map(),mtm=new Map(),mts=new Map();
+  const sp=new Map(),ty=new Map(),pl=new Map(),gr=new Map(),pgm=new Map(),mtm=new Map(),mts=new Map(),agm=new Map();
   for(const r of R){
+    if(r.bk!==-1&&pass(r,['age']))add(agm,r.bk,r);
     if(pass(r,['sup']))add(sp,r.sup,r);
     if(pass(r,['type']))add(ty,r.type,r);
     if(pass(r,['mt'])){add(mtm,r.mtype||'(blank)',r);if(STORE_MT.includes(r.mtype))add(mts,'STORE',r);}
@@ -436,6 +451,7 @@ function render(){
   const sl=byValue(sp);
   $('supHint').textContent='Net order value (INR) of the PO items. Click a supplier to filter everything.'+(sl.length>SUP_LIMIT?` Top ${SUP_LIMIT} of ${fmtN(sl.length)} suppliers by value shown; the total covers all. Use the Supplier filter or Search for the others.`:'');
   $('bySup').innerHTML=aggTable(sl,'Supplier',k=>`<button type="button" class="lnk" data-sup="${k}" title="${esc(D.suppliers[k][2]?'GSTIN '+D.suppliers[k][2]:'')}">${esc(supLabel(k))}</button>`,S.sup,SUP_LIMIT);
+  $('byAge').innerHTML=aggTable([...agm.entries()].sort((a,b)=>a[0]-b[0]),'Waiting for',k=>`<button type="button" class="lnk" data-age="${k}">${k===-2?'No date':AGE.LABELS[k]}</button>`,S.age);
   const stx=mts.get('STORE');if(stx)stx.sub=true;
   for(const c of STORE_MT)if(!mtm.has(c))mtm.set(c,agg());
   const mtl=byValue(mtm),mtStoreRows=mtl.filter(e=>STORE_MT.includes(e[0])),mtOtherRows=mtl.filter(e=>!STORE_MT.includes(e[0]));
@@ -452,8 +468,8 @@ function render(){
   $('byMonth').innerHTML=aggTable([...mon.entries()].sort((a,b)=>b[0]-a[0]),'Month',k=>`<button type="button" class="lnk" data-mon="${k}">${mName(k)}</button>`,S.mon);
   $('dayTitle').textContent='Day-wise POs · '+mName(S.mon);
   $('byDay').innerHTML=aggTable([...day.entries()].sort((a,b)=>a[0]-b[0]),'Date',k=>`<button type="button" class="lnk" data-day="${k}">${fmtDay(k)}</button>`);
-  // items in serial order: PO number, then item number
-  rows.sort((a,b)=>a.po<b.po?-1:a.po>b.po?1:a.item-b.item);
+  // the items with the most net value first (user, 3-Nov-2026: high value on top, low value below); equal values in PO / item order
+  rows.sort((a,b)=>b.amtI-a.amtI||(a.po<b.po?-1:a.po>b.po?1:a.item-b.item));
   // the list shows the first rows; See all shows every row of the current filters (the list scrolls inside its card)
   const slice=S.all?rows:rows.slice(0,PAGE);
   const qf=(v,u)=>v===null?'<span title="No status data">–</span>':v.toLocaleString('en-IN',{maximumFractionDigits:3})+' '+esc(u);
@@ -465,6 +481,7 @@ function render(){
     item:`<td>${r.item}</td>`,
     pday:`<td class="nw">${r.pday===null?'–':fmtDay(r.pday)}</td>`,
     cday:`<td class="nw">${r.cday===null?'–':fmtDay(r.cday)}</td>`,
+    age:`<td class="num nw">${AGE.pill(r.age,r.age===null?(r.still>0?'No date on the PO':'Delivered: no ageing'):AGE.words(r.age)+' since the date chosen above')}</td>`,
     user:`<td class="nw" title="${esc(uTip(r.user))}">${esc(uName(r.user))}</td>`,
     type:`<td class="nw" title="${esc(typeName(r.type))}">${esc(r.type)}</td>`,
     sup:`<td class="supc" title="${esc(r.gst?'Supplier '+D.suppliers[r.sup][0]+' · GSTIN '+r.gst:'Supplier '+D.suppliers[r.sup][0])}">${esc(D.suppliers[r.sup][1]||D.suppliers[r.sup][0])}</td>`,
@@ -489,7 +506,7 @@ function render(){
   const token=++renderToken;let done=first.length;
   const more=()=>{if(token!==renderToken||done>=slice.length)return;document.querySelector('#tbl tbody').insertAdjacentHTML('beforeend',slice.slice(done,done+600).map((r,i)=>rowHtml(r,done+i)).join(''));done+=600;setTimeout(more,0);};
   setTimeout(more,0);
-  $('tcount').innerHTML=fmtN(rows.length)+' items in '+fmtN(pos.size)+' purchase orders · Total order value '+fmtINR(amt)+' · Delivered value '+fmtINR(dlv)+' · <b>Pending value '+fmtINR(open)+'</b>'+(ast?' (incl. '+fmtINR(ast)+' of asset POs)':'')+(fx?' · includes '+fmtN(fx)+' other-currency items converted to INR at the PO\'s exchange rate':'');
+  $('tcount').innerHTML='Highest value first · '+fmtN(rows.length)+' items in '+fmtN(pos.size)+' purchase orders · Total order value '+fmtINR(amt)+' · Delivered value '+fmtINR(dlv)+' · <b>Pending value '+fmtINR(open)+'</b>'+(ast?' (incl. '+fmtINR(ast)+' of asset POs)':'')+(fx?' · includes '+fmtN(fx)+' other-currency items converted to INR at the PO\'s exchange rate':'');
   $('pinfo').textContent=!rows.length?'':rows.length<=PAGE||S.all?`All ${fmtN(rows.length)} items shown`:`Showing the first ${fmtN(PAGE)} of ${fmtN(rows.length)}`;
   $('seeAll').hidden=rows.length<=PAGE;$('seeAll').textContent=S.all?'Show first '+PAGE:'See all '+fmtN(rows.length);
 }
@@ -505,6 +522,7 @@ document.addEventListener('click',e=>{
   else if(t.dataset.plant!==undefined){S.plant=S.plant===t.dataset.plant?'':t.dataset.plant;$('plantSel').value=S.plant;}
   else if(t.dataset.grp!==undefined){S.grp=S.grp===t.dataset.grp?null:t.dataset.grp;}
   else if(t.dataset.pg!==undefined){S.pg=S.pg===t.dataset.pg?null:t.dataset.pg;$('pgSel').value=S.pg===null?'':S.pg;}
+  else if(t.dataset.age!==undefined){const v=+t.dataset.age;S.age=S.age===v?null:v;}
   else if(t.dataset.mon!==undefined){S.mon=+t.dataset.mon;}
   else if(t.dataset.day!==undefined){const d=+t.dataset.day;S.from=S.to=d;$('dFrom').value=$('dTo').value=iso(d);}
   else if(t.dataset.clr){const c=t.dataset.clr;
@@ -514,6 +532,7 @@ document.addEventListener('click',e=>{
     if(c==='sup'||c==='all'){S.sup=null;setSupInput();}
     if(c==='grp'||c==='all')S.grp=null;
     if(c==='pg'||c==='all'){S.pg=null;$('pgSel').value='';}
+    if(c==='age'||c==='all')S.age=null;
     if(c==='del'){S.del='every';$('delSel').value='every';}
     if(c==='all'){S.del='pending';$('delSel').value='pending';}
     if(c==='rel'||c==='all'){S.rel='';$('relSel').value='';}
@@ -552,7 +571,7 @@ setTheme(savedTheme==='light'?'light':'dark',false);
 document.getElementById('themeSeg').addEventListener('click',e=>{const b=e.target.closest('button[data-th]');if(b)setTheme(b.dataset.th,true);});
 
 let SUP_LABELS=new Map();
-const applyDate=()=>{for(const r of R)r.day=S.dt==='po'?r.pday:r.cday;};
+const applyDate=()=>{for(const r of R){r.day=S.dt==='po'?r.pday:r.cday;r.age=r.still>0&&r.day!==null?Math.max(0,D.asofDay-r.day):null;r.bk=r.still>0?(r.age===null?-2:AGE.bucket(r.age)):-1;}};
 function setData(d){
   D=d;
   R=d.rows.map(a=>{

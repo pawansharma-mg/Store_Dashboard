@@ -3,6 +3,10 @@ import re
 from datetime import date
 
 # Only the fields the dashboard uses. Asking SAP for just these keeps the live call small and fast.
+# Plants left out of every page (user, 29-Oct-2026: "1040 plant ki details hata do sab jagah se"): the rows of these plants are dropped when a view is read from SAP
+# (Sap._refresh in serve_dashboard.py; the asset transactions in asset_compact), so no page, total, filter or download has them. Put a plant back by deleting it here.
+EXCLUDE_PLANTS = ('1040',)
+
 FIELDS = [
     'PurchaseRequisition', 'PurchaseRequisitionItem', 'Plant', 'StorageLocation', 'PurchasingGroup',
     'PurchaseRequisitionType', 'Material', 'PurchaseRequisitionItemText', 'RequestedQuantity', 'OrderedQuantity',
@@ -56,6 +60,13 @@ STOCK_ORDER = 'Plant,StorageLocation,Product,InventoryStockType,InventorySpecial
 CONSUME_FIELDS = ['Plant', 'Material', 'PostingDate', 'GoodsMovementType_1', 'DebitCreditCode', 'QuantityInBaseUnit',
                   'MaterialDocumentYear', 'MaterialDocument', 'MaterialDocumentItem']
 CONSUME_MVTS = ('201', '221', '241', '261', '281', '291', '543')
+# Stock of a past date (Store Stock, "stock on date" and the month / day wise cards): the stock view only gives the stock of today, so the stock of an earlier day is rebuilt from today's stock
+# by taking back every goods movement posted after that day: receipts (debit S) are taken off, issues (credit H) are put back. Read from the same movement view as the Store Issue.
+MOVE_FIELDS = ['MaterialDocumentYear', 'MaterialDocument', 'MaterialDocumentItem', 'PostingDate', 'GoodsMovementType_1', 'DebitCreditCode', 'Material', 'ProductName', 'ProductGroup',
+               'Plant', 'StorageLocation', 'QuantityInBaseUnit', 'MaterialBaseUnit', 'TotalGoodsMvtAmtInCCCrcy']
+MOVE_FROM = '2025-12-01'  # the movements are read from this day, so the stock can be shown from the end of 30-Nov-2025
+# movements that only change the stock TYPE in the same location (quality inspection, blocked, unrestricted): they leave the total of a location as it is
+MOVE_TYPE_CHANGE = ('321', '322', '343', '344', '349', '350')
 
 ISSUE_MVTS = ('201', '202')
 ISSUE_DATE_FILTER = "PostingDate ge datetime'2026-01-01T00:00:00'"
@@ -958,6 +969,8 @@ def asset_compact(rows, asof_day):
         top = max(book, key=lambda r: abs(_f(r.get('AmountInCompanyCodeCurrency'))))
         sup = next(((r.get('Supplier') or '').lstrip('0') for r in book if r.get('Supplier')), '')
         plant = next((r.get('Plant') for r in rs if r.get('Plant')), '')
+        if plant in EXCLUDE_PLANTS:
+            continue
         text = next(((r.get('DocumentItemText') or '').strip() for r in book if (r.get('DocumentItemText') or '').strip()), '')
         out.append([
             post,
@@ -1000,6 +1013,65 @@ def consume_fold(state, rows):
 def _day_of_iso(s):
     y, m, d = (int(x) for x in s.split('-'))
     return (date(y, m, d) - date(1970, 1, 1)).days
+
+
+def move_fold(state, rows, listed=None):
+    """Keeps the goods movement lines of the listed store locations, page by page, as {'lines': {(year, doc, item): (day, plant, sloc, material, signed quantity, signed amount, type)}, 'prods': {material: (name, group, unit)}}.
+    A line is keyed by its document line, so reading the last days again replaces them (the frequent refreshes read only the recent days)."""
+    if state is None:
+        state = {'lines': {}, 'prods': {}}
+    lines, prods = state['lines'], state['prods']
+    for r in rows:
+        mvt = r.get('GoodsMovementType_1') or ''
+        if mvt in MOVE_TYPE_CHANGE:
+            continue
+        dc = r.get('DebitCreditCode')
+        if dc not in ('S', 'H'):
+            continue
+        plant, sloc = r.get('Plant') or '', r.get('StorageLocation') or ''
+        if listed is not None and (plant, sloc) not in listed:
+            continue
+        day = _day(r.get('PostingDate'))
+        if day is None:
+            continue
+        mat = (r.get('Material') or '').lstrip('0')
+        sign = 1 if dc == 'S' else -1
+        lines[(r.get('MaterialDocumentYear') or '', r.get('MaterialDocument') or '', r.get('MaterialDocumentItem') or '')] = (
+            day, plant, sloc, mat, sign * _f(r.get('QuantityInBaseUnit')), sign * _f(r.get('TotalGoodsMvtAmtInCCCrcy')), mvt)
+        if mat not in prods:
+            prods[mat] = ((r.get('ProductName') or '').strip(), r.get('ProductGroup') or '', r.get('MaterialBaseUnit') or '')
+    return state
+
+
+def moves_compact(state, asof_day, listed):
+    """For the browser: {asofDay, from, locs: [[plant, location, name, category]], prods: [[material, name, group, unit]], rows: [[loc, prod, day, qtyIn, valueIn, qtyOut, valueOut]]},
+    one row per location, material and day (receipts and issues of that day added up apart)."""
+    state = state or {'lines': {}, 'prods': {}}
+    locs, loc_ix = [], {}
+    for (plant, sloc), (typ, name) in sorted((listed or {}).items()):
+        loc_ix[(plant, sloc)] = len(locs)
+        locs.append([plant, sloc, name, typ])
+    prod_ix, prods = {}, []
+    agg = {}
+    for (day, plant, sloc, mat, q, a, mvt) in state['lines'].values():
+        li = loc_ix.get((plant, sloc))
+        if li is None:
+            li = loc_ix[(plant, sloc)] = len(locs)
+            locs.append([plant, sloc, '', 'Store'])
+        pi = prod_ix.get(mat)
+        if pi is None:
+            pi = prod_ix[mat] = len(prods)
+            nm = state['prods'].get(mat, ('', '', ''))
+            prods.append([mat, nm[0], nm[1], nm[2]])
+        x = agg.setdefault((li, pi, day), [0.0, 0.0, 0.0, 0.0])
+        if q >= 0:
+            x[0] += q
+            x[1] += a
+        else:
+            x[2] -= q
+            x[3] -= a
+    rows = [[li, pi, day, round(v[0], 3), round(v[1], 2), round(v[2], 3), round(v[3], 2)] for (li, pi, day), v in sorted(agg.items(), key=lambda kv: (kv[0][2], kv[0][0], kv[0][1]))]
+    return {'asofDay': asof_day, 'from': _day_of_iso(MOVE_FROM), 'locs': locs, 'prods': prods, 'rows': rows}
 
 
 def stock_compact(rows, asof_day, allowed=None, last=None):

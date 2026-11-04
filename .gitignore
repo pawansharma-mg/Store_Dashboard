@@ -12,3 +12,6 @@ __pycache__/
 
 # hand-saved exports from SAP stay local
 dashboard_build/backend/data/*.xlsx
+
+# the saved SAP data of the last run (rebuilt by the dashboard itself)
+dashboard_build/backend/cache/

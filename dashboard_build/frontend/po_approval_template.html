@@ -366,7 +366,7 @@ function render(){
   $('byPlant').innerHTML=aggTable(byCount(pl),'Plant',k=>`<button type="button" class="lnk" data-plant="${esc(k)}">${esc(k)}</button>`,S.plant||null);
   $('bySup').innerHTML=aggTable(byCount(sp),'Supplier',k=>`<button type="button" class="lnk" data-sup="${k}" title="${esc(D.suppliers[k][2]?'GSTIN '+D.suppliers[k][2]:'')}">${esc(supLabel(k))}</button>`,S.sup);
   // POs, oldest first
-  rows.sort((a,b)=>b.age-a.age||a.po.localeCompare(b.po));
+  rows.sort((a,b)=>b.amt-a.amt||b.age-a.age||a.po.localeCompare(b.po));  // the most value first
   // the list shows the first purchase orders; See all shows every one of the current filters (the list scrolls inside its card)
   const slice=S.all?rows:rows.slice(0,PAGE);
   const body=[];

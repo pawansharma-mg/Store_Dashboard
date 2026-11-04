@@ -217,13 +217,14 @@
   var OTHER = '#94A3B8';
   // page -> table container -> chart. col: which column to draw (a header test); rev: the table lists the newest first
   var CHARTS = {
-    '/issue': [{ id: 'byMonth', type: 'cols', col: /value/i, rev: true }, { id: 'byDay', type: 'cols', col: /value/i }, { id: 'byDept', type: 'donut', col: /value/i }],
-    '/po': [{ id: 'byMonth', type: 'cols', col: /net value/i, rev: true }, { id: 'byDay', type: 'cols', col: /net value/i }, { id: 'byPlant', type: 'donut', col: /net value/i }, { id: 'byType', type: 'donut', col: /net value/i }],
+    '/issue': [{ id: 'byAge', type: 'cols', col: /value/i }, { id: 'byMonth', type: 'cols', col: /value/i, rev: true }, { id: 'byDay', type: 'cols', col: /value/i }, { id: 'byDept', type: 'donut', col: /value/i }],
+    '/po': [{ id: 'byAge', type: 'cols', col: /value to be delivered/i }, { id: 'byMonth', type: 'cols', col: /net value/i, rev: true }, { id: 'byDay', type: 'cols', col: /net value/i }, { id: 'byPlant', type: 'donut', col: /net value/i }, { id: 'byType', type: 'donut', col: /net value/i }],
     '/po-approval': [{ id: 'byAge', type: 'cols', col: /^pos$/i }, { id: 'byAppr', type: 'donut', col: /^pos$/i }, { id: 'byPlant', type: 'donut', col: /net value/i }],
     '/invoice': [{ id: 'byAge', type: 'cols', col: /^items$/i }, { id: 'byMonth', type: 'cols', col: /^items$/i, rev: true }, { id: 'byDay', type: 'cols', col: /^items$/i }, { id: 'byDept', type: 'donut', col: /^items$/i }, { id: 'byPlant', type: 'donut', col: /^items$/i }],
-    '/purchase': [{ id: 'byMonth', type: 'cols', col: /net value/i, rev: true }, { id: 'byDay', type: 'cols', col: /net value/i }, { id: 'byDept', type: 'donut', col: /net value/i }, { id: 'byPlant', type: 'donut', col: /net value/i }],
-    '/asset': [{ id: 'byMonth', type: 'cols', col: /^amount$/i, rev: true }, { id: 'byDay', type: 'cols', col: /^amount$/i }, { id: 'byCo', type: 'donut', col: /^amount$/i }, { id: 'byCls', type: 'donut', col: /^amount$/i }],
-    '/stock': [{ id: 'byCat', type: 'donut', col: /value/i }, { id: 'byMtype', type: 'donut', col: /value/i }, { id: 'byType', type: 'donut', col: /total value/i }, { id: 'byPlant', type: 'donut', col: /total value/i }]
+    '/purchase': [{ id: 'byAge', type: 'cols', col: /net value/i }, { id: 'byLead', type: 'cols', col: /net value/i }, { id: 'byMonth', type: 'cols', col: /net value/i, rev: true }, { id: 'byDay', type: 'cols', col: /net value/i }, { id: 'byDept', type: 'donut', col: /net value/i }, { id: 'byPlant', type: 'donut', col: /net value/i }],
+    '/asset': [{ id: 'byAge', type: 'cols', col: /^amount$/i }, { id: 'byMonth', type: 'cols', col: /^amount$/i, rev: true }, { id: 'byDay', type: 'cols', col: /^amount$/i }, { id: 'byCo', type: 'donut', col: /^amount$/i }, { id: 'byCls', type: 'donut', col: /^amount$/i }],
+    '/ageing': [{ id: 'byAgeG', type: 'cols', col: /^amount$/i }, { id: 'byAgeT', type: 'cols', col: /^amount$/i }],
+    '/stock': [{ id: 'byIdle', type: 'cols', col: /stock value/i }, { id: 'byMonthS', type: 'cols', col: /stock at the end/i, rev: true }, { id: 'byDayS', type: 'cols', col: /stock at the end/i, rev: true }, { id: 'byCat', type: 'donut', col: /value/i }, { id: 'byMtype', type: 'donut', col: /value/i }, { id: 'byType', type: 'donut', col: /total value/i }, { id: 'byPlant', type: 'donut', col: /total value/i }]
   };
   function readTable(box, colTest, rev) {
     var t = box.querySelector('table');
@@ -327,7 +328,7 @@
     var h = card.querySelector('h2');
     if (!h) return 'table';
     var c = h.cloneNode(true);
-    [].forEach.call(c.querySelectorAll('.sec-badge,.csvbtn,.opn,.foldbtn'), function (e) { e.remove(); });
+    [].forEach.call(c.querySelectorAll('.sec-badge,.csvbtn,.opn,.foldbtn,.seg'), function (e) { e.remove(); });
     return c.textContent.trim() || 'table';
   }
   function mainTables(card) { // the tables of a card, not the little tables inside an opened row
@@ -409,8 +410,32 @@
       btn.disabled = false;
     });
   }
+  // On these pages the button of a card downloads the card as a PDF (the same look as the Download menu: the list as on the screen and, where the page hands them over, the details of every
+  // row opened) and not as a CSV (user, 29-Oct-2026, Price Variance: "CSV pe click karu to PDF me download ho, same format me, material khul jana chahiye")
+  var CARD_PDF_PAGES = ['/price'];
+  function exportCardPdf(card, btn) {
+    var label = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Preparing…';
+    var ok = false;
+    openAll(card, 120000).then(function (restore) {
+      var bl = cardBlocks(card), rows = 0;
+      restore();
+      if (!bl.length) { btn.textContent = 'Nothing to download'; return; }
+      bl.forEach(function (b) { rows += b.rows.length; });
+      var name = cardTitle(card), hint = card.querySelector('.hint');
+      var d = docInfo(name.split(' · ')[0].replace(/\s+/g, ' ').trim(), ['Rows: ' + rows.toLocaleString('en-IN')]);
+      if (hint && hint.textContent.trim()) d.desc = hint.textContent.replace(/\s+/g, ' ').trim(); // the line under the heading of the card says what the list holds
+      d.blocks = bl;
+      return buildPdf(d).then(function (blob) { saveBlob(PAGE_SLUG + '_' + slug(name) + '_' + stampNow().file + '.pdf', blob); ok = true; });
+    }).catch(function () { btn.textContent = 'Download failed'; }).then(function () {
+      btn.disabled = false;
+      if (ok) btn.textContent = label; else setTimeout(function () { if (!btn.disabled) btn.textContent = label; }, 2500);
+    });
+  }
   function csvButtons() {
     if (!PAGE_SLUG) return;
+    var asPdf = CARD_PDF_PAGES.indexOf(location.pathname) >= 0;
     var cards = document.querySelectorAll('.card');
     for (var i = 0; i < cards.length; i++) {
       var card = cards[i], h = card.querySelector('h2');
@@ -419,9 +444,9 @@
       var b = document.createElement('button');
       b.type = 'button';
       b.className = 'csvbtn';
-      b.textContent = 'CSV';
-      b.title = 'Download this table as a CSV file (opens in Excel)';
-      b.addEventListener('click', exportCard.bind(null, card, b));
+      b.textContent = asPdf ? 'PDF' : 'CSV';
+      b.title = asPdf ? 'Download this card as a PDF file (the list with the details of every material)' : 'Download this table as a CSV file (opens in Excel)';
+      b.addEventListener('click', (asPdf ? exportCardPdf : exportCard).bind(null, card, b));
       h.appendChild(b);
     }
   }
@@ -481,6 +506,42 @@
       d.badge = i === 0 && badge ? badge.textContent.trim() : '';
       d.accent = cc;
       if (d.rows.length || d.foot.length) out.push(d);
+    });
+    var extra = typeof window.PDF_DETAILS === 'function' ? window.PDF_DETAILS(card) : null;
+    if (extra && extra.length) { // the page's own blocks for this card (Price Variance: the list as on the screen with every material opened under its row)
+      extra.forEach(function (b, i) { b.accent = cc; b.badge = i === 0 && badge ? badge.textContent.trim() : ''; b.title = i === 0 ? title : ''; });
+      return extra;
+    }
+    return out.concat(panelBlocks(card, cc));
+  }
+  // A material (Price Variance) or a party (Payment Ageing) that is opened under its row has a panel (.mp): its figures and its tables go into the PDF after the tables of the card,
+  // in the same look (user, 29-Oct-2026: "khule material ka graph aur PO dates bhi PDF me"). The graph itself is a drawing: its numbers are the table of PO dates.
+  function panelBlocks(card, accent) {
+    var out = [];
+    [].forEach.call(card.querySelectorAll('.mp'), function (p) {
+      var head = p.querySelector('.mph'), b = head && head.querySelector('b'), sm = head && head.querySelector('.sm');
+      var title = (b ? b.textContent.replace(/\s+/g, ' ').trim() : 'Details') + (sm ? ' · ' + sm.textContent.replace(/\s+/g, ' ').trim() : '');
+      var first = true;
+      var stats = p.querySelectorAll('.stats .stat');
+      if (stats.length) {
+        var st = { type: 'table', head: [], rows: [[]], foot: [], title: title, badge: '', accent: accent };
+        [].forEach.call(stats, function (s) {
+          var v = [].filter.call(s.children, function (c) { return c.tagName === 'B'; })[0], l = [].filter.call(s.children, function (c) { return c.tagName === 'SPAN'; })[0]; // the label and the value are the direct children (the value may hold spans of its own)
+          st.head.push(l ? l.textContent.replace(/\s+/g, ' ').trim() : '');
+          st.rows[0].push(v ? cellText(v) : '');
+        });
+        out.push(st);
+        first = false;
+      }
+      [].forEach.call(p.querySelectorAll('.tbox table'), function (t) {
+        var anc = t.parentElement.closest('table');
+        if ((anc && p.contains(anc)) || !t.tBodies[0]) return;
+        var d = tableData(t), h = t.closest('.tbox') && t.closest('.tbox').previousElementSibling, sub = h && /^H3$/.test(h.tagName) ? h.textContent.replace(/\s+/g, ' ').trim() : '';
+        d.title = first ? title + (sub ? ' · ' + sub : '') : sub;
+        d.badge = '';
+        d.accent = accent;
+        if (d.rows.length || d.foot.length) { out.push(d); first = false; }
+      });
     });
     return out;
   }
@@ -649,6 +710,17 @@
         rect: function (x, top, w, h, c) { cur.push(col3(c) + ' rg ' + f2(x) + ' ' + f2(H - top - h) + ' ' + f2(w) + ' ' + f2(h) + ' re f\n'); },
         rrect: function (x, top, w, h, r, fill, stroke, sw, rb) { cur.push((fill ? col3(fill) + ' rg ' : '') + (stroke ? col3(stroke) + ' RG ' + (sw || 0.6) + ' w ' : '') + rr(x, top, w, h, r, rb) + (fill && stroke ? 'B' : fill ? 'f' : 'S') + '\n'); },
         outline: function (x, top, w, h, c) { cur.push(col3(c) + ' RG 0.6 w ' + f2(x) + ' ' + f2(H - top - h) + ' ' + f2(w) + ' ' + f2(h) + ' re S\n'); },
+        poly: function (pts, c, lw, dash) { // a line through points [[x, top], ...], optionally dashed
+          if (pts.length < 2) return;
+          var q = col3(c) + ' RG ' + (lw || 1) + ' w 1 j 1 J ' + (dash ? '[' + dash.join(' ') + '] 0 d ' : '') + f2(pts[0][0]) + ' ' + f2(H - pts[0][1]) + ' m ';
+          for (var i = 1; i < pts.length; i++) q += f2(pts[i][0]) + ' ' + f2(H - pts[i][1]) + ' l ';
+          cur.push(q + 'S [] 0 d\n');
+        },
+        polyFill: function (pts, c) {
+          var q = col3(c) + ' rg ' + f2(pts[0][0]) + ' ' + f2(H - pts[0][1]) + ' m ';
+          for (var i = 1; i < pts.length; i++) q += f2(pts[i][0]) + ' ' + f2(H - pts[i][1]) + ' l ';
+          cur.push(q + 'h f\n');
+        },
         line: function (x1, x2, top, c, lw) { cur.push(col3(c) + ' RG ' + (lw || 0.5) + ' w ' + f2(x1) + ' ' + f2(H - top) + ' m ' + f2(x2) + ' ' + f2(H - top) + ' l S\n'); },
         text: function (x, base, s, sz, bold, c, tc) { if (s === '') return; cur.push('BT /' + (bold ? 'F2' : 'F1') + ' ' + sz.toFixed(2) + ' Tf ' + (tc || 0) + ' Tc ' + col3(c) + ' rg ' + f2(x) + ' ' + f2(H - base) + ' Td ' + pdfStr(s) + ' Tj ET\n'); },
         circle: function (cx, top, r, c) { var k = r * 0.5523, cy = H - top; cur.push(col3(c) + ' rg ' + f2(cx + r) + ' ' + f2(cy) + ' m ' + f2(cx + r) + ' ' + f2(cy + k) + ' ' + f2(cx + k) + ' ' + f2(cy + r) + ' ' + f2(cx) + ' ' + f2(cy + r) + ' c ' + f2(cx - k) + ' ' + f2(cy + r) + ' ' + f2(cx - r) + ' ' + f2(cy + k) + ' ' + f2(cx - r) + ' ' + f2(cy) + ' c ' + f2(cx - r) + ' ' + f2(cy - k) + ' ' + f2(cx - k) + ' ' + f2(cy - r) + ' ' + f2(cx) + ' ' + f2(cy - r) + ' c ' + f2(cx + k) + ' ' + f2(cy - r) + ' ' + f2(cx + r) + ' ' + f2(cy - k) + ' ' + f2(cx + r) + ' ' + f2(cy) + ' c f\n'); },
@@ -743,8 +815,8 @@
         });
       }
       function table(t) {
-        var ci = colInfo(t, size), w = fitCols(ci, avail), tw = 0, lh = size * 1.28, pad = 3, n = t.head.length, xs = [], ac = t.accent || pc;
-        w.forEach(function (x) { xs.push(M + tw); tw += x; });
+        var X0 = t.x === undefined ? M : t.x, AV = t.w || avail, ci = colInfo(t, size), w = fitCols(ci, AV), tw = 0, lh = size * 1.28, pad = 3, n = t.head.length, xs = [], ac = t.accent || pc;
+        w.forEach(function (x) { xs.push(X0 + tw); tw += x; });
         function measure(row, bold, maxLines, up) { // a cell may span several columns (the Total row)
           var cs = [], c0 = 0, mx = 1;
           row.forEach(function (x) {
@@ -760,29 +832,30 @@
         var segTop = 0;
         function paint(m, kind, odd) {
           var top = y, bold = kind !== 'body';
-          if (kind === 'head') C.rect(M, top, tw, m.h, mixWhite(pc, 0.15));
-          else if (kind === 'foot') C.rect(M, top, tw, m.h, mixWhite(pc, 0.12));
-          else C.rect(M, top, tw, m.h, odd ? [0.968, 0.972, 0.98] : WHITE);
+          if (kind === 'head') C.rect(X0, top, tw, m.h, mixWhite(pc, 0.15));
+          else if (kind === 'foot') C.rect(X0, top, tw, m.h, mixWhite(pc, 0.12));
+          else C.rect(X0, top, tw, m.h, odd ? [0.968, 0.972, 0.98] : WHITE);
           m.cs.forEach(function (k) {
             k.ls.forEach(function (ln, i) {
               var tx = k.c0 === k.c1 && ci.num[k.c0] ? xs[k.c0] + k.w - pad - textW(ln, size, bold) : xs[k.c0] + pad;
               C.text(tx, top + pad + size * 0.9 + i * lh, ln, size, bold, kind === 'head' ? [0.27, 0.28, 0.32] : INK, kind === 'head' ? 0.2 : 0);
             });
           });
-          if (kind === 'head') C.line(M, M + tw, top + m.h, mixWhite(pc, 0.62), 1.1); else C.line(M, M + tw, top + m.h, [0.9, 0.91, 0.93], 0.4);
+          if (kind === 'head') C.line(X0, X0 + tw, top + m.h, mixWhite(pc, 0.62), 1.1); else C.line(X0, X0 + tw, top + m.h, [0.9, 0.91, 0.93], 0.4);
           y += m.h;
         }
-        function closeSeg() { if (y > segTop) C.outline(M, segTop, tw, y - segTop, BORDER); }
-        var head = measure(t.head, true, 3, true), headH = t.title ? 27 : 0;
+        function closeSeg() { if (y > segTop) C.outline(X0, segTop, tw, y - segTop, BORDER); }
+        var head = measure(t.head, true, 3, true), subLines = t.title && t.sub ? wrapText(norm(t.sub), tw - 30, 8, false, 2) : [], headH = t.title ? 27 + (subLines.length ? subLines.length * 10.5 + 3 : 0) : 0;
         ensure(headH + head.h + 24);
         if (t.title) { // the card heading: a white bar with the colour of the card on top, its number, its name
-          C.rrect(M, y, tw, headH, 8, WHITE, BORDER, 0.6, 0);
-          C.clip(rr(M, y, tw, headH, 8, 0), function () { C.rect(M, y, tw, 2.8, ac); });
+          C.rrect(X0, y, tw, headH, 8, WHITE, BORDER, 0.6, 0);
+          C.clip(rr(X0, y, tw, headH, 8, 0), function () { C.rect(X0, y, tw, 2.8, ac); });
           if (t.badge) {
-            C.rrect(M + 8, y + 8.5, 14, 14, 4, ac, null);
-            C.text(M + 15 - textW(t.badge, 7.6, true) / 2, y + 18.6, t.badge, 7.6, true, WHITE);
-          } else C.rrect(M + 8, y + 10.5, 9, 9, 2.5, ac, null);
-          C.text(M + (t.badge ? 29 : 24), y + 19, norm(t.title), 10.5, true, INK);
+            C.rrect(X0 + 8, y + 8.5, 14, 14, 4, ac, null);
+            C.text(X0 + 15 - textW(t.badge, 7.6, true) / 2, y + 18.6, t.badge, 7.6, true, WHITE);
+          } else C.rrect(X0 + 8, y + 10.5, 9, 9, 2.5, ac, null);
+          C.text(X0 + (t.badge ? 29 : 24), y + 19, norm(t.title), 10.5, true, INK);
+          subLines.forEach(function (ln, i) { C.text(X0 + 24, y + 31 + i * 10.5, ln, 8, false, [0.35, 0.36, 0.4]); });
           y += headH;
         }
         segTop = t.title ? y - headH : y;
@@ -799,13 +872,176 @@
           paint(m, 'foot');
         });
         closeSeg();
+        y += t.gap === undefined ? 14 : t.gap;
+      }
+      // ---- a list of materials drawn like the dashboard (Price Variance, the lists Price going UP / DOWN): the same columns, the arrows of the last moves, the small trend line, the pills,
+      // and every material opened under its row with its figures, its graph and its table of PO dates. The page hands over plain data (price_template.html, window.PDF_DETAILS).
+      var CRIT = [0.816, 0.231, 0.231], LINKC = [0.055, 0.498, 0.682], BRANDC = [0.11, 0.678, 0.894], S1C = [0.165, 0.471, 0.839], MUTC = [0.54, 0.53, 0.5];
+      var PCOL = { grid: [0.88, 0.88, 0.85], muted: MUTC, brand: BRANDC, s1: S1C, crit: CRIT, good: GREEN, ink: INK, ink2: GRAY };
+      function tri(x, yc, up, c) { C.polyFill(up ? [[x - 3, yc + 2.2], [x + 3, yc + 2.2], [x, yc - 3.2]] : [[x - 3, yc - 2.2], [x + 3, yc - 2.2], [x, yc + 3.2]], c); }
+      function drawChart(ch, x, top, w, h) { // the primitives of a chart in its own units (ch.W x ch.H) drawn into a box
+        var sx = w / ch.W, sy = h / ch.H;
+        ch.prims.forEach(function (p) {
+          var c = PCOL[p.c] || INK;
+          if (p.k === 'line') C.poly([[x + p.x1 * sx, top + p.y1 * sy], [x + p.x2 * sx, top + p.y2 * sy]], c, p.w || 0.5, p.dash);
+          else if (p.k === 'poly') C.poly(p.pts.map(function (q) { return [x + q[0] * sx, top + q[1] * sy]; }), c, p.w || 1, null);
+          else if (p.k === 'dot') { C.circle(x + p.x * sx, top + p.y * sy, p.r + 0.9, WHITE); C.circle(x + p.x * sx, top + p.y * sy, p.r, c); }
+          else if (p.k === 'text') {
+            var s = norm(p.s), sz = p.sz || 6, tw0 = textW(s, sz, !!p.b), tx = x + p.x * sx;
+            if (p.a === 'end') tx -= tw0; else if (p.a === 'middle') tx -= tw0 / 2;
+            C.text(tx, top + p.y * sy, s, sz, !!p.b, c);
+          }
+        });
+      }
+      function matlist(t) {
+        var X0 = M, TW = avail, nW = 26, trW = Math.min(250, TW * 0.3), chW = Math.min(134, TW * 0.17), mW = TW - nW - trW - chW;
+        var xM = X0 + nW, xT = xM + mW, xC = xT + trW, R1 = xT + trW - 8, R2 = xC + chW - 8, PADT = 6;
+        var ac = t.accent || pc, headPage = -1;
+        function pill(x, top, s, kind) { // a small grey pill (supplier changed, doubtful, import); returns its width
+          var sz = 6.3, dot = kind === 'sup', w = textW(norm(s), sz, true) + 9 + (dot ? 7 : 0);
+          C.rrect(x, top, w, 10.5, 5.2, kind === 'chk' ? [1, 0.93, 0.78] : kind === 'cur' ? mixWhite(pc, 0.2) : [0.9, 0.91, 0.92], null);
+          if (dot) C.circle(x + 6, top + 5.3, 1.7, INK);
+          C.text(x + 4.5 + (dot ? 7 : 0), top + 7.6, norm(s), sz, true, INK);
+          return w;
+        }
+        function lpPill(xr, top, lp) { // the loss / profit pill, right aligned at xr
+          var s = norm(lp.t), w = textW(s, 6.7, true) + 10, k = lp.k;
+          C.rrect(xr - w, top, w, 11.5, 5.7, k === 'loss' ? [0.97, 0.86, 0.86] : k === 'profit' ? [0.86, 0.96, 0.86] : [0.93, 0.93, 0.93], null);
+          C.text(xr - w + 5, top + 8.2, s, 6.7, true, k === 'loss' ? [0.78, 0.17, 0.17] : k === 'profit' ? [0.05, 0.5, 0.05] : GRAY);
+        }
+        var heads = (t.head || ['#', 'Material and its last price moves', 'Rate trend', 'Change · loss / profit']).map(function (h) { return norm(h).toUpperCase(); });
+        function drawHead() {
+          var hl = [wrapText(heads[0], nW - 8, 6.6, true, 1), wrapText(heads[1], mW - 10, 6.6, true, 2), wrapText(heads[2], trW - 14, 6.6, true, 2), wrapText(heads[3], chW - 14, 6.6, true, 3)];
+          var h = Math.max(hl[0].length, hl[1].length, hl[2].length, hl[3].length) * 8.2 + 11;
+          C.rect(X0, y, TW, h, mixWhite(pc, 0.15));
+          [[hl[0], xN(), 'r'], [hl[1], xM + 4, 'l'], [hl[2], R1, 'r'], [hl[3], R2, 'r']].forEach(function (c) {
+            c[0].forEach(function (ln, i) { C.text(c[2] === 'r' ? c[1] - textW(ln, 6.6, true) : c[1], y + 9.5 + i * 8.2, ln, 6.6, true, [0.27, 0.28, 0.32], 0.2); });
+          });
+          C.line(X0, X0 + TW, y + h, mixWhite(pc, 0.62), 1.1);
+          y += h;
+          headPage = pages.length;
+        }
+        function xN() { return X0 + nW - 6; }
+        function ensureRow(h) {
+          if (y + h > bottom) { newPage(false); drawHead(); }
+          else if (headPage !== pages.length) drawHead(); // the page changed inside the table of a panel
+        }
+        // the heading of the card (a white bar with the colour of the card on top)
+        var subLines = t.title && t.sub ? wrapText(norm(t.sub), TW - 30, 8, false, 2) : [], headH = t.title ? 27 + (subLines.length ? subLines.length * 10.5 + 3 : 0) : 0;
+        ensure(headH + 70);
+        if (t.title) {
+          C.rrect(X0, y, TW, headH, 8, WHITE, BORDER, 0.6, 0);
+          C.clip(rr(X0, y, TW, headH, 8, 0), function () { C.rect(X0, y, TW, 2.8, ac); });
+          if (t.badge) { C.rrect(X0 + 8, y + 8.5, 14, 14, 4, ac, null); C.text(X0 + 15 - textW(t.badge, 7.6, true) / 2, y + 18.6, t.badge, 7.6, true, WHITE); } else C.rrect(X0 + 8, y + 10.5, 9, 9, 2.5, ac, null);
+          C.text(X0 + (t.badge ? 29 : 24), y + 19, norm(t.title), 10.5, true, INK);
+          subLines.forEach(function (ln, i) { C.text(X0 + 24, y + 31 + i * 10.5, ln, 8, false, [0.35, 0.36, 0.4]); });
+          y += headH;
+        }
+        drawHead();
+        t.rows.forEach(function (r, i) {
+          // measure the row
+          var nm = r.moves ? r.moves.length : 0, left = PADT + 11.5 + 10.5 + nm * 9.6 + (r.more ? 9.5 : 0) + PADT;
+          var rowH = Math.max(left, PADT + 22 + 3 + 10.5 + 9.5 + PADT, PADT + 10 + 10 + 4 + 11.5 + PADT);
+          ensureRow(rowH + 2);
+          var top = y;
+          C.rect(X0, top, TW, rowH, i % 2 === 1 ? [0.965, 0.968, 0.975] : WHITE);
+          C.line(X0, X0 + TW, top + rowH, [0.9, 0.91, 0.93], 0.4);
+          C.text(xN() - textW(String(r.n), 7.5, false), top + PADT + 8.5, String(r.n), 7.5, false, INK);
+          // the name (a link on the screen: blue with a dotted line), the code and the pills
+          var nameS = norm(r.name), nameW = mW - 10;
+          while (nameS.length > 4 && textW(nameS, 8.8, true) > nameW) nameS = nameS.slice(0, -1);
+          if (nameS !== norm(r.name)) nameS = nameS.slice(0, -1) + '...';
+          C.text(xM + 4, top + PADT + 8.6, nameS, 8.8, true, LINKC);
+          C.poly([[xM + 4, top + PADT + 10.6], [xM + 4 + textW(nameS, 8.8, true), top + PADT + 10.6]], mixWhite(LINKC, 0.55), 0.5, [0.7, 1.3]);
+          var sub = norm(r.sub), sx0 = xM + 4;
+          C.text(sx0, top + PADT + 11.5 + 7.6, sub, 7.2, false, GRAY);
+          sx0 += textW(sub, 7.2, false) + 6;
+          (r.pills || []).forEach(function (p) { sx0 += pill(sx0, top + PADT + 11.5 + 0.3, p.t, p.k) + 4; });
+          var my = top + PADT + 11.5 + 10.5;
+          (r.moves || []).forEach(function (m, k) {
+            var yc = my + k * 9.6 + 5.2;
+            tri(xM + 7, yc - 0.3, m.up, m.up ? CRIT : GREEN);
+            var ta = norm(m.d), ax = xM + 14 + textW(ta, 7.6, false) + 3.5;
+            C.text(xM + 14, yc + 2.4, ta, 7.6, false, INK);
+            C.poly([[ax, yc + 0.5], [ax + 7, yc + 0.5]], INK, 0.7, null);
+            C.poly([[ax + 4.4, yc - 1.8], [ax + 7.2, yc + 0.5], [ax + 4.4, yc + 2.8]], INK, 0.7, null);
+            C.text(ax + 11, yc + 2.4, norm(m.b), 7.6, true, INK);
+          });
+          if (r.more) C.text(xM + 4, my + nm * 9.6 + 7, norm(r.more), 6.8, false, GRAY);
+          // the rate trend: the small line, the latest rate and its date, the reference
+          var sp = r.spark, spw = 72, sph = 20, spx = R1 - spw, spy = top + PADT, sxk = spw / sp.w, syk = sph / sp.h, col = sp.up ? CRIT : GREEN;
+          C.poly([[spx + 2 * sxk, spy + sp.ref * syk], [spx + (sp.w - 2) * sxk, spy + sp.ref * syk]], MUTC, 0.6, [2.4, 2.4]);
+          C.poly(sp.pts.map(function (q) { return [spx + q[0] * sxk, spy + q[1] * syk]; }), col, 1.3, null);
+          C.circle(spx + sp.last[0] * sxk, spy + sp.last[1] * syk, 2, col);
+          var by = spy + sph + 3 + 8.5, dt = norm(r.lastDay), pr = norm(r.lastRate);
+          C.text(R1 - textW(dt, 7, false), by, dt, 7, false, GRAY);
+          C.text(R1 - textW(dt, 7, false) - 4 - textW(pr, 9, true), by, pr, 9, true, INK);
+          var wz = norm(r.was);
+          C.text(R1 - textW(wz, 6.9, false), by + 9.5, wz, 6.9, false, GRAY);
+          // the change and the loss / profit
+          var cc = r.up ? CRIT : GREEN, c1 = norm(r.chg), c2 = norm(r.pct);
+          C.text(R2 - textW(c1, 9, true), top + PADT + 9, c1, 9, true, cc);
+          C.text(R2 - textW(c2, 9, true), top + PADT + 19.5, c2, 9, true, cc);
+          if (r.lp) lpPill(R2, top + PADT + 24.5, r.lp);
+          y += rowH;
+          if (r.panel) panel(r.panel);
+        });
+        // the total
+        var tl = t.foot;
+        if (tl) {
+          ensureRow(20);
+          C.rect(X0, y, TW, 17, mixWhite(pc, 0.12));
+          C.text(xM + 4, y + 11.6, norm(tl.t), 7.8, true, INK);
+          if (tl.lp) lpPill(R2, y + 2.8, tl.lp);
+          y += 17;
+        }
+        C.outline(X0, y - 17, TW, 17, BORDER);
         y += 14;
+
+        function panel(p) { // one material opened under its row
+          var px = xM, pw = TW - nW - 6, ip = 9, iw = pw - 2 * ip;
+          var n = p.stats.length, gap = 5, sbW = (iw - gap * (n - 1)) / n;
+          var sl = p.stats.map(function (s) { return { v: wrapText(norm(s.v), sbW - 8, 7.4, true, 2), l: wrapText(norm(s.l), sbW - 8, 5.9, false, 2), k: s.k }; });
+          var vN = Math.max.apply(null, sl.map(function (s) { return s.v.length; })), lN = Math.max.apply(null, sl.map(function (s) { return s.l.length; }));
+          var sbH = 6 + vN * 8.6 + 2 + lN * 7.2 + 5, sumL = wrapText(norm(p.sum), iw, 7, false, 3), chH = p.chart ? 132 : 0;
+          var boxH = 7 + 11 + 9.5 + 7 + sbH + 6 + sumL.length * 8.8 + 4 + (p.chart ? 12 + chH + 4 : 0) + 6;
+          ensureRow(boxH + 8);
+          y += 4;
+          var top = y;
+          C.rrect(px, top, pw, boxH, 6, mixWhite(pc, 0.07), mixWhite(pc, 0.5), 0.7);
+          C.clip(rr(px, top, pw, boxH, 6), function () { C.rect(px, top, 3.2, boxH, pc); });
+          var cx = px + ip + 2, yy = top + 7;
+          C.text(cx, yy + 9, norm(p.title), 9, true, INK);
+          C.text(cx, yy + 19.5, norm(p.sub), 7, false, GRAY);
+          yy += 26;
+          sl.forEach(function (s, i) {
+            var bx = cx + i * (sbW + gap) - 2 + (i ? 0 : 0);
+            C.rrect(bx, yy, sbW, sbH, 4, WHITE, BORDER, 0.5);
+            var vc = s.k === 'up' || s.k === 'loss' ? CRIT : s.k === 'dn' || s.k === 'profit' ? GREEN : INK;
+            s.v.forEach(function (ln, j) { C.text(bx + 4, yy + 6 + 6.6 + j * 8.6, ln, 7.4, true, vc); });
+            s.l.forEach(function (ln, j) { C.text(bx + 4, yy + 6 + vN * 8.6 + 2 + 5.4 + j * 7.2, ln, 5.9, false, GRAY); });
+          });
+          yy += sbH + 6;
+          sumL.forEach(function (ln, j) { C.text(cx, yy + 6.5 + j * 8.8, ln, 7, false, GRAY); });
+          yy += sumL.length * 8.8 + 4;
+          if (p.chart) {
+            var lx = cx;
+            [['First PO', S1C], ['Rate rose', CRIT], ['Rate fell', GREEN], ['No change', MUTC]].forEach(function (g) { C.circle(lx + 2.5, yy + 5, 2.4, g[1]); C.text(lx + 8, yy + 7.4, g[0], 6.4, false, GRAY); lx += 14 + textW(g[0], 6.4, false) + 8; });
+            yy += 12;
+            drawChart(p.chart, cx - 2, yy, iw, chH);
+          }
+          y = top + boxH;
+          // the PO dates as a table of the same width under the box
+          y += 3;
+          if (p.table) table(Object.assign({}, p.table, { x: px, w: pw, title: '', sub: '' }));
+        }
       }
       newPage(true);
       doc.blocks.forEach(function (b, bi) {
         if (b.type === 'section') section(b.title, b.accent);
         else if (b.type === 'tiles') tiles(b.items);
         else if (b.type === 'table') table(b);
+        else if (b.type === 'matlist') matlist(b);
       });
       var total = pages.length, st = stampNow().text;
       pages.forEach(function (p, i) {

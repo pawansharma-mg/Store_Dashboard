@@ -108,6 +108,11 @@ tr.sel td{background:rgba(28,173,228,.14)!important}
 .stick .top{position:static}
 @media (max-width:700px){.stick{position:static}}
 .tscroll>table>thead th{position:sticky;top:0;z-index:3;background:var(--surface);box-shadow:0 2px 0 var(--grid)}
+.asofnote{margin:8px 0 0;padding:9px 14px;border:1px solid var(--brand);border-radius:10px;background:rgba(28,173,228,.09);font-size:12.5px;color:var(--ink2)}
+.bar .asofbtn{align-self:flex-end;height:36px}
+.rangekpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:0 0 12px}
+.rangekpi .tile{padding:12px 14px}
+.sm{font-size:.72rem;color:var(--muted);font-weight:400}
 </style>
 <link rel="stylesheet" href="/ui.css">
 <script src="/live.js"></script>
@@ -127,6 +132,9 @@ tr.sel td{background:rgba(28,173,228,.14)!important}
 <nav class="nav"><a href="/summary">Summary</a><a href="/issue">Store Issue</a><a href="/asset">Capital Issue</a><a href="/stock" class="on">Store Stock</a><a href="/">Pending PR</a><a href="/po">Pending Purchase Orders</a><a href="/po-approval">PO Approval Pending</a><a href="/invoice">Pending Invoice Entry</a><a href="/purchase">Purchase</a><a href="/price">Price Variance</a><a href="/ageing">Payment Ageing</a></nav></div>
 <div class="wrap">
   <section class="bar" aria-label="Filters">
+    <label class="fld" id="fromFld"><span>From date</span><input type="date" id="fromDate" title="Date to date: the first day of the period. With a From date the page shows, for every material, the opening stock, what came in, what went out and the closing stock of the period"></label>
+    <label class="fld" id="asofFld"><span>To date (stock on)</span><input type="date" id="asofDate" title="Pick a day to see the stock at the end of that day (empty = today)"></label>
+    <button type="button" class="btn alt asofbtn" id="asofToday" hidden title="Back to the stock of today">Today</button>
     <label class="fld"><span>Plant</span><select id="plantSel"></select></label>
     <label class="fld" id="catFld"><span>Category</span><select id="catSel"></select></label>
     <label class="fld"><span>Storage location</span><select id="slocSel"></select></label>
@@ -137,6 +145,7 @@ tr.sel td{background:rgba(28,173,228,.14)!important}
     <label class="fld grow"><span>Search</span><input id="q" type="search" placeholder="Material number or name, storage location"></label>
   </section>
   <div class="chips" id="chips"></div>
+  <p class="asofnote" id="asofNote" hidden></p>
 
   <section class="kpis" id="kpis"><div id="kpiMain" style="display:contents"></div><div id="kpiOpt" style="display:contents"></div></section>
 
@@ -160,6 +169,28 @@ tr.sel td{background:rgba(28,173,228,.14)!important}
   </section>
 
   <section class="grid">
+    <article class="card" id="rangeCard" data-keep-open hidden>
+      <h2><span class="sec-badge">1</span>Date to date · stock movement of the period</h2>
+      <p class="hint" id="rangeHint"></p>
+      <div id="rangeKpi" class="rangekpi"></div>
+      <div class="tbox" id="rangeBox"></div>
+      <div class="pager"><span id="rangeInfo"></span><div><button class="btn" id="rangeAll" type="button">See all</button></div></div>
+    </article>
+    <article class="card" id="idleCard" data-keep-open hidden>
+      <h2><span class="sec-badge">1</span>Ageing · days since the material was last used</h2>
+      <p class="hint" id="idleHint"></p>
+      <div class="tbox" id="byIdle"></div>
+    </article>
+    <article class="card" id="monthCard" data-keep-open>
+      <h2><span class="sec-badge">1</span>Month wise stock</h2>
+      <p class="hint" id="monthHint"></p>
+      <div class="tbox" id="byMonthS"></div>
+    </article>
+    <article class="card" id="dayCard" data-keep-open>
+      <h2><span class="sec-badge">1</span>Day wise stock</h2>
+      <p class="hint" id="dayHint"></p>
+      <div class="tbox" id="byDayS"></div>
+    </article>
     <article class="card" id="catCard">
       <h2><span class="sec-badge">1</span>Category wise stock</h2>
       <p class="hint">Store locations and Internal Plant material (the I/P stores of the production lines). Click a row to filter everything.</p>
@@ -233,7 +264,7 @@ function fmtINR(v){const a=Math.abs(v);if(a>=1e7)return '₹'+(v/1e7).toFixed(2)
 const fmtQ=(q,u)=>q.toLocaleString('en-IN',{maximumFractionDigits:3})+' '+u;
 
 let D=null,R=[],renderToken=0,SPLIT=false,CUR=null;
-const S={tile:null,tileAll:false,top:true,dead:false,deadAll:false,all:false,plant:'',cat:null,sloc:null,stype:null,sp:'',grp:null,mt:null,q:''};
+const S={tile:null,tileAll:false,top:true,dead:false,deadAll:false,all:false,plant:'',cat:null,sloc:null,stype:null,sp:'',grp:null,mt:null,q:'',asof:null,from:null,rangeAll:false,idle:null,mon:null};
 
 function pass(r,skip){
   skip=skip||[];
@@ -244,6 +275,7 @@ function pass(r,skip){
   if(!skip.includes('sp')&&S.sp&&(S.sp==='own'?r.sp!=='':r.sp!==S.sp))return false;
   if(!skip.includes('grp')&&S.grp!==null&&r.grp!==S.grp)return false;
   if(!skip.includes('mt')&&S.mt!==null&&(S.mt==='STORE'?!STORE_MT.includes(r.ptype):r.ptype!==S.mt))return false;
+  if(!skip.includes('idle')&&S.idle!==null&&r.ib!==S.idle)return false;
   if(S.q&&!r.hay.includes(S.q))return false;
   return true;
 }
@@ -264,12 +296,18 @@ const DAYMS=864e5;
 const fmtDay=d=>new Date(d*DAYMS).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric',timeZone:'UTC'});
 // the day 5 months before the data date (a 31st goes to the end of a shorter month)
 function cutoffDay(asof){const t=new Date(asof*DAYMS);let y=t.getUTCFullYear(),m=t.getUTCMonth()-5;const d=t.getUTCDate();if(m<0){m+=12;y--;}const dim=new Date(Date.UTC(y,m+1,0)).getUTCDate();return Math.floor(Date.UTC(y,m,Math.min(d,dim))/DAYMS);}
+// days since the last goods issue: young = green, old = red; no issue at all since the Store Issue data starts = the last group
+const IDLE_EDGES=[30,60,90,180,365];
+const idleBucket=n=>{for(let i=0;i<IDLE_EDGES.length;i++)if(n<=IDLE_EDGES[i])return i;return IDLE_EDGES.length;};
+const IDLE_LABELS=['Used in the last 30 days','31–60 days','61–90 days','91–180 days','181–365 days','Over 1 year'];
+const idleLabel=i=>i<IDLE_LABELS.length?IDLE_LABELS[i]:'Not used since '+fmtDay(D.issuesFrom);
 // stock lines of one material in one plant make one item
 function itemsOf(rows){const m=new Map();for(const r of rows){const k=r.plant+'|'+r.p;let x=m.get(k);if(!x)m.set(k,x={plant:r.plant,p:r.p,id:r.id,name:r.name,grp:r.grp,unit:r.unit,qty:0,val:0,last:r.last,kinds:new Set()});x.qty+=r.qty;x.val+=r.val;x.kinds.add(r.kind);}return [...m.values()];}
 // column helpers of the material tables (cat: show the Category column)
 function mkHelpers(cat){
   const cut=cutoffDay(D.asofDay),used=!!D.issuesRead;
-  const lastCell=x=>!used?'–':x.last?`<span class="pill ${x.last<cut?'pend':'ok'}" title="Last goods issue (stock out) of this material in plant ${esc(x.plant)}">${fmtDay(x.last)}</span>`:`<span class="pill pend" title="No goods issue of this material since ${fmtDay(D.issuesFrom)}">Not since ${fmtDay(D.issuesFrom)}</span>`;
+  const idleP=x=>x.last?`<span class="agep a${idleBucket(Math.max(0,D.asofDay-x.last))}" title="${fmtN(Math.max(0,D.asofDay-x.last))} days since the last goods issue">${fmtN(Math.max(0,D.asofDay-x.last))} d</span>`:`<span class="agep a6" title="No goods issue since ${fmtDay(D.issuesFrom)}: unused for at least ${fmtN(D.asofDay-D.issuesFrom)} days">${fmtN(D.asofDay-D.issuesFrom)}+ d</span>`;
+  const lastCell=x=>!used?'–':x.last?`<span class="pill ${x.last<cut?'pend':'ok'}" title="Last goods issue (stock out) of this material in plant ${esc(x.plant)}">${fmtDay(x.last)}</span> ${idleP(x)}`:`<span class="pill pend" title="No goods issue of this material since ${fmtDay(D.issuesFrom)}">Not since ${fmtDay(D.issuesFrom)}</span> ${idleP(x)}`;
   const head=(first)=>`<thead><tr><th>${first}</th><th>Material</th><th>Description</th><th>Plant</th>${cat?'<th>Category</th>':''}<th>Material group</th><th class="num">Stock quantity</th><th class="num">Stock value</th>`;
   const line=(x,i)=>`<td>${i}</td><td class="nw">${esc(x.id)}</td><td>${esc(x.name)}</td><td>${esc(x.plant)}</td>${cat?`<td class="nw${x.kinds.has(IPM)?' ipm':''}">${esc([...x.kinds].sort().join(' + '))}</td>`:''}<td>${esc(mgName(x.grp))}</td><td class="num nw"><b>${fmtQ(x.qty,esc(x.unit))}</b></td><td class="num nw"><b>${fmtINR(x.val)}</b></td>`;
   return {cut,used,lastCell,head,line};
@@ -289,11 +327,11 @@ function renderTop(){
     +(used?opt('dead','opt2',fmtN(dead.length),'Not used for 5 months (materials)',fmtINR(dv)+' stock value · '+(S.dead?'click to hide':'click to show'),S.dead):'');
   $('topCard').hidden=!S.top;
   $('deadCard').hidden=!(used&&S.dead);
-  if(S.top)$('top5').innerHTML=top.length?'<table>'+head('#')+`<th class="num">Share</th><th>Last used</th></tr></thead><tbody>`+top.map((x,i)=>`<tr>${line(x,i+1)}<td class="num nw">${total?(x.val/total*100).toFixed(1)+'%':'–'}</td><td class="nw">${lastCell(x)}</td></tr>`).join('')+'</tbody></table>':emptyMsg;
+  if(S.top)$('top5').innerHTML=top.length?'<table>'+head('#')+`<th class="num">Share</th><th>Last used · unused for</th></tr></thead><tbody>`+top.map((x,i)=>`<tr>${line(x,i+1)}<td class="num nw">${total?(x.val/total*100).toFixed(1)+'%':'–'}</td><td class="nw">${lastCell(x)}</td></tr>`).join('')+'</tbody></table>':emptyMsg;
   if(!(used&&S.dead))return;
   $('deadHint').textContent='Store locations only (Internal Plant material is not included). Materials with no goods issue (use) since '+fmtDay(cut)+' (5 months), most stock value first. Use is read from the goods issues of the Store Issue data from '+fmtDay(D.issuesFrom)+'; material received in the last 5 months and not used yet is also listed.';
   const shown=S.deadAll?dead:dead.slice(0,25);
-  $('deadBox').innerHTML=dead.length?'<table>'+head('#')+'<th>Last used</th></tr></thead><tbody>'+shown.map((x,i)=>`<tr>${line(x,i+1)}<td class="nw">${lastCell(x)}</td></tr>`).join('')+'</tbody></table>':emptyMsg;
+  $('deadBox').innerHTML=dead.length?'<table>'+head('#')+'<th>Last used · unused for</th></tr></thead><tbody>'+shown.map((x,i)=>`<tr>${line(x,i+1)}<td class="nw">${lastCell(x)}</td></tr>`).join('')+'</tbody></table>':emptyMsg;
   $('deadInfo').textContent=dead.length?(S.deadAll||dead.length<=25?`All ${fmtN(dead.length)} materials shown`:`Showing the first 25 of ${fmtN(dead.length)}`):'';
   $('deadAll').hidden=dead.length<=25;$('deadAll').textContent=S.deadAll?'Show first 25':'See all '+fmtN(dead.length);
 }
@@ -356,7 +394,7 @@ function renderTile(){
   const rows=CUR.rows,H=mkHelpers(SPLIT),none='<div class="empty">Nothing matches the filters.</div>';
   let html='',n=0,paged=true;
   const cut25=a=>S.tileAll?a:a.slice(0,25);
-  const items=its=>{const s=its.slice().sort((a,b)=>b.val-a.val);n=s.length;return s.length?'<table>'+H.head('#')+'<th>Last used</th></tr></thead><tbody>'+cut25(s).map((x,i)=>`<tr>${H.line(x,i+1)}<td class="nw">${H.lastCell(x)}</td></tr>`).join('')+'</tbody></table>':none;};
+  const items=its=>{const s=its.slice().sort((a,b)=>b.val-a.val);n=s.length;return s.length?'<table>'+H.head('#')+'<th>Last used · unused for</th></tr></thead><tbody>'+cut25(s).map((x,i)=>`<tr>${H.line(x,i+1)}<td class="nw">${H.lastCell(x)}</td></tr>`).join('')+'</tbody></table>':none;};
   const lines=(rs,ex)=>{const s=rs.slice().sort(ex?ex.sort:(a,b)=>b.val-a.val||b.qty-a.qty);n=s.length;return s.length?`<table><thead><tr><th>#</th><th>Material</th><th>Description</th><th>Plant</th><th>Storage location</th>${SPLIT?'<th>Category</th>':''}<th>Stock type</th><th class="num">Stock quantity</th><th class="num">Stock value</th>${ex?ex.head:''}</tr></thead><tbody>`+cut25(s).map((r,i)=>`<tr><td>${i+1}</td><td class="nw">${esc(r.id)}</td><td>${esc(r.name)}</td><td>${esc(r.plant)}</td><td>${esc(r.slocName||r.sloc||'–')}</td>${SPLIT?`<td class="nw${r.kind===IPM?' ipm':''}">${esc(r.kind)}</td>`:''}<td class="nw">${esc(stkName(r.st))}</td><td class="num nw"><b>${fmtQ(r.qty,esc(r.unit))}</b></td><td class="num nw"><b>${r.val?fmtINR(r.val):'–'}</b></td>${ex?ex.cell(r):''}</tr>`).join('')+'</tbody></table>':none;};
   const locAgg=()=>{const m=new Map();for(const r of rows){let x=m.get(r.skey);if(!x)m.set(r.skey,x={plant:r.plant,code:r.sloc,name:r.slocName,kind:r.kind,n:0,val:0,mats:new Set()});x.n++;x.val+=r.val;x.mats.add(r.p);}return m;};
   const share=v=>CUR.total?(v/CUR.total*100).toFixed(1)+'%':'–';
@@ -392,7 +430,7 @@ function render(){
   for(const r of rows){val+=r.val;mats.add(r.p);slocs.add(r.skey);if(r.st==='02')quality+=r.val;if(r.st==='07')blocked+=r.val;if(r.sp==='O')vendor+=r.val;if(r.kind===IPM)ipmVal+=r.val;}
   const tiles=[[fmtINR(val),'Stock value (INR)','val']];
   if(SPLIT)tiles.push([fmtINR(val-ipmVal),'Store stock value','store'],[fmtINR(ipmVal),IPM+' value','ipm']);
-  tiles.push([fmtN(mats.size),'Materials with stock','mats'],[fmtN(rows.length),'Stock lines (material × location × type)','lines'],[fmtN(slocs.size),'Storage locations with stock','slocs'],[fmtINR(quality),'In quality inspection','qi'],...(R.some(r=>r.st==='07')?[[fmtINR(blocked),'Blocked stock','blocked']]:[]),D.onlyListed?[fmtN(D.listedCount),'Store locations in your list','listed']:[fmtINR(vendor),'At vendor (subcontracting)','vendor']);
+  tiles.push([fmtN(mats.size),'Materials with stock','mats'],[fmtN(rows.length),'Stock lines (material × location × type)','lines'],[fmtN(slocs.size),'Storage locations with stock','slocs'],...(S.asof!==null?[]:[[fmtINR(quality),'In quality inspection','qi']]),...(R.some(r=>r.st==='07')?[[fmtINR(blocked),'Blocked stock','blocked']]:[]),D.onlyListed?[fmtN(D.listedCount),'Store locations in your list','listed']:[fmtINR(vendor),'At vendor (subcontracting)','vendor']);
   // every tile opens its details under the tiles
   $('kpiMain').innerHTML=tiles
     .map(t=>`<button type="button" class="tile tilebtn" data-tile="${t[2]}" aria-expanded="${S.tile===t[2]}"><div class="tv">${t[0]}</div><div class="tl">${t[1]}</div>${S.tile===t[2]?'<div class="ts">click to hide</div>':''}</button>`).join('');
@@ -407,6 +445,9 @@ function render(){
   if(S.grp!==null)c.push(['grp','Material group: '+mgName(S.grp)]);
   if(S.mt!==null)c.push(['mt','Material type: '+(S.mt==='STORE'?'Store material types ('+STORE_MT.join(', ')+')':mtName(S.mt))]);
   if(S.q)c.push(['q','Search: '+S.q]);
+  if(S.idle!==null)c.push(['idle','Last used: '+idleLabel(S.idle)]);
+  if(S.asof!==null)c.unshift(['asof',(S.from!==null?'To date ':'Stock on ')+fmtDay(S.asof)]);
+  if(S.from!==null)c.unshift(['from','From date '+fmtDay(S.from)]);
   $('chips').innerHTML=c.map(x=>`<button type="button" class="chip" data-clr="${x[0]}">${esc(x[1])} ×</button>`).join('')+(c.length?'<button type="button" class="chip" data-clr="all">Reset filters</button>':'');
   // each table ignores its own filter, so the list stays when you pick a row
   const pl=new Map(),ca=new Map(),sl=new Map(),gr=new Map(),ty=new Map(),sp=new Map(),mt=new Map(),mty=new Map(),mts=new Map();
@@ -420,6 +461,18 @@ function render(){
     if(pass(r,['sp']))add(sp,r.sp,r);
   }
   for(const r of rows)add(mt,r.p,r);
+  // ageing of the unused stock: the materials (per plant) and their stock value by days since the last goods issue; Store locations only, like the Not used for 5 months list
+  const idc=$('idleCard'),useIdle=!!D.issuesRead;idc.hidden=!useIdle;
+  if(useIdle){
+    const im=new Map();
+    for(const r of R){if(!pass(r,['idle'])||(SPLIT&&r.kind===IPM))continue;const k=r.plant+'|'+r.p;let x=im.get(k);if(!x)im.set(k,x={ib:r.ib,val:0});x.val+=r.val;}
+    const gm=new Map();for(const x of im.values()){let g=gm.get(x.ib);if(!g)gm.set(x.ib,g={n:0,val:0});g.n++;g.val+=x.val;}
+    const tn=[...gm.values()].reduce((s,g)=>s+g.n,0),tv=[...gm.values()].reduce((s,g)=>s+g.val,0);
+    $('idleHint').textContent='How long ago each material (per plant) was last issued (used), counted in days up to '+fmtDay(D.asofDay)+', with its stock value. Store locations only. Uses the goods issues of the Store Issue data from '+fmtDay(D.issuesFrom)+', so "Not used since" means no issue found since then. Click a row to filter everything to that age.';
+    $('byIdle').innerHTML=gm.size?'<table><thead><tr><th>Last used</th><th class="num">Materials</th><th class="num">Stock value</th><th class="num">Share</th></tr></thead><tbody>'+
+      [...gm.entries()].sort((a,b)=>a[0]-b[0]).map(([k,g])=>`<tr${k===S.idle?' class="sel"':''}><td><button type="button" class="lnk" data-idle="${k}"><span class="agep a${Math.min(k,6)}" style="display:inline-block;width:10px;height:10px;padding:0;margin-right:7px;vertical-align:middle"></span>${esc(idleLabel(k))}</button></td><td class="num">${fmtN(g.n)}</td><td class="num nw">${fmtINR(g.val)}</td><td class="num">${tv?(g.val/tv*100).toFixed(1)+'%':'–'}</td></tr>`).join('')+
+      `</tbody><tfoot><tr><td>Total</td><td class="num">${fmtN(tn)}</td><td class="num nw">${fmtINR(tv)}</td><td class="num">${tv?'100%':'–'}</td></tr></tfoot></table>`:'<div class="empty">Nothing matches the filters.</div>';
+  }
   $('byCat').innerHTML=aggTable(byValue(ca),'Category',k=>`<button type="button" class="lnk" data-cat="${esc(k)}">${esc(k)}</button>`,S.cat,0,true);
   $('byPlant').innerHTML=aggTable(byValue(pl),'Plant',k=>`<button type="button" class="lnk" data-plant="${esc(k)}">${esc(k)}</button>`,S.plant||null);
   const sll=byValue(sl);
@@ -440,9 +493,9 @@ function render(){
   rows.sort((a,b)=>b.val-a.val||b.qty-a.qty||a.id.localeCompare(b.id));
   const slice=S.all?rows:rows.slice(0,PAGE);
   const first=S.all?slice.slice(0,400):slice;
-  const rowHtml=r=>`<tr><td class="nw">${esc(r.id)}</td><td>${esc(r.name)}</td><td>${esc(r.plant)}</td><td title="${esc(r.sloc?'Storage location '+r.sloc:'No storage location')}">${esc(r.slocName||r.sloc||'–')}</td><td class="nw${r.kind===IPM?' ipm':''}">${esc(r.kind)}</td><td title="${esc(r.grp?'Material group '+r.grp:'')}">${esc(mgName(r.grp))}</td><td class="nw" title="${esc(r.ptype?'Material type '+r.ptype:'')}">${esc(mtName(r.ptype))}${STORE_MT.includes(r.ptype)?' \u2605':''}</td><td class="nw" title="${esc(r.st?'Stock type '+r.st:'')}">${esc(stkName(r.st))}</td><td class="nw">${esc(spName(r.sp))}</td><td class="num nw"><b>${fmtQ(r.qty,esc(r.unit))}</b></td><td class="num nw">${r.val?fmtINR(r.val):'<span title="No value in SAP (unvalued stock)">–</span>'}</td><td class="num nw">${r.val&&r.qty?'₹'+(r.val/r.qty).toLocaleString('en-IN',{maximumFractionDigits:2}):'–'}</td></tr>`;
-  $('tbl').innerHTML='<thead><tr><th>Material</th><th>Description</th><th>Plant</th><th>Storage location</th><th>Category</th><th>Material group</th><th>Material type</th><th>Stock type</th><th>Stock held</th><th class="num">Stock quantity</th><th class="num">Stock value</th><th class="num">Price per unit</th></tr></thead><tbody>'+
-    (first.length?first.map(rowHtml).join(''):'<tr><td colspan="12" class="empty">Nothing matches the filters.</td></tr>')+'</tbody>';
+  const rowHtml=r=>`<tr><td class="nw">${esc(r.id)}</td><td>${esc(r.name)}</td><td>${esc(r.plant)}</td><td title="${esc(r.sloc?'Storage location '+r.sloc:'No storage location')}">${esc(r.slocName||r.sloc||'–')}</td><td class="nw${r.kind===IPM?' ipm':''}">${esc(r.kind)}</td><td title="${esc(r.grp?'Material group '+r.grp:'')}">${esc(mgName(r.grp))}</td><td class="nw" title="${esc(r.ptype?'Material type '+r.ptype:'')}">${esc(mtName(r.ptype))}${STORE_MT.includes(r.ptype)?' \u2605':''}</td><td class="nw" title="${esc(r.st?'Stock type '+r.st:'')}">${esc(stkName(r.st))}</td><td class="nw">${esc(spName(r.sp))}</td><td class="num nw"><b>${fmtQ(r.qty,esc(r.unit))}</b></td><td class="num nw">${r.val?fmtINR(r.val):'<span title="No value in SAP (unvalued stock)">–</span>'}</td><td class="num nw">${r.val&&r.qty?'₹'+(r.val/r.qty).toLocaleString('en-IN',{maximumFractionDigits:2}):'–'}</td><td class="nw">${!D.issuesRead?'–':r.last?fmtDay(r.last):'<span title="No goods issue found since '+fmtDay(D.issuesFrom)+'">Not since '+fmtDay(D.issuesFrom)+'</span>'}</td><td class="num nw">${!D.issuesRead?'–':r.last?`<span class="agep a${r.ib}" title="${fmtN(r.idle)} days since the last goods issue of this material in plant ${esc(r.plant)}">${fmtN(r.idle)} d</span>`:`<span class="agep a6" title="Unused for at least ${fmtN(D.asofDay-D.issuesFrom)} days">${fmtN(D.asofDay-D.issuesFrom)}+ d</span>`}</td></tr>`;
+  $('tbl').innerHTML='<thead><tr><th>Material</th><th>Description</th><th>Plant</th><th>Storage location</th><th>Category</th><th>Material group</th><th>Material type</th><th>Stock type</th><th>Stock held</th><th class="num">Stock quantity</th><th class="num">Stock value</th><th class="num">Price per unit</th><th title="Date of the last goods issue (use) of the material in the plant">Last used</th><th class="num" title="Days since the last goods issue">Unused for</th></tr></thead><tbody>'+
+    (first.length?first.map(rowHtml).join(''):'<tr><td colspan="14" class="empty">Nothing matches the filters.</td></tr>')+'</tbody>';
   // See all can mean thousands of rows: the first rows appear at once and the rest are added in small batches
   const token=++renderToken;let done=first.length;
   const more=()=>{if(token!==renderToken||done>=slice.length)return;document.querySelector('#tbl tbody').insertAdjacentHTML('beforeend',slice.slice(done,done+600).map(rowHtml).join(''));done+=600;setTimeout(more,0);};
@@ -450,6 +503,7 @@ function render(){
   $('tcount').textContent=fmtN(rows.length)+' stock lines · '+fmtN(mats.size)+' materials';
   $('pinfo').textContent=!rows.length?'':rows.length<=PAGE||S.all?`All ${fmtN(rows.length)} lines shown`:`Showing the first ${fmtN(PAGE)} of ${fmtN(rows.length)}`;
   $('seeAll').hidden=rows.length<=PAGE;$('seeAll').textContent=S.all?'Show first '+PAGE:'See all '+fmtN(rows.length);
+  renderHist();renderRange();
 }
 
 document.addEventListener('click',e=>{
@@ -461,7 +515,13 @@ document.addEventListener('click',e=>{
   else if(t.dataset.mt!==undefined){S.mt=S.mt===t.dataset.mt?null:t.dataset.mt;$('mtSel').value=S.mt===null?'':S.mt;}
   else if(t.dataset.stype!==undefined){S.stype=S.stype===t.dataset.stype?null:t.dataset.stype;$('stypeSel').value=S.stype===null?'':S.stype;}
   else if(t.dataset.sp!==undefined){S.sp=S.sp===t.dataset.sp?'':t.dataset.sp;$('spSel').value=S.sp;}
+  else if(t.dataset.hmon!==undefined){const m=+t.dataset.hmon;S.mon=m;S.asof=monthEnd(m);applyAsOf();return;}
+  else if(t.dataset.hday!==undefined){S.asof=+t.dataset.hday;applyAsOf();return;}
+  else if(t.dataset.idle!==undefined){const v=+t.dataset.idle;S.idle=S.idle===v?null:v;}
   else if(t.dataset.clr){const c=t.dataset.clr;
+    if((c==='asof'||c==='all')&&S.asof!==null){S.asof=null;setData(LD);syncAsOf();}
+    if(c==='from'||c==='all'){S.from=null;S.rangeAll=false;$('fromDate').value='';}
+    if(c==='idle'||c==='all')S.idle=null;
     if(c==='plant'||c==='all'){S.plant='';$('plantSel').value='';}
     if(c==='cat'||c==='all'){S.cat=null;$('catSel').value='';}
     if(c==='sloc'||c==='all'){S.sloc=null;$('slocSel').value='';}
@@ -477,11 +537,15 @@ document.addEventListener('click',e=>{
     return;}
   else if(t.id==='tileAll'){S.tileAll=!S.tileAll;renderTile();return;}
   else if(t.id==='deadAll'){S.deadAll=!S.deadAll;renderTop();return;}
+  else if(t.id==='rangeAll'){S.rangeAll=!S.rangeAll;renderRange();return;}
   else if(t.id==='seeAll'){S.all=!S.all;render();if(!S.all)document.querySelector('.tscroll').scrollTop=0;return;}
   else return;
   render();
 });
 $('plantSel').addEventListener('change',e=>{S.plant=e.target.value;render();});
+$('asofDate').addEventListener('change',e=>{const v=e.target.value;S.asof=v?dayOfIso(v):null;if(S.asof!==null)S.mon=monthOf(S.asof);applyAsOf();});
+$('asofToday').addEventListener('click',()=>{S.asof=null;applyAsOf();});
+$('fromDate').addEventListener('change',e=>{const v=e.target.value;S.from=v?dayOfIso(v):null;S.rangeAll=false;if(S.from!==null&&LD){const to=S.asof!==null?S.asof:LD.asofDay;if(S.from>to)S.from=to;if(MV&&S.from<MV.from)S.from=MV.from;}syncAsOf();if(S.from!==null)loadMoves(false);render();});
 $('catSel').addEventListener('change',e=>{S.cat=e.target.value===''?null:e.target.value;render();});
 $('slocSel').addEventListener('change',e=>{S.sloc=e.target.value===''?null:e.target.value;render();});
 $('stypeSel').addEventListener('change',e=>{S.stype=e.target.value===''?null:e.target.value;render();});
@@ -502,6 +566,7 @@ function setData(d){
   R=d.rows.map(a=>{
     const pr=d.prods[a[0]],sl=d.slocs[a[2]],plant=d.plants[a[1]];
     const r={p:a[0],id:pr[0],name:pr[1],plant,sloc:sl[0],slocName:sl[1],skey:plant+'|'+sl[0],grp:d.groups[a[3]],ptype:d.ptypes[a[4]],st:d.stypes[a[5]],sp:d.sps[a[6]],unit:d.units[a[7]],qty:a[8],val:a[9],kind:d.kinds?d.kinds[a[10]]:'',last:a[11]||0};
+    r.idle=r.last?Math.max(0,d.asofDay-r.last):null;r.ib=!d.issuesRead?-1:r.last?idleBucket(r.idle):IDLE_EDGES.length+1;
     if(!SLOC.has(r.skey))SLOC.set(r.skey,{code:sl[0],name:sl[1],plant});
     r.hay=(r.id+' '+r.name+' '+r.sloc+' '+r.slocName+' '+mgName(r.grp)+' '+r.grp+' '+mtName(r.ptype)+' '+r.kind).toLowerCase();
     return r;
@@ -528,6 +593,162 @@ function setData(d){
   $('spFld').hidden=!spMany;$('spCard').hidden=!spMany;if(!spMany)S.sp='';
   [...document.querySelectorAll('.card:not([hidden]) .sec-badge')].forEach((b,i)=>{b.textContent=i+1;});
 }
+// ---------------------------------------------------------------- the stock of an earlier day, day wise and month wise (user, 3-Nov-2026: "Store Stock me bhi Date dal do, day wise ya month wise stock dekhna ho")
+// SAP's stock view has no date: it gives the stock of today. The stock of an earlier day is rebuilt here from the stock of today and the goods movements after that day
+// (/api/stockmoves: every receipt and issue of the listed store locations since 1 Dec 2025): stock at the end of a day = stock today - receipts after it + issues after it.
+// The movements do not say in which stock type they happened, so a past day is shown for all stock types together.
+let LD=null,MV=null,MODEL=null,MVBusy=false,MVERR='';
+STK.ALL='All stock types (rebuilt)';
+const isoDay=d=>new Date(d*DAYMS).toISOString().slice(0,10);
+const dayOfIso=s=>Math.floor(Date.parse(s+'T00:00:00Z')/DAYMS);
+const monthOf=d=>{const t=new Date(d*DAYMS);return t.getUTCFullYear()*12+t.getUTCMonth();};
+const monthStart=m=>Math.floor(Date.UTC(Math.floor(m/12),m%12,1)/DAYMS);
+const monthEnd=m=>monthStart(m+1)-1;
+const monthName=m=>new Date(monthStart(m)*DAYMS).toLocaleDateString('en-GB',{month:'short',year:'numeric',timeZone:'UTC'});
+const normId=s=>String(s).replace(/^0+/,'');
+// one entry per plant + location + material: its stock today (all stock types) and its movements [day, qtyIn, valueIn, qtyOut, valueOut]
+function buildModel(){
+  const m=new Map(),list=[];
+  const slName=new Map(LD.slocs.map(s=>[s[0],s[1]]));
+  for(const a of LD.rows){
+    if(LD.sps[a[6]]!=='')continue;   // stock at a vendor or on a sales order: not part of the history
+    const plant=LD.plants[a[1]],sl=LD.slocs[a[2]],id=normId(LD.prods[a[0]][0]),k=plant+'|'+sl[0]+'|'+id;
+    let e=m.get(k);
+    if(!e){const g=LD.groups[a[3]],pt=LD.ptypes[a[4]],nm=LD.prods[a[0]][1],kind=LD.kinds?LD.kinds[a[10]]:'';e={k,plant,sloc:sl[0],slocName:sl[1],mat:id,a,q:0,v:0,mv:[],skey:plant+'|'+sl[0],kind,grp:g,ptype:pt,name:nm,unit:LD.units[a[7]],hay:(LD.prods[a[0]][0]+' '+nm+' '+sl[0]+' '+sl[1]+' '+mgName(g)+' '+g+' '+mtName(pt)+' '+kind).toLowerCase()};m.set(k,e);list.push(e);}
+    e.q+=a[8];e.v+=a[9];
+  }
+  for(const r of MV.rows){
+    const lc=MV.locs[r[0]],pr=MV.prods[r[1]],k=lc[0]+'|'+lc[1]+'|'+pr[0];
+    let e=m.get(k);
+    if(!e){const kind=lc[3]||'',nm=pr[1]||pr[0];e={k,plant:lc[0],sloc:lc[1],slocName:lc[2]||slName.get(lc[1])||'',mat:pr[0],a:null,q:0,v:0,mv:[],skey:lc[0]+'|'+lc[1],kind,grp:pr[2]||'',ptype:'',name:nm,unit:pr[3]||'',hay:(pr[0]+' '+nm+' '+lc[1]+' '+(lc[2]||'')+' '+mgName(pr[2]||'')+' '+kind).toLowerCase()};m.set(k,e);list.push(e);}
+    e.mv.push([r[2],r[3],r[4],r[5],r[6]]);
+  }
+  return {list};
+}
+function model(){if(!MODEL&&LD&&MV)MODEL=buildModel();return MODEL;}
+// the live stock data with the rows of an earlier day (the same shape, so every card, filter and tile of the page works on it)
+function asOfData(day){
+  const M=model(),d=Object.assign({},LD);
+  const prods=LD.prods.slice(),slocs=LD.slocs.slice(),plants=LD.plants.slice(),groups=LD.groups.slice(),ptypes=LD.ptypes.slice(),stypes=LD.stypes.slice(),units=LD.units.slice(),kinds=LD.kinds?LD.kinds.slice():null,sps=LD.sps.slice();
+  const ix=(arr,v)=>{let i=arr.indexOf(v);if(i<0){i=arr.length;arr.push(v);}return i;};
+  const pIx=new Map();prods.forEach((p,i)=>{const k=normId(p[0]);if(!pIx.has(k))pIx.set(k,i);});
+  const slIx=new Map();slocs.forEach((s,i)=>{if(!slIx.has(s[0]))slIx.set(s[0],i);});
+  const stAll=ix(stypes,'ALL'),spOwn=ix(sps,'');
+  const rows=LD.rows.filter(a=>LD.sps[a[6]]!=='');
+  for(const e of M.list){
+    let q=e.q,v=e.v;
+    for(const x of e.mv)if(x[0]>day){q-=x[1]-x[3];v-=x[2]-x[4];}
+    if(Math.abs(q)<1e-6&&Math.abs(v)<0.5)continue;
+    let pi,pli,si,gi,ti,ui,ki;
+    if(e.a){pi=e.a[0];pli=e.a[1];si=e.a[2];gi=e.a[3];ti=e.a[4];ui=e.a[7];ki=e.a[10];}
+    else{
+      pi=pIx.get(e.mat);if(pi===undefined){pi=prods.length;prods.push([e.mat,e.name]);pIx.set(e.mat,pi);}
+      pli=ix(plants,e.plant);si=slIx.get(e.sloc);if(si===undefined){si=slocs.length;slocs.push([e.sloc,e.slocName]);slIx.set(e.sloc,si);}
+      gi=ix(groups,e.grp);ti=ix(ptypes,e.ptype);ui=ix(units,e.unit);ki=kinds?ix(kinds,e.kind||'Store'):0;
+    }
+    rows.push([pi,pli,si,gi,ti,stAll,spOwn,ui,q,v,ki,0]);
+  }
+  Object.assign(d,{rows,prods,slocs,plants,groups,ptypes,stypes,units,sps,asofDay:day,issuesRead:0});
+  if(kinds)d.kinds=kinds;
+  return d;
+}
+const keyPass=e=>(!S.plant||e.plant===S.plant)&&(S.cat===null||e.kind===S.cat)&&(S.sloc===null||e.skey===S.sloc)&&(S.grp===null||e.grp===S.grp)&&(S.mt===null||(S.mt==='STORE'?STORE_MT.includes(e.ptype):e.ptype===S.mt))&&(!S.q||e.hay.includes(S.q));
+function seriesFor(){ // the stock today and the receipts and issues of every day, of the entries that pass the filters
+  let v0=0;const byDay=new Map();
+  for(const e of model().list){if(!keyPass(e))continue;v0+=e.v;for(const x of e.mv){let y=byDay.get(x[0]);if(!y)byDay.set(x[0],y=[0,0]);y[0]+=x[2];y[1]+=x[4];}}
+  return {v0,byDay};
+}
+const valueAt=(sr,day)=>{let v=sr.v0;for(const [d,x] of sr.byDay)if(d>day)v-=x[0]-x[1];return v;};
+function renderHist(){
+  const mb=$('byMonthS'),db=$('byDayS');
+  if(!LD)return;
+  const hint=(el,t)=>{$(el).textContent=t;};
+  if(!MV){
+    const t=MVERR?'The goods movements could not be read: '+MVERR:'Loading the goods movements of the store locations from SAP (the first time it takes a few minutes; the page works meanwhile)…';
+    mb.innerHTML=db.innerHTML='<div class="empty">'+esc(t)+'</div>';hint('monthHint','');hint('dayHint','');return;
+  }
+  const today=LD.asofDay,sr=seriesFor(),m0=monthOf(MV.from),m1=monthOf(today);
+  const live=S.stype!==null||S.sp?' The filters Stock type and Stock held do not apply to the history.':'';
+  hint('monthHint','Stock value at the end of every month, with the receipts (stock in) and issues (stock out) of the month, for the filters set now. Click a month to see the stock of that month end below and in the whole page.'+live);
+  const months=[];
+  for(let m=m1;m>=m0;m--){
+    const a=Math.max(MV.from,monthStart(m)),b=Math.min(monthEnd(m),today);
+    let inn=0,out=0;for(const [d,x] of sr.byDay)if(d>=a&&d<=b){inn+=x[0];out+=x[1];}
+    const end=m===m1?valueAt(sr,today):valueAt(sr,b);
+    months.push({m,end,start:valueAt(sr,monthStart(m)-1),inn,out,endDay:b});
+  }
+  const sel=S.asof!==null?monthOf(S.asof):null;
+  mb.innerHTML='<table><thead><tr><th>Month</th><th class="num">Stock at the end</th><th class="num">Stock in</th><th class="num">Stock out</th><th class="num">Change</th></tr></thead><tbody>'+
+    months.map(x=>`<tr class="${x.m===sel?'sel':''}"><td><button type="button" class="lnk" data-hmon="${x.m}" title="Show the stock as on ${esc(fmtDay(x.endDay))}">${esc(monthName(x.m))}${x.m===m1?' (until today)':''}</button></td><td class="num nw"><b>${fmtINR(x.end)}</b></td><td class="num nw">${fmtINR(x.inn)}</td><td class="num nw">${fmtINR(x.out)}</td><td class="num nw ${x.end-x.start>=0?'up':'dn'}">${x.end-x.start>=0?'+':'-'}${fmtINR(Math.abs(x.end-x.start))}</td></tr>`).join('')+'</tbody></table>';
+  // the days of one month
+  if(S.mon===null||S.mon<m0||S.mon>m1)S.mon=S.asof!==null?monthOf(S.asof):m1;
+  const a=Math.max(MV.from,monthStart(S.mon)),b=Math.min(monthEnd(S.mon),today),rows=[];
+  for(let d=b;d>=a;d--){const x=sr.byDay.get(d)||[0,0];rows.push({d,end:d===today?valueAt(sr,today):valueAt(sr,d),inn:x[0],out:x[1]});}
+  hint('dayHint','Stock value at the end of every day of '+monthName(S.mon)+'. Pick another month in the table on the left; click a day to see the stock of that day in the whole page.'+live);
+  db.innerHTML='<table><thead><tr><th>Date</th><th class="num">Stock at the end</th><th class="num">Stock in</th><th class="num">Stock out</th></tr></thead><tbody>'+
+    rows.map(x=>`<tr class="${x.d===S.asof?'sel':''}"><td><button type="button" class="lnk" data-hday="${x.d}" title="Show the stock as on ${esc(fmtDay(x.d))}">${esc(fmtDay(x.d))}</button></td><td class="num nw"><b>${fmtINR(x.end)}</b></td><td class="num nw">${x.inn?fmtINR(x.inn):'–'}</td><td class="num nw">${x.out?fmtINR(x.out):'–'}</td></tr>`).join('')+'</tbody></table>';
+}
+// date to date (user, 3-Nov-2026): for the period From date ... To date, every material with its opening stock (the end of the day before From), what came in, what went out and the closing stock
+function renderRange(){
+  const card=$('rangeCard');
+  if(S.from===null||!LD){card.hidden=true;return;}
+  card.hidden=false;
+  if(!MV){$('rangeHint').textContent='';$('rangeKpi').innerHTML='';$('rangeBox').innerHTML='<div class="empty">'+esc(MVERR?'The goods movements could not be read: '+MVERR:'Loading the goods movements of the store locations from SAP (the first time it takes a few minutes; the page works meanwhile)…')+'</div>';$('rangeInfo').textContent='';$('rangeAll').hidden=true;return;}
+  const to=S.asof!==null?S.asof:LD.asofDay,from=Math.min(Math.max(S.from,MV.from),to);
+  const m=new Map();
+  for(const e of model().list){
+    if(!keyPass(e))continue;
+    let cq=e.q,cv=e.v,oq=e.q,ov=e.v,iq=0,iv=0,xq=0,xv=0;
+    for(const x of e.mv){
+      if(x[0]>to){cq-=x[1]-x[3];cv-=x[2]-x[4];}
+      if(x[0]>=from){oq-=x[1]-x[3];ov-=x[2]-x[4];}
+      if(x[0]>=from&&x[0]<=to){iq+=x[1];iv+=x[2];xq+=x[3];xv+=x[4];}
+    }
+    const k=e.plant+'|'+e.mat;let t=m.get(k);
+    if(!t)m.set(k,t={plant:e.plant,mat:e.mat,name:e.name,unit:e.unit,oq:0,ov:0,iq:0,iv:0,xq:0,xv:0,cq:0,cv:0});
+    t.oq+=oq;t.ov+=ov;t.iq+=iq;t.iv+=iv;t.xq+=xq;t.xv+=xv;t.cq+=cq;t.cv+=cv;
+  }
+  const list=[...m.values()].filter(t=>Math.abs(t.ov)>=.5||Math.abs(t.cv)>=.5||t.iv||t.xv||Math.abs(t.oq)>1e-6||Math.abs(t.cq)>1e-6||t.iq||t.xq).sort((a,b)=>b.cv-a.cv||(b.iv+b.xv)-(a.iv+a.xv)||a.mat.localeCompare(b.mat));
+  const T=list.reduce((s,t)=>{s.ov+=t.ov;s.iv+=t.iv;s.xv+=t.xv;s.cv+=t.cv;return s;},{ov:0,iv:0,xv:0,cv:0});
+  $('rangeHint').textContent='From '+fmtDay(from)+' to '+fmtDay(to)+' ('+fmtN(to-from+1)+' days): the opening stock is the stock at the end of '+fmtDay(from-1)+', received = goods receipts (stock in), issued = goods issues (stock out), closing = the stock at the end of '+fmtDay(to)+'. Rebuilt from the goods movements of the store locations (since '+fmtDay(MV.from)+'), for the filters set now; the highest closing value first. Stock type and Stock held do not apply.';
+  $('rangeKpi').innerHTML=[[T.ov,'Opening stock · '+fmtDay(from-1)],[T.iv,'Received in the period'],[T.xv,'Issued in the period'],[T.cv,'Closing stock · '+fmtDay(to)]].map(t=>`<div class="tile"><div class="tv">${fmtINR(t[0])}</div><div class="tl">${esc(t[1])}</div></div>`).join('');
+  const cellV=(v,q,u)=>`<td class="num nw">${Math.abs(v)>=.5?fmtINR(v):'–'}<div class="sm">${Math.abs(q)>1e-6?esc(fmtQ(q,u)):''}</div></td>`;
+  const shown=S.rangeAll?list:list.slice(0,50);
+  $('rangeBox').innerHTML=list.length?'<table><thead><tr><th class="num">#</th><th>Material</th><th>Plant</th><th class="num">Opening stock</th><th class="num">Received</th><th class="num">Issued</th><th class="num">Closing stock</th></tr></thead><tbody>'+
+    shown.map((t,i)=>`<tr><td class="num">${i+1}</td><td class="matc"><span class="nw">${esc(t.mat)}</span><div class="sm">${esc(t.name)}</div></td><td>${esc(t.plant)}</td>${cellV(t.ov,t.oq,t.unit)}${cellV(t.iv,t.iq,t.unit)}${cellV(t.xv,t.xq,t.unit)}${cellV(t.cv,t.cq,t.unit)}</tr>`).join('')+
+    `</tbody><tfoot><tr><td colspan="3">Total (${fmtN(list.length)} materials)</td><td class="num nw">${fmtINR(T.ov)}</td><td class="num nw">${fmtINR(T.iv)}</td><td class="num nw">${fmtINR(T.xv)}</td><td class="num nw">${fmtINR(T.cv)}</td></tr></tfoot></table>`:'<div class="empty">No stock or movement in this period for the filters.</div>';
+  $('rangeInfo').textContent=!list.length?'':S.rangeAll||list.length<=50?`All ${fmtN(list.length)} materials shown`:`Showing the first 50 of ${fmtN(list.length)}`;
+  $('rangeAll').hidden=list.length<=50;$('rangeAll').textContent=S.rangeAll?'Show first 50':'See all '+fmtN(list.length);
+}
+// show the stock of one day (null = today, the live data)
+function applyAsOf(){
+  if(!LD)return;
+  const min=MV?MV.from-1:0;
+  if(S.asof!==null&&S.asof>=LD.asofDay)S.asof=null;
+  if(S.asof!==null&&MV&&S.asof<min)S.asof=min;
+  if(S.asof!==null&&!MV){$('asofNote').hidden=false;$('asofNote').textContent='Loading the goods movements from SAP to rebuild the stock of '+fmtDay(S.asof)+' (the first time it takes a few minutes)…';loadMoves(false);return;}
+  setData(S.asof!==null?asOfData(S.asof):LD);
+  syncAsOf();render();
+}
+function syncAsOf(){
+  const inp=$('asofDate');inp.max=isoDay(LD.asofDay);inp.min=MV?isoDay(MV.from-1):'2025-11-30';inp.value=S.asof!==null?isoDay(S.asof):'';
+  const fi=$('fromDate');fi.max=isoDay(S.asof!==null?S.asof:LD.asofDay);fi.min=MV?isoDay(MV.from):'2025-12-01';fi.value=S.from!==null?isoDay(S.from):'';
+  $('asofToday').hidden=S.asof===null;
+  const n=$('asofNote');n.hidden=S.asof===null;
+  if(S.asof!==null)n.textContent='Stock as on '+fmtDay(S.asof)+' (end of the day), rebuilt from the stock of today and the goods movements after that day. It is for all stock types together, so Stock type is one value and the quality inspection, blocked stock and Not used for 5 months are for today only.';
+}
+async function loadMoves(force){
+  if(MVBusy||!LD)return;MVBusy=true;
+  try{
+    const g=await LIVE.get('/api/stockmoves',force);
+    if(g.same)return;
+    if(!g.res.ok)throw new Error((g.j&&g.j.error)||('HTTP '+g.res.status));
+    MV=g.j;MODEL=null;MVERR='';
+    if(S.asof!==null){setData(asOfData(Math.max(MV.from-1,S.asof)));syncAsOf();}
+    render();
+  }catch(e){MVERR=e.message==='Failed to fetch'?'the dashboard server is not running':e.message;renderHist();}
+  finally{MVBusy=false;}
+}
 // a link from the Summary page: ?tile=KEY&plant=1010&from=2026-10-01&to=2026-10-31 (dates=all clears the dates); used once, on the first load
 let LINK=(()=>{try{const q=new URLSearchParams(location.search);return q.has('tile')||q.has('plant')||q.has('from')||q.has('to')||q.has('dates')?q:null;}catch(e){return null;}})();
 function applyLink(){
@@ -546,11 +767,13 @@ async function load(force,auto){
   if(!auto||!D)setLive('busy',D?'Refreshing from SAP…':'Loading store stock from SAP (first load can take a minute)…');
   try{
     const g=await LIVE.get('/api/stock',force),res=g.res,j=g.j;
-    if(g.same){setLive('ok','Live from SAP · updated '+hhmm(g.stamp)+' · '+fmtN(R.length)+' stock lines');return;}
+    if(g.same){setLive('ok','Live from SAP · updated '+hhmm(g.stamp)+' · '+fmtN(R.length)+' stock lines'+(S.asof!==null?' · stock as on '+fmtDay(S.asof):''));loadMoves(false);return;}
     if(!res.ok)throw new Error(j.error||('HTTP '+res.status));
-    setData(j);applyLink();render();
+    LD=j;MODEL=null;
+    setData(S.asof!==null&&MV?asOfData(S.asof):j);applyLink();syncAsOf();render();
     if(S.reveal){const id=S.reveal;S.reveal=null;setTimeout(()=>reveal(id),150);}
-    setLive('ok','Live from SAP · updated '+hhmm(j.fetchedAt)+' · '+fmtN(R.length)+' stock lines');
+    setLive('ok','Live from SAP · updated '+hhmm(j.fetchedAt)+' · '+fmtN(R.length)+' stock lines'+(S.asof!==null?' · stock as on '+fmtDay(S.asof):''));
+    loadMoves(false);
   }catch(e){
     const msg=e.message==='Failed to fetch'?'The dashboard server is not running. Start it again with Start_Live_Dashboard.bat.':e.message;
     setLive('err',msg);
