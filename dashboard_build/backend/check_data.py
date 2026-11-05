@@ -56,7 +56,7 @@ for p in ('/', '/summary', '/issue', '/po', '/po-approval', '/purchase', '/invoi
         fails.append(p)
         print(f'page {p:14} FAILED: {e}')
 D = {}
-for k, p in (('pr', '/api/pr'), ('issue', '/api/issue'), ('po', '/api/po'), ('stock', '/api/stock'), ('purchase', '/api/purchase'), ('invoice', '/api/invoice'), ('ageing', '/api/ageing'), ('asset', '/api/asset'), ('ap', '/api/po-approvers')):
+for k, p in (('pr', '/api/pr'), ('issue', '/api/issue'), ('po', '/api/po'), ('stock', '/api/stock'), ('purchase', '/api/purchase'), ('invoice', '/api/invoice'), ('ageing', '/api/ageing'), ('asset', '/api/asset'), ('ap', '/api/po-approval')):
     try:
         D[k], dt, h = get(p)
         print(f'api  {p:18} ok  ({dt:.1f} s)' + (f'  rows {len(D[k]["rows"]):,}' if 'rows' in D[k] else ''))
@@ -108,39 +108,14 @@ if 'issue' in D:
     if un:
         notes.append(f'{un:,} Store Issue lines have no department')
 
-# ---- PO approval
-if 'po' in D and 'ap' in D:
-    AP, RULES = D['ap']['approvers'], D['ap']['rules']
-    d = D['po']
-    pos = {}
-    for a in d['rows']:
-        if not (a[18] & 1) and a[2] not in AP:
-            continue
-        p = pos.setdefault(a[2], {'org': d['orgs'][a[20]], 'pg': d['pgs'][a[19]], 'proc': d['procs'][a[21]], 'amt': 0.0, 'fx': False})
-        if d['curs'][a[14]] == 'INR':
-            p['amt'] += a[17]
-        else:
-            p['fx'] = True
-    pend = {n: p for n, p in pos.items() if p['proc'] == '03'}
-    released = [n for n in AP if n in pos and pos[n]['proc'] not in ('03', '08')]
-
-    def rule(p):
-        for r in RULES:
-            if r['org'] != p['org'] or r['pg'] != p['pg']:
-                continue
-            if (r['min'] is not None or r['max'] is not None) and p['fx']:
-                continue
-            if r['min'] is not None and not p['amt'] >= r['min']:
-                continue
-            if r['max'] is not None and not p['amt'] < r['max']:
-                continue
-            return r
-        return None
-    nobody = [f'PO {n}  org {p["org"]} / group {p["pg"]} ({PG_NAMES.get(p["pg"], "?")})  Rs {p["amt"]:,.0f}' for n, p in pend.items() if n not in AP and not rule(p)]
-    show(f'POs In Approval ({len(pend)}) without a confirmed or likely approver', nobody)
-    print(f'   confirmed {sum(1 for n in pend if n in AP)}, likely (rule) {sum(1 for n, p in pend.items() if n not in AP and rule(p))}')
-    if released:
-        notes.append(f'{len(released)} POs on the saved approver list are released now (state 05), not counted as pending; export the list again')
+# ---- PO approval (the open tasks of SAP's release workflow, YY1_PO_PENDING_APPROVAL_CDS, with the items of exactly those POs, raw material included)
+if 'ap' in D:
+    ap = D['ap']
+    tasks = {r[0] for r in ap['rows']}
+    have = {a[2] for a in ap['po']['rows']}
+    print(f'\nPOs waiting for approval in SAP: {len(tasks)}; with items on the page: {len(tasks & have)}')
+    show('POs waiting for approval without item data', [f'PO {n}' for n in sorted(tasks - have)])
+    show('approvers (SAP user ids) without a name in USER_NAMES', [f'{i}' for i in ap['recipients'] if i not in USER_NAMES])
 
 # ---- Store Stock
 if 'stock' in D:

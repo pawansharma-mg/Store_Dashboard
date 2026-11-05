@@ -90,7 +90,8 @@ body{background-color:var(--plane);background-image:radial-gradient(900px 360px 
 /* charts above the summary tables (drawn by ui.js) */
 .uichart{margin:2px 0 14px}
 .uichart[hidden]{display:none}
-.uc-cols{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);align-items:stretch;gap:6px;height:168px}
+.uc-note{font-size:11.5px;font-weight:600;color:var(--muted);margin:0 0 6px}
+.uc-cols{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr);align-items:stretch;gap:6px;height:168px}
 .uc-col{display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:4px;height:100%;min-width:0;padding:0;border:0;background:none;font:inherit;color:inherit;cursor:pointer}
 .uc-bar{display:block;width:100%;max-width:40px;min-height:2px;border-radius:8px 8px 3px 3px;background:linear-gradient(180deg,var(--brand),#7C6CF2);transform-origin:bottom;animation:grow .7s cubic-bezier(.2,.8,.2,1) both;transition:filter .15s,opacity .2s,box-shadow .15s}
 .uc-col:hover .uc-bar{filter:brightness(1.12)}
@@ -99,21 +100,6 @@ body{background-color:var(--plane);background-image:radial-gradient(900px 360px 
 .uc-val{font-size:.6rem;font-weight:700;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .uc-lab{font-size:.64rem;color:var(--muted);white-space:nowrap}
 @keyframes grow{from{transform:scaleY(0)}to{transform:scaleY(1)}}
-.uichart-donut{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
-.uc-svg{width:156px;height:156px;flex:none}
-.uc-ring{fill:none;stroke:var(--grid);stroke-width:14}
-.uc-seg{fill:none;stroke-width:14;transform:rotate(-90deg);transform-origin:60px 60px;cursor:pointer;animation:pop .8s ease both;transition:stroke-width .15s}
-.uc-seg:hover{stroke-width:17}
-@keyframes pop{from{opacity:0;stroke-width:5}to{opacity:1}}
-.uc-center{font-weight:800;font-size:14px;text-anchor:middle;fill:var(--ink)}
-.uc-sub{font-size:7.5px;text-anchor:middle;fill:var(--muted);text-transform:uppercase;letter-spacing:.08em}
-.uc-leg{list-style:none;margin:0;padding:0;display:grid;gap:3px;min-width:0;flex:1 1 170px}
-.uc-leg button{display:grid;grid-template-columns:12px minmax(0,1fr) auto;align-items:center;gap:8px;width:100%;border:0;background:none;padding:6px 8px;border-radius:9px;cursor:pointer;text-align:left;font:inherit;color:inherit;transition:background .15s}
-.uc-leg button:hover{background:rgba(28,173,228,.10)}
-.uc-leg button.sel{background:rgba(28,173,228,.18)}
-.uc-leg i{width:10px;height:10px;border-radius:3px}
-.uc-leg b{font-weight:600;font-size:.8rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.uc-leg span{font-size:.74rem;color:var(--ink2);white-space:nowrap}
 
 /* filters */
 .bar[aria-label="Filters"]{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;gap:14px;box-shadow:var(--shadow)}
@@ -233,7 +219,7 @@ tr.sel td:first-child{box-shadow:inset 3px 0 0 var(--brand)}
   .printhead b{font-size:1.1rem;color:var(--brand-dark)}
   .card,.tile{box-shadow:none!important;break-inside:avoid;animation:none!important}
   .sumgrid{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .uc-bar,.uc-seg,.uc-col{animation:none!important}
+  .uc-bar,.uc-col{animation:none!important}
   a.tile{color:#000}
 }
 
@@ -360,8 +346,6 @@ details[open]>summary{color:var(--pct)}
 /* charts */
 .uc-bar{background:linear-gradient(180deg,var(--pc2),var(--pc))}
 .uc-col.sel .uc-bar{box-shadow:0 0 0 2px var(--pc)}
-.uc-leg button:hover{background:rgba(var(--pc-rgb),.10)}
-.uc-leg button.sel{background:rgba(var(--pc-rgb),.18)}
 .mb{background:linear-gradient(180deg,var(--pc2),var(--pc))}
 /* on paper the colour backgrounds do not print, so the white text of the big number goes black and the washes go */
 @media print{
@@ -518,7 +502,9 @@ html[data-density="compact"] .pagehead h2{font-size:1.45rem}
 /* the Download menu opens over the tabs of the menu bar: the header is above the bar (at some window widths a tab was under the pointer and a click on Summary / Details opened another page) */
 .stick .top{position:relative;z-index:5}.stick .nav{position:relative;z-index:1}
 /* the name of the last column of a column chart ends at the right edge of the chart (with 12 months on a phone it was centred in a narrow column and went past the edge of the page) */
-.uc-col:last-child .uc-lab{align-self:flex-end}
+.uc-cols.dense .uc-col:last-child .uc-lab{align-self:flex-end}
+.uc-cols.few{grid-auto-columns:minmax(0,96px);justify-content:center;gap:26px}
+.uc-cols.few .uc-bar{max-width:46px}
 
 /* ageing pill (age.js): days since a date, green = young ... red = old */
 .agep{display:inline-block;padding:1px 9px;border-radius:999px;font-size:.74rem;font-weight:700;white-space:nowrap}
@@ -529,3 +515,9 @@ html[data-density="compact"] .pagehead h2{font-size:1.45rem}
 .agep.a4{color:#c2410c;background:rgba(236,131,90,.22)}
 .agep.a5{color:#b91c1c;background:rgba(220,70,70,.16)}
 .agep.a6,.agep.a7{color:#fff;background:var(--crit)}
+.uc-val.rot{writing-mode:vertical-rl;transform:rotate(180deg);max-width:none;overflow:visible;text-overflow:clip;line-height:1;font-size:.56rem}
+.uc-lab.uc-wrap{white-space:normal;text-align:center;line-height:1.15;max-width:100%;overflow-wrap:anywhere}
+/* chart values: clear to read on every page (bigger, bold, strongest colour) */
+.uc-val{font-size:.78rem;font-weight:800;color:var(--ink);letter-spacing:0}
+.uc-val.rot{font-size:.74rem}
+.uc-lab{font-size:.7rem;color:var(--ink2)}

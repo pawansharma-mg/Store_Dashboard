@@ -93,14 +93,14 @@ button.tile[aria-pressed="true"]{border-color:var(--ink)}
 .col{display:flex;flex-direction:column;align-items:center;min-width:0;border:0;background:none;padding:0}
 .stack{height:196px;width:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:4px;border-bottom:1px solid var(--axis)}
 .bar1{width:100%;max-width:28px;border-radius:4px 4px 0 0}
-.val{font-size:12px;color:var(--ink2);font-variant-numeric:tabular-nums}
+.val{font-size:13.5px;font-weight:800;color:var(--ink);font-variant-numeric:tabular-nums}
 .lbl{margin-top:6px;font-size:11.5px;color:var(--ink2)}
 .col.off .bar1{opacity:.35}
 .col:hover .bar1{filter:brightness(1.1)}
 
 .hrow{display:grid;grid-template-columns:96px minmax(0,1fr) 56px;align-items:center;gap:10px;width:100%;border:0;background:none;padding:4px 0;text-align:left}
 .hl{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.hv{font-size:13px;color:var(--ink2);text-align:right;font-variant-numeric:tabular-nums}
+.hv{font-size:14px;font-weight:800;color:var(--ink);text-align:right;font-variant-numeric:tabular-nums}
 .hw{display:block;min-width:0}
 .ht{display:flex;gap:2px;height:20px;min-width:3px}
 .hs{min-width:2px}
@@ -113,8 +113,20 @@ button.tile[aria-pressed="true"]{border-color:var(--ink)}
 .mc{flex:1 1 0;min-width:0;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:4px}
 .mb{width:100%;max-width:18px;background:var(--s1);border-radius:3px 3px 0 0}
 .mc:hover .mb{filter:brightness(1.1)}
+button.mc{border:0;background:none;padding:0;cursor:pointer;font:inherit;color:inherit}
+.mc[aria-pressed="true"] .mb{box-shadow:0 0 0 2px var(--brand-dark,#0b7fb0)}
+.inl{margin-top:12px}
+.inl:empty{display:none}
+.mp{border:1px solid var(--brand,#1cade4);border-left-width:4px;border-radius:10px;background:rgba(28,173,228,.06);padding:10px 12px;white-space:normal}
+.mph{display:flex;flex-wrap:wrap;align-items:center;gap:8px}.mph b{font-size:.95rem}.mph .sm{font-size:.72rem;color:var(--muted)}
+.mpb{margin-left:auto;display:flex;gap:6px}
+.mp .btn{border:1px solid var(--brand,#1cade4);background:transparent;color:var(--brand-dark,#0b7fb0);border-radius:8px;padding:0 10px;cursor:pointer;font:inherit;font-size:.78rem;height:28px}
+.mp .btn:hover{background:rgba(28,173,228,.12)}
+.mp .tbox{max-height:380px;overflow:auto;margin-top:8px;border-radius:8px}
+.mp .pager{margin-top:6px;display:flex;justify-content:space-between;align-items:center;font-size:.78rem}
+.mp td.txtc{min-width:160px;max-width:300px}
 .mlabels{display:flex;gap:2px;margin-top:6px;height:32px}
-.mc .val{font-size:11px}
+.mc .val{font-size:12.5px}
 .ml{flex:1 1 0;min-width:0;position:relative}
 .ml span{position:absolute;left:50%;transform:translateX(-50%);font-size:11px;line-height:1.2;text-align:center;color:var(--ink2);white-space:nowrap}
 
@@ -239,6 +251,7 @@ tbody tr:hover td{background:rgba(28,173,228,.07)}
   <section class="bar" aria-label="Filters">
     <label class="fld"><span>Plant</span><select id="plantSel"></select></label>
     <label class="fld"><span>PR type</span><select id="typeSel"></select></label>
+    <label class="fld"><span>PR source</span><select id="srcSel"><option value="">All PRs</option><option value="manual">Manual PRs (departments)</option><option value="mrp">MRP PRs (MRP run)</option></select></label>
     <label class="fld"><span>PR creation date from</span><input id="dFrom" type="date"></label>
     <label class="fld"><span>PR creation date to</span><input id="dTo" type="date"></label>
     <label class="fld grow"><span>Search</span><input id="q" type="search" placeholder="PR number, material, description, storage location"></label>
@@ -254,38 +267,47 @@ tbody tr:hover td{background:rgba(28,173,228,.07)}
     <div class="pager"><span id="tileInfo"></span><div class="btns"><button id="tileAll" type="button">See all</button></div></div>
   </section>
 
+  <section class="card srccard" style="margin-top:12px">
+    <h2><span class="sec-badge">1</span>Manual PRs and MRP PRs</h2>
+    <p class="hint">MRP PRs are the requisitions the MRP run proposes (created by the user "MRP Controll", PR type NB); manual PRs are the ones the departments raised. Follows the other filters. Click a line to see only those PRs (click again to remove), or use the filter "PR source".</p>
+    <div class="tbox" id="bySrc"></div>
+  </section>
 
   <section class="grid">
     <article class="card">
-      <h2><span class="sec-badge">1</span>Ageing</h2>
-      <p class="hint">Days since the PR was created. Click a bar to filter the list.</p>
-      <div id="age"></div>
+      <h2><span class="sec-badge">2</span>Ageing</h2>
+      <p class="hint">Days since the PR was created. Click a bar to see its items right here.</p>
+      <div id="age" data-chart></div>
+      <div class="inl" id="inlAge"></div>
     </article>
     <article class="card">
-      <h2><span class="sec-badge">2</span>Plant and PO status</h2>
-      <p class="hint">Pending items per plant. Click a plant to filter.</p>
-      <div id="plant"></div>
-      <div class="legend" id="plantLegend"></div>
+      <h2><span class="sec-badge">3</span>Plant and PO status</h2>
+      <p class="hint">Pending items per plant. Click a plant to see its items right here.</p>
+      <div id="plant" data-chart></div>
+      <div class="legend" id="plantLegend" data-chart></div>
+      <div class="inl" id="inlPlant"></div>
     </article>
     <article class="card">
-      <div class="cardhead"><h2><span class="sec-badge">3</span>Top 10 by</h2><div class="sc small" id="dimCtl" role="group" aria-label="Group by"></div></div>
-      <div id="dim"></div>
+      <div class="cardhead"><h2><span class="sec-badge">4</span>Top 10 by</h2><div class="sc small" id="dimCtl" role="group" aria-label="Group by"></div></div>
+      <div id="dim" data-chart></div>
+      <div class="inl" id="inlDim"></div>
     </article>
     <article class="card">
-      <h2><span class="sec-badge">4</span>Created per month</h2>
-      <p class="hint">Items in view by the month their PR was created, every month. Months outside the PR creation date range are faded.</p>
-      <div id="month"></div>
+      <h2><span class="sec-badge">5</span>Created per month</h2>
+      <p class="hint">Items in view by the month their PR was created, every month. Months outside the PR creation date range are faded. Click a bar to see that month's pending items right here.</p>
+      <div id="month" data-chart></div>
+      <div class="inl" id="inlMon"></div>
     </article>
   </section>
 
   <section class="grid">
     <article class="card">
-      <h2><span class="sec-badge">5</span>Pending PR by purchasing group</h2>
+      <h2><span class="sec-badge">6</span>Pending PR by purchasing group</h2>
       <p class="hint">Open items with quantity still to order, as in ME5A. Follows the plant, date and search filters.</p>
       <div class="tbox" id="byPg"></div>
     </article>
     <article class="card">
-      <h2><span class="sec-badge">6</span>Pending PR by user</h2>
+      <h2><span class="sec-badge">7</span>Pending PR by user</h2>
       <p class="hint">Created by is the SAP user ID; requisitioner is the name typed on the PR (often blank).</p>
       <div class="tbox" id="byUser"></div>
     </article>
@@ -293,19 +315,19 @@ tbody tr:hover td{background:rgba(28,173,228,.07)}
 
   <section class="grid">
     <article class="card">
-      <h2><span class="sec-badge">7</span>Month-wise pending</h2>
+      <h2><span class="sec-badge">8</span>Month-wise pending</h2>
       <p class="hint">By requisition date, as in ME5A. Click a month to see it day by day.</p>
       <div class="tbox" id="byMonth"></div>
     </article>
     <article class="card">
-      <h2><span class="sec-badge">8</span><span id="dayTitle">Day-wise pending</span></h2>
+      <h2><span class="sec-badge">9</span><span id="dayTitle">Day-wise pending</span></h2>
       <p class="hint">Click a date to filter the whole dashboard and the item list to that day.</p>
       <div class="tbox" id="byDay"></div>
     </article>
   </section>
 
   <section class="card tablecard">
-    <div class="cardhead"><h2><span class="sec-badge">9</span>Item list</h2><span id="tcount" class="hint" style="margin:0"></span></div>
+    <div class="cardhead"><h2><span class="sec-badge">10</span>Item list</h2><span id="tcount" class="hint" style="margin:0"></span></div>
     <div class="tscroll"><table id="tbl"></table></div>
     <div class="pager"><span id="pinfo"></span><div class="btns"><button id="seeAll" type="button">See all</button></div></div>
   </section>
@@ -325,10 +347,10 @@ const STATUS=['No PO yet','PO created','RFQ created'];
 const STCOL=['var(--s1)','var(--s2)','var(--s3)'];
 const AGE_LABELS=['0–7','8–15','16–30','31–60','61–90','91–180','181–365','Over 365'];
 const AGE_EDGES=[7,15,30,60,90,180,365];
-const DIMS={sloc:{name:'Storage location',short:'Storage loc'},pg:{name:'Purchasing group',short:'Purch. group'},type:{name:'PR type',short:'PR type'},user:{name:'Created by',short:'Created by'}};
+const DIMS={pg:{name:'Purchasing group',short:'Purch. group'},type:{name:'PR type',short:'PR type'}};  // user, 4-Nov-2026: Storage location and Created by taken out
 // PR document types (SAP, Doc. Type Descript.). A type that is not listed is shown by its code alone.
-const PR_TYPES={NB:'Pur. Requisition',NBS:'Pur. Requisition NBS',RV:'Outline Agrmt. Reqn.',ZAST:'ASSET PR',ZDOM:'Manual PR',ZMR1:'Pur. Req Manual',ZMRP:'MRP PR',ZSER:'Service PR',ZSTO:'STO PR',ZSUB:'Subcontracting PR',ZTRD:'Trading PR'};
-const typeName=t=>PR_TYPES[t]?t+' · '+PR_TYPES[t]:t;
+const PR_TYPES={NB:'Purchase Requisition',NBS:'Purchase Requisition (NBS)',RV:'Outline Agreement Requisition',ZAST:'Asset PR',ZDOM:'Manual PR',ZMR1:'Purchase Requisition (Manual)',ZMRP:'MRP PR',ZSER:'Service PR',ZSTO:'Stock Transfer PR',ZSUB:'Subcontracting PR',ZTRD:'Trading PR'};
+const typeName=t=>PR_TYPES[t]||t;  // the name of the PR type, not its code (ZDOM = Manual PR, ZSER = Service PR)
 // SAP user ID -> [full name (First + Last Name), User Name]. The server fills the users script tag from pr_data.USER_NAMES;
 // an ID that is not listed (or a department user) is shown as it is.
 const USER_NAMES=(()=>{try{return JSON.parse(document.getElementById('users').textContent);}catch(e){return {};}})();
@@ -341,11 +363,11 @@ const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'
 const fmtN=n=>Math.round(n).toLocaleString('en-IN');
 const fmtQty=n=>n.toLocaleString('en-IN',{maximumFractionDigits:3});
 function fmtINR(v){const a=Math.abs(v);if(a>=1e7)return '₹'+(v/1e7).toFixed(2)+' Cr';if(a>=1e5)return '₹'+(v/1e5).toFixed(2)+' L';return '₹'+Math.round(v).toLocaleString('en-IN');}
-const fmtDay=d=>new Date(d*864e5).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric',timeZone:'UTC'});
+const fmtDay=d=>new Date(d*864e5).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric',timeZone:'UTC'}).replace('Sept','Sep');
 const pct=(a,b)=>b?Math.round(a/b*100):0;
 function ageBucket(a){for(let i=0;i<AGE_EDGES.length;i++)if(a<=AGE_EDGES[i])return i;return 7;}
 
-const DEF={all:false,status:0,plant:'',type:'',age:-1,dim:'sloc',dimVal:null,flag:'',q:'',from:null,to:null,mon:null,sort:{k:'amt',d:-1},page:0};
+const DEF={all:false,status:0,plant:'',type:'',src:'',age:-1,dim:'pg',dimVal:null,inl:{age:-1,plant:'',dim:null,mon:null},inlAll:{},flag:'',q:'',from:null,to:null,mon:null,sort:{k:'amt',d:-1},page:0};
 const S=JSON.parse(JSON.stringify(DEF));
 
 function pass(r,skip){
@@ -353,6 +375,7 @@ function pass(r,skip){
   if(!skip.includes('status')&&S.status>=0&&r.st!==S.status)return false;
   if(!skip.includes('plant')&&S.plant&&r.plant!==S.plant)return false;
   if(S.type&&r.type!==S.type)return false;
+  if(!skip.includes('src')&&S.src&&(S.src==='mrp')!==r.mrp)return false;  // PR source: mrp = created by the MRP run, manual = raised by a department
   if(!skip.includes('age')&&S.age>=0&&r.bk!==S.age)return false;
   if(!skip.includes('dim')&&S.dimVal!==null&&r[S.dim]!==S.dimVal)return false;
   if(S.flag==='overdue'&&!r.od)return false;
@@ -368,6 +391,7 @@ function renderChips(){
   const c=[];
   if(S.plant)c.push(['plant','Plant '+S.plant]);
   if(S.type)c.push(['type','PR type '+typeName(S.type)]);
+  if(S.src)c.push(['src',S.src==='mrp'?'MRP PRs only':'Manual PRs only (MRP left out)']);
   if(S.age>=0)c.push(['age','Age '+AGE_LABELS[S.age]+' days']);
   if(S.dimVal!==null)c.push(['dim',DIMS[S.dim].name+': '+dimLabel(S.dimVal)]);
   if(S.flag)c.push(['flag',S.flag==='overdue'?'Delivery date passed':'Quantity to check']);
@@ -420,7 +444,7 @@ function renderTile(rows){
   if(k==='items'){
     const prs=byPr().sort((a,b)=>b.amt-a.amt||b.age-a.age||a.pr.localeCompare(b.pr));list=prs;
     thead='<thead><tr><th>#</th><th>PR</th><th>PR date</th><th class="num">Age (d)</th><th>PR type</th><th>Plant</th><th class="num">Items</th><th class="num">Value</th><th class="num">Delivery date passed</th><th>Created by</th><th>Status</th></tr></thead>';
-    rowFn=(x,i)=>`<tr><td>${i+1}</td><td class="nw">${esc(x.pr)}</td><td class="nw">${fmtDay(x.prDay)}</td><td class="num">${fmtN(x.age)}</td><td class="nw">${esc(x.type)}</td><td>${esc(x.plant)}</td><td class="num">${fmtN(x.n)}</td><td class="num nw">${fmtINR(x.amt)}</td><td class="num">${x.od?fmtN(x.od):'–'}</td><td class="nw" title="${esc(uTip(x.user))}">${esc(uName(x.user))}</td><td class="nw">${[...x.sts].sort().map(i=>STATUS[i]).join(' / ')}</td></tr>`;
+    rowFn=(x,i)=>`<tr><td>${i+1}</td><td class="nw">${esc(x.pr)}</td><td class="nw">${fmtDay(x.prDay)}</td><td class="num">${fmtN(x.age)}</td><td class="nw">${esc(typeName(x.type))}</td><td>${esc(x.plant)}</td><td class="num">${fmtN(x.n)}</td><td class="num nw">${fmtINR(x.amt)}</td><td class="num">${x.od?fmtN(x.od):'–'}</td><td class="nw" title="${esc(uTip(x.user))}">${esc(uName(x.user))}</td><td class="nw">${[...x.sts].sort().map(i=>STATUS[i]).join(' / ')}</td></tr>`;
   }else if(k==='value'){
     paged=false;const pl=new Map(),ty=new Map();for(const r of rows){addAgg(pl,r.plant,r);addAgg(ty,r.type,r);}
     const byVal=m=>[...m.entries()].sort((a,b)=>b[1].amt-a[1].amt);
@@ -459,10 +483,28 @@ function renderAge(){
   $('age').innerHTML='<div class="cols">'+c.map((v,i)=>{
     const h=v?Math.max(3,Math.round(v/mx*H)):0;
     const off=S.age>=0&&S.age!==i?' off':'';
-    return `<button type="button" class="col${off}" data-age="${i}" aria-pressed="${S.age===i}" aria-label="${AGE_LABELS[i]} days, ${v} items" data-tip="${AGE_LABELS[i]} days\n${fmtN(v)} items · ${pct(v,tot)}%"><span class="stack"><span class="val">${fmtN(v)}</span><span class="bar1" style="height:${h}px;background:var(--r${i})"></span></span><span class="lbl">${AGE_LABELS[i]}</span></button>`;
+    return `<button type="button" class="col${off}" data-iage="${i}" aria-pressed="${S.inl.age===i||S.age===i}" aria-label="${AGE_LABELS[i]} days, ${v} items" data-tip="${AGE_LABELS[i]} days\n${fmtN(v)} items · ${pct(v,tot)}%"><span class="stack"><span class="val">${fmtN(v)}</span><span class="bar1" style="height:${h}px;background:var(--r${i})"></span></span><span class="lbl">${AGE_LABELS[i]}</span></button>`;
   }).join('')+'</div>';
 }
 
+// the items of one bar, opened right under its graph (user, 4-Nov-2026: "graph pe click kru to andar hi open ho jaye details jo pending hai")
+function inlPanel(key,title,rows){
+  rows=rows.slice().sort((a,b)=>(b.sus?-1:b.amt)-(a.sus?-1:a.amt)||b.age-a.age||a.pr.localeCompare(b.pr));
+  const tot=rows.reduce((t,r)=>t+(r.sus?0:r.amt),0),all=!!S.inlAll[key],shown=all?rows.slice(0,600):rows.slice(0,25);
+  let h=`<div class="mp"><div class="mph"><b>${esc(title)}</b><span class="sm">${fmtN(rows.length)} items · ${fmtINR(tot)}</span><span class="mpb"><button type="button" class="btn alt" data-ifilter="${key}" title="Filter the whole page and the item list to these items">Filter the whole page</button><button type="button" class="btn alt" data-iclose="${key}">Close</button></span></div>`;
+  if(!rows.length)return h+'<p class="hint">No items match the filters.</p></div>';
+  h+=`<div class="tbox"><table><thead><tr><th>PR / item</th><th>PR type</th><th>Plant</th><th>Material</th><th>Description</th><th class="num">Open qty</th><th class="num">Value</th><th>PR date</th><th class="num">Age (d)</th><th>Delivery</th><th>Created by</th></tr></thead><tbody>`+
+    shown.map(r=>`<tr><td class="nw">${esc(r.pr)} / ${parseInt(r.item,10)}</td><td class="nw" title="${esc('PR type code '+r.type)}">${esc(typeName(r.type))}</td><td>${esc(r.plant)}</td><td class="nw">${esc(r.mat||'–')}</td><td class="txtc">${esc(r.text)}</td><td class="num nw">${fmtQty(r.pend)} ${esc(r.unit)}</td><td class="num nw">${r.sus?'<span title="Quantity above 10 lakh: probably a typing mistake, value left out">check qty</span>':fmtINR(r.amt)}</td><td class="nw">${fmtDay(r.prDay)}</td><td class="num">${fmtN(r.age)}</td><td class="nw">${r.delDay===null?'–':fmtDay(r.delDay)}</td><td class="nw" title="${esc(uTip(r.user))}">${esc(uName(r.user))}</td></tr>`).join('')+'</tbody></table></div>';
+  if(rows.length>25)h+=`<div class="pager"><span>${all?(rows.length>600?'The first 600 of '+fmtN(rows.length)+' shown':'All '+fmtN(rows.length)+' shown'):'Showing the first 25 of '+fmtN(rows.length)}</span><button class="btn alt" type="button" data-iall="${key}">${all?'Show first 25':'See all '+fmtN(rows.length)}</button></div>`;
+  return h+'</div>';
+}
+function renderInline(){
+  const I=S.inl;
+  $('inlAge').innerHTML=I.age>=0?inlPanel('age','Pending PRs created '+AGE_LABELS[I.age]+' days ago',R.filter(r=>pass(r,['age'])&&r.bk===I.age)):'';
+  $('inlPlant').innerHTML=I.plant?inlPanel('plant','Plant '+I.plant+' · all PO statuses',R.filter(r=>pass(r,['status','plant'])&&r.plant===I.plant)):'';
+  $('inlDim').innerHTML=I.dim!==null?inlPanel('dim',DIMS[S.dim].name+': '+dimLabel(I.dim),R.filter(r=>pass(r,['dim'])&&r[S.dim]===I.dim)):'';
+  $('inlMon').innerHTML=I.mon!==null?inlPanel('mon','PRs created in '+MON[I.mon%12]+' '+Math.floor(I.mon/12),R.filter(r=>pass(r,['date'])&&mIdx(r.prDay)===I.mon)):'';
+}
 function renderPlant(){
   const m=new Map();
   for(const r of R){if(!pass(r,['status','plant']))continue;let a=m.get(r.plant);if(!a){a=[0,0,0];m.set(r.plant,a);}a[r.st]++;}
@@ -471,14 +513,14 @@ function renderPlant(){
   $('plant').innerHTML=list.length?list.map(x=>{
     const segs=x.a.map((v,i)=>v?`<span class="hs" style="flex:${v} 1 0;background:${STCOL[i]}" data-tip="Plant ${esc(x.p)}\n${STATUS[i]}: ${fmtN(v)}"></span>`:'').join('');
     const off=S.plant&&S.plant!==x.p?' off':'';
-    return `<button type="button" class="hrow${off}" data-plant="${esc(x.p)}" aria-pressed="${S.plant===x.p}" aria-label="Plant ${esc(x.p)}, ${x.t} items"><span class="hl">${esc(x.p)}</span><span class="hw"><span class="ht" style="width:${x.t/mx*100}%">${segs}</span></span><span class="hv">${fmtN(x.t)}</span></button>`;
+    return `<button type="button" class="hrow${off}" data-iplant="${esc(x.p)}" aria-pressed="${S.inl.plant===x.p||S.plant===x.p}" aria-label="Plant ${esc(x.p)}, ${x.t} items"><span class="hl">${esc(x.p)}</span><span class="hw"><span class="ht" style="width:${x.t/mx*100}%">${segs}</span></span><span class="hv">${fmtN(x.t)}</span></button>`;
   }).join(''):'<div class="empty">No items match the filters.</div>';
 }
 
 const PG_NAMES=(()=>{try{return JSON.parse(document.getElementById('pgs').textContent);}catch(e){return {};}})();
 const pgName=c=>PG_NAMES[c]||c;
 const pgTip=c=>'Purchasing group '+c+(PG_NAMES[c]?'':' (no description yet)');
-const dimLabel=v=>S.dim==='user'?uName(v):S.dim==='pg'?pgName(v):v;
+const dimLabel=v=>S.dim==='pg'?pgName(v):S.dim==='type'?typeName(v):v;
 function renderDim(){
   $('dimCtl').innerHTML=Object.keys(DIMS).map(k=>`<button type="button" data-dim="${k}" aria-pressed="${S.dim===k}">${DIMS[k].short}</button>`).join('');
   const m=new Map();
@@ -488,8 +530,8 @@ function renderDim(){
   const mx=Math.max(1,...list.map(x=>x[1]));
   $('dim').innerHTML=list.length?list.map(x=>{
     const off=S.dimVal!==null&&S.dimVal!==x[0]?' off':'';
-    return `<button type="button" class="hrow${off}" data-val="${esc(x[0])}" aria-pressed="${S.dimVal===x[0]}" aria-label="${esc(dimLabel(x[0]))}, ${x[1]} items" data-tip="${esc(DIMS[S.dim].name)} ${esc(dimLabel(x[0]))}\n${fmtN(x[1])} items"><span class="hl" title="${esc(S.dim==='user'?uTip(x[0]):S.dim==='pg'?pgTip(x[0]):x[0])}">${esc(dimLabel(x[0]))}</span><span class="hw"><span class="ht" style="width:${x[1]/mx*100}%"><span class="hs" style="flex:1 1 0;background:var(--s1)"></span></span></span><span class="hv">${fmtN(x[1])}</span></button>`;
-  }).join('')+`<p class="hint" style="margin:10px 0 0">Showing ${list.length} of ${fmtN(all.length)} values. Click a bar to filter.</p>`:'<div class="empty">No items match the filters.</div>';
+    return `<button type="button" class="hrow${off}" data-ival="${esc(x[0])}" aria-pressed="${S.inl.dim===x[0]||S.dimVal===x[0]}" aria-label="${esc(dimLabel(x[0]))}, ${x[1]} items" data-tip="${esc(DIMS[S.dim].name)} ${esc(dimLabel(x[0]))}\n${fmtN(x[1])} items"><span class="hl" title="${esc(S.dim==='pg'?pgTip(x[0]):'PR type code '+x[0])}">${esc(dimLabel(x[0]))}</span><span class="hw"><span class="ht" style="width:${x[1]/mx*100}%"><span class="hs" style="flex:1 1 0;background:var(--s1)"></span></span></span><span class="hv">${fmtN(x[1])}</span></button>`;
+  }).join('')+`<p class="hint" style="margin:10px 0 0">Showing ${list.length} of ${fmtN(all.length)} values. Click a bar to see its items right here.</p>`:'<div class="empty">No items match the filters.</div>';
 }
 
 const mIdx=d=>{const t=new Date(d*864e5);return t.getUTCFullYear()*12+t.getUTCMonth();};
@@ -504,7 +546,7 @@ function renderMonth(){
     const k=M0+i,y=Math.floor(k/12),mo=k%12,v=c[i];
     const h=v?Math.max(2,Math.round(v/mx*H)):0;
     const faded=ranged&&(k<lo||k>hi)?' style="opacity:.4"':'';
-    bars+=`<div class="mc"${faded} data-tip="${MON[mo]} ${y}\n${fmtN(v)} items">${v?`<span class="val">${fmtN(v)}</span>`:''}<span class="mb" style="height:${h}px"></span></div>`;
+    bars+=`<button type="button" class="mc" data-imon="${k}" aria-pressed="${S.inl.mon===k}"${faded} data-tip="${MON[mo]} ${y}\n${fmtN(v)} items · click for the items">${v?`<span class="val">${fmtN(v)}</span>`:''}<span class="mb" style="height:${h}px"></span></button>`;
     labs+=`<div class="ml${mo%6===0?' m6':''}"${faded}><span>${MON[mo]}<br>${String(y).slice(2)}</span></div>`;
   }
   $('month').innerHTML=`<div class="mcols">${bars}</div><div class="mlabels">${labs}</div>`;
@@ -528,7 +570,7 @@ function renderTable(rows){
   const head='<thead><tr>'+COLS.map(c=>`<th class="${c.num?'num':''}"><button type="button" data-sort="${c.k}" aria-label="Sort by ${c.t}">${c.t}${S.sort.k===c.k?(S.sort.d>0?' ▲':' ▼'):''}</button></th>`).join('')+'</tr></thead>';
   const rowHtml=r=>{
     const sev=r.age>365?'var(--crit)':r.age>90?'var(--serious)':r.age>30?'var(--warn)':'';
-    return `<tr><td class="nw">${esc(r.pr)} / ${parseInt(r.item,10)}</td><td class="nw">${esc(r.type)}</td><td>${esc(r.plant)}</td><td>${esc(r.sloc)}</td><td class="nw" title="${esc(pgTip(r.pg))}">${esc(pgName(r.pg))}</td><td class="nw">${esc(r.mat)}</td><td class="txt">${esc(r.text)}</td>`+
+    return `<tr><td class="nw">${esc(r.pr)} / ${parseInt(r.item,10)}</td><td class="nw" title="${esc('PR type code '+r.type)}">${esc(typeName(r.type))}</td><td>${esc(r.plant)}</td><td>${esc(r.sloc)}</td><td class="nw" title="${esc(pgTip(r.pg))}">${esc(pgName(r.pg))}</td><td class="nw">${esc(r.mat)}</td><td class="txt">${esc(r.text)}</td>`+
      `<td class="nw" title="${esc(uTip(r.user))}">${esc(uName(r.user))}</td><td class="nw">${r.req==='(blank)'?'–':esc(r.req)}</td>`+
      `<td class="num nw">${fmtQty(r.pend)} ${esc(r.unit)}${r.sus?'<span class="flag">check qty</span>':''}</td><td class="num nw">${fmtINR(r.amt)}</td><td class="nw">${fmtDay(r.prDay)}</td>`+
      `<td class="num nw"><span class="pill">${sev?`<span class="dot" style="background:${sev}"></span>`:''}${fmtN(r.age)}</span></td>`+
@@ -562,6 +604,19 @@ const byCount=m=>[...m.entries()].sort((a,b)=>b[1].prs.size-a[1].prs.size||b[1].
 const plainCells=k=>k.split('\u0000').map(c=>`<td class="nw">${esc(c)}</td>`).join('');
 const userCells=k=>{const [u,rq]=k.split('\u0000');return `<td class="nw" title="${esc(uTip(u))}">${esc(uName(u))}</td><td class="nw">${esc(rq)}</td>`;};
 
+function renderSrc(){
+  const m=new Map();
+  for(const r of R){if(!pass(r,['src']))continue;const k=r.mrp?'mrp':'manual';let x=m.get(k);if(!x)m.set(k,x={prs:new Set(),n:0,amt:0,od:0,old:0});x.prs.add(r.pr);x.n++;if(!r.sus)x.amt+=r.amt;if(r.od)x.od++;if(r.age>365)x.old++;}
+  const list=['manual','mrp'].filter(k=>m.has(k)).map(k=>[k,m.get(k)]);
+  if(!list.length){$('bySrc').innerHTML='<div class="empty">No pending items match the filters.</div>';return;}
+  const tot={prs:new Set(),n:0,amt:0,od:0,old:0};for(const [,x] of list){x.prs.forEach(p=>tot.prs.add(p));tot.n+=x.n;tot.amt+=x.amt;tot.od+=x.od;tot.old+=x.old;}
+  const nums=x=>`<td class="num">${fmtN(x.prs.size)}</td><td class="num">${fmtN(x.n)}</td><td class="num nw">${fmtINR(x.amt)}</td><td class="num">${fmtN(x.od)}</td><td class="num">${fmtN(x.old)}</td>`;
+  const LAB={manual:'Manual PRs (raised by the departments)',mrp:'MRP PRs (created by the MRP run)'};
+  $('bySrc').innerHTML=`<table><thead><tr><th>PR source</th><th class="num">Pending PRs</th><th class="num">Items</th><th class="num">Value</th><th class="num">Delivery date passed</th><th class="num">Older than 1 year</th></tr></thead><tbody>`+
+    list.map(([k,x])=>`<tr${k===S.src?' class="sel"':''}><td><button type="button" class="lnk" data-src="${k}">${LAB[k]}</button></td>${nums(x)}</tr>`).join('')+
+    `</tbody><tfoot><tr><td>Total</td>${nums(tot)}</tr></tfoot></table>`;
+}
+
 function renderPending(){
   const pg=new Map(),us=new Map();
   for(const r of R){if(pass(r,['status'])){addAgg(pg,r.pg,r);addAgg(us,r.user+'\u0000'+r.req,r);}}
@@ -588,12 +643,12 @@ function renderMonthDay(){
 
 function render(){
   const rows=R.filter(r=>pass(r));
-  renderChips();renderKPIs(rows);renderTile(rows);renderAge();renderPlant();renderDim();renderMonth();renderTable(rows);renderPending();renderMonthDay();
+  renderChips();renderKPIs(rows);renderTile(rows);renderAge();renderPlant();renderDim();renderMonth();renderTable(rows);renderSrc();renderPending();renderMonthDay();renderInline();
 }
 function setMonthDates(){const t=new Date(D.asofDay*864e5);const y=t.getUTCFullYear(),m=t.getUTCMonth();const a=Date.UTC(y,m,1)/864e5,b=Date.UTC(y,m+1,0)/864e5;S.from=a;S.to=b;$('dFrom').value=new Date(a*864e5).toISOString().slice(0,10);$('dTo').value=new Date(b*864e5).toISOString().slice(0,10);}
 function reset(keepStatus){
   const st=S.status;Object.assign(S,JSON.parse(JSON.stringify(DEF)));if(keepStatus)S.status=st;
-  $('q').value='';$('plantSel').value='';$('typeSel').value='';$('dFrom').value='';$('dTo').value='';
+  $('q').value='';$('plantSel').value='';$('typeSel').value='';$('srcSel').value='';$('dFrom').value='';$('dTo').value='';
   if(D)setMonthDates();  // Reset goes back to the current month
 }
 
@@ -601,10 +656,23 @@ function reset(keepStatus){
 document.addEventListener('click',e=>{
   const t=e.target.closest('button');if(!t)return;
   if(t.dataset.st!==undefined){S.status=+t.dataset.st;S.page=0;}
+  else if(t.dataset.src!==undefined){S.src=S.src===t.dataset.src?'':t.dataset.src;$('srcSel').value=S.src;S.page=0;}
   else if(t.dataset.age!==undefined){const i=+t.dataset.age;S.age=S.age===i?-1:i;S.page=0;}
   else if(t.dataset.plant!==undefined){S.plant=S.plant===t.dataset.plant?'':t.dataset.plant;$('plantSel').value=S.plant;S.page=0;}
   else if(t.dataset.val!==undefined){S.dimVal=S.dimVal===t.dataset.val?null:t.dataset.val;S.page=0;}
-  else if(t.dataset.dim!==undefined){S.dim=t.dataset.dim;S.dimVal=null;S.page=0;}
+  else if(t.dataset.dim!==undefined){S.dim=t.dataset.dim;S.dimVal=null;S.inl.dim=null;S.page=0;}
+  else if(t.dataset.iage!==undefined){const i=+t.dataset.iage;S.inl.age=S.inl.age===i?-1:i;}
+  else if(t.dataset.iplant!==undefined){S.inl.plant=S.inl.plant===t.dataset.iplant?'':t.dataset.iplant;}
+  else if(t.dataset.ival!==undefined){S.inl.dim=S.inl.dim===t.dataset.ival?null:t.dataset.ival;}
+  else if(t.dataset.imon!==undefined){const k=+t.dataset.imon;S.inl.mon=S.inl.mon===k?null:k;}
+  else if(t.dataset.iclose!==undefined){S.inl[t.dataset.iclose]={age:-1,plant:'',dim:null,mon:null}[t.dataset.iclose];}
+  else if(t.dataset.iall!==undefined){const k=t.dataset.iall;S.inlAll[k]=!S.inlAll[k];}
+  else if(t.dataset.ifilter!==undefined){const k=t.dataset.ifilter;
+    if(k==='age')S.age=S.inl.age;
+    else if(k==='plant'){S.plant=S.inl.plant;$('plantSel').value=S.plant;}
+    else if(k==='dim')S.dimVal=S.inl.dim;
+    else if(k==='mon'){const y=Math.floor(S.inl.mon/12),m=S.inl.mon%12;S.from=Date.UTC(y,m,1)/864e5;S.to=Date.UTC(y,m+1,0)/864e5;$('dFrom').value=new Date(S.from*864e5).toISOString().slice(0,10);$('dTo').value=new Date(S.to*864e5).toISOString().slice(0,10);}
+    S.inl[k]={age:-1,plant:'',dim:null,mon:null}[k];S.page=0;}
   else if(t.dataset.tile!==undefined){const k=t.dataset.tile;TILE=TILE===k?null:k;TILEALL=false;}
   else if(t.id==='tileAll'){TILEALL=!TILEALL;}
   else if(t.dataset.act){const a=t.dataset.act;
@@ -613,6 +681,7 @@ document.addEventListener('click',e=>{
     if(c==='all')reset(false);
     else if(c==='plant'){S.plant='';$('plantSel').value='';}
     else if(c==='type'){S.type='';$('typeSel').value='';}
+    else if(c==='src'){S.src='';$('srcSel').value='';}
     else if(c==='age')S.age=-1;else if(c==='dim')S.dimVal=null;else if(c==='flag')S.flag='';
     else if(c==='q'){S.q='';$('q').value='';}
     else if(c==='date'){S.from=S.to=null;$('dFrom').value='';$('dTo').value='';}
@@ -629,6 +698,7 @@ document.addEventListener('click',e=>{
 });
 $('plantSel').addEventListener('change',e=>{S.plant=e.target.value;S.page=0;render();});
 $('typeSel').addEventListener('change',e=>{S.type=e.target.value;S.page=0;render();});
+$('srcSel').addEventListener('change',e=>{S.src=e.target.value;S.page=0;render();});
 let qT;$('q').addEventListener('input',e=>{clearTimeout(qT);qT=setTimeout(()=>{S.q=e.target.value.trim().toLowerCase();S.page=0;render();},150);});
 // <input type="date"> gives YYYY-MM-DD, which Date.parse reads as UTC midnight: same day numbers as prDay.
 const dayOf=v=>v?Math.floor(Date.parse(v)/864e5):null;
@@ -663,11 +733,12 @@ function setData(d){
   R=d.rows.map(a=>{
     const r={pr:a[0],item:a[1],plant:D.plants[a[2]],sloc:D.slocs[a[3]],pg:D.pgs[a[4]],type:D.types[a[5]],mat:a[6],text:a[7],qty:a[8],pend:a[9],unit:D.units[a[10]],amt:a[11],prDay:a[12],delDay:a[13],st:a[14],closed:a[15],user:D.users[a[16]],po:a[17],req:D.reqs?D.reqs[a[18]]:'(blank)'};
     r.age=D.asofDay-r.prDay; r.bk=ageBucket(r.age); r.sus=r.qty>1e6;
-    r.mrp=/^MRP/i.test(r.user);  // the MRP run creates its PRs under the user "MRP Controll" (PR type NB): these are not shown
+    r.mrp=/^MRP/i.test(r.user);  // the MRP run creates its PRs under the user "MRP Controll" (PR type NB)
+    r.rm=/^0*11/.test(r.mat)||r.pg==='020';  // RM: a material of the 11 series, or the RM purchasing group 020 (VP Purchase): not shown (user, 4-Nov-2026: "pending PR se bhi hta do")
     r.od=r.delDay!==null&&r.delDay<D.asofDay;
     r.hay=(r.pr+' '+r.mat+' '+r.text+' '+r.sloc+' '+r.po+' '+r.user+' '+uName(r.user)+' '+(USER_NAMES[r.user]?USER_NAMES[r.user][1]:'')+' '+r.req).toLowerCase();
     return r;
-  }).filter(r=>r.pend>0&&!r.closed&&!r.mrp); // pending like ME5A: some quantity still not ordered, item not closed; the PRs of the MRP run (user MRP Controll) are left out (user, 3-Nov-2026)
+  }).filter(r=>r.pend>0&&!r.closed&&!r.rm); // pending like ME5A: some quantity still not ordered, item not closed; RM items are left out
   M0=Infinity;for(const r of R){const k=mIdx(r.prDay);if(k<M0)M0=k;}
   M1=mIdx(D.asofDay);
   $('asof').textContent=fmtDay(D.asofDay);
@@ -688,6 +759,7 @@ let LINK=(()=>{try{const q=new URLSearchParams(location.search);return q.has('ti
 function applyLink(){
   if(!LINK)return;const q=LINK;LINK=null;
   if(q.has('plant')){S.plant=q.get('plant')||'';if(![...$('plantSel').options].some(o=>o.value===S.plant))S.plant='';$('plantSel').value=S.plant;}
+  if(q.has('src')){const v=q.get('src');S.src=v==='mrp'||v==='manual'?v:'';$('srcSel').value=S.src;}
   if(q.get('dates')==='all'){S.from=S.to=null;$('dFrom').value=$('dTo').value='';}
   else if(q.has('from')||q.has('to')){S.from=dayOf(q.get('from'));S.to=dayOf(q.get('to'));$('dFrom').value=S.from===null?'':new Date(S.from*864e5).toISOString().slice(0,10);$('dTo').value=S.to===null?'':new Date(S.to*864e5).toISOString().slice(0,10);}
   const k=q.get('tile');if(k&&TILE_INFO[k]){TILE=k;TILEALL=false;REVEAL=true;}

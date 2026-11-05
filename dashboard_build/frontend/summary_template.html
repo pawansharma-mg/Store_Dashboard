@@ -192,14 +192,13 @@ function fmtINR(v){const a=Math.abs(v);if(a>=1e7)return '₹'+(v/1e7).toFixed(2)
 // a negative value (a reversal) reads -₹15,600; zero stays ₹0
 const sgnINR=v=>v<-0.5?'-'+fmtINR(-v):fmtINR(Math.max(v,0));
 const DAYMS=864e5;
-const fmtDay=d=>new Date(d*DAYMS).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric',timeZone:'UTC'});
+const fmtDay=d=>new Date(d*DAYMS).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric',timeZone:'UTC'}).replace('Sept','Sep');
 const iso=d=>new Date(d*DAYMS).toISOString().slice(0,10);
 const dayOf=v=>v?Math.floor(Date.parse(v)/DAYMS):null;
 const hhmm=ms=>new Date(ms).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
 const IPM='Internal Plant material';
-const UNKNOWN='(not on the approver list)';
 const S={plant:'',from:null,to:null};
-const RAW={},ERR={},PREP={};let AP={},RULES=[],APTRIED=false,LOADING=0;
+const RAW={},ERR={},PREP={};let LOADING=0;
 const inR=d=>d!==null&&d!==undefined&&(S.from===null||d>=S.from)&&(S.to===null||d<=S.to);
 const plantOk=p=>!S.plant||p===S.plant;
 const todayDay=()=>Math.floor((Date.now()+5.5*3600e3)/DAYMS);
@@ -207,37 +206,24 @@ function setMonthDates(){const t=new Date(todayDay()*DAYMS);const y=t.getUTCFull
 
 /* ---------- the same rules as the pages ---------- */
 // Pending PR page: some quantity not ordered, item not closed, status "No PO yet"
-function prepPR(d){const out=[];for(const a of d.rows){if(!(a[9]>0)||a[15]||a[14]!==0||/^MRP/i.test(d.users[a[16]]))continue;out.push({plant:d.plants[a[2]],pr:a[0],qty:a[8],amt:a[11],day:a[12],del:a[13]});}return out;}
+function prepPR(d){const out=[];for(const a of d.rows){if(!(a[9]>0)||a[15]||a[14]!==0||/^0*11/.test(a[6])||d.pgs[a[4]]==='020')continue;out.push({plant:d.plants[a[2]],pr:a[0],qty:a[8],amt:a[11],day:a[12],del:a[13]});}return out;}
 function prepIssue(d){return d.rows.map(a=>({day:a[0],plant:d.plants[a[2]],mat:a[4],amt:a[7],rev:d.mvts[a[8]]==='202',nores:!a[10]}));}
 // Purchase order page: pending delivery = still to be delivered > 0; value to deliver as on that page (asset POs have none)
 // values in rupees: other currencies are converted at the PO's exchange rate (a[24]; 1 for INR, 0 when SAP gives none)
-function prepPO(d){return d.rows.map(a=>{const type=d.types[a[4]],qty=a[15],cur=d.curs[a[14]],rate=cur==='INR'?1:(a[24]>0?a[24]:0),amt=a[17]*rate,still=a[23];return {day:a[0],po:a[2],sup:a[5],plant:d.plants[a[6]],cur,amt,still,pendAmt:still>0&&qty>0?a[17]*Math.min(still,qty)/qty*rate:0};});}
-// PO approval page: one entry per PO that is In Approval (state 03) or on the approver list
-function ruleFor(p){
-  for(const r of RULES){
-    if(r.org!==p.org||r.pg!==p.pg)continue;
-    const banded=r.min!==null||r.max!==null;
-    if(banded&&p.fx.size)continue;
-    if(r.min!==null&&!(p.amt>=r.min))continue;
-    if(r.max!==null&&!(p.amt<r.max))continue;
-    return r;
-  }
-  return null;
-}
+function prepPO(d){return d.rows.filter(a=>{const m=d.mats[a[8]],t=d.types[a[4]];return !(/^0*11/.test(m)||d.mtypes[a[11]]==='ZRMA'||t==='ZDRM'||t==='ZIRM'||(d.pgs[a[19]]==='020'&&t==='ZTRD')||t==='ZSTO'||t==='UB');}).map(a=>{const type=d.types[a[4]],qty=a[15],cur=d.curs[a[14]],rate=cur==='INR'?1:(a[24]>0?a[24]:0),amt=a[17]*rate,still=a[23];return {day:a[0],po:a[2],sup:a[5],plant:d.plants[a[6]],cur,amt,still,pendAmt:still>0&&qty>0?a[17]*Math.min(still,qty)/qty*rate:0};});}
+// PO approval page: one entry per PO that SAP's release workflow has an open task for; /api/po-approval carries the items of exactly these POs (raw material included, like the page)
 function buildApprovals(){
-  const d=RAW.po;if(!d)return;
+  const t=RAW.apptasks,d=t&&t.po;if(!d)return;
   const m=new Map();
   for(const a of d.rows){
-    const po=a[2];if(!(a[18]&1)&&AP[po]===undefined)continue;
+    const po=a[2];
     let p=m.get(po);
-    if(!p){p={po,day:a[0],org:d.orgs[a[20]],pg:d.pgs[a[19]],proc:d.procs[a[21]],plants:new Set(),items:0,amt:0,fx:new Set(),sup:a[5]};m.set(po,p);}
+    if(!p){p={po,day:a[0]!==null?a[0]:a[1],plants:new Set(),items:0,amt:0,fx:new Set()};m.set(po,p);}
     p.items++;p.plants.add(d.plants[a[6]]);
     if(d.curs[a[14]]==='INR')p.amt+=a[17];else p.fx.add(d.curs[a[14]]);
   }
-  PREP.appr=[...m.values()].filter(p=>p.proc==='03').map(p=>{
-    p.age=Math.max(0,d.asofDay-p.day);p.approver=AP[p.po]||'';p.likely=p.approver?null:ruleFor(p);
-    p.key=p.approver||(p.likely?p.likely.approver:UNKNOWN);return p;});
-  PREP.apprFor=d;
+  PREP.appr=[...m.values()].map(p=>{p.age=Math.max(0,d.asofDay-p.day);return p;});
+  PREP.apprFor=t;
 }
 // Store stock page: 5 months back from the data date
 function cutoffDay(asof){const t=new Date(asof*DAYMS);let y=t.getUTCFullYear(),m=t.getUTCMonth()-5;const d=t.getUTCDate();if(m<0){m+=12;y--;}const dim=new Date(Date.UTC(y,m+1,0)).getUTCDate();return Math.floor(Date.UTC(y,m,Math.min(d,dim))/DAYMS);}
@@ -275,8 +261,10 @@ function calcAppr(){
 function prepPurchase(d){return d.rows.map(a=>({day:a[0],plant:d.plants[a[5]],rev:d.mvts[a[1]]==='102',val:a[11],po:a[2]}));}
 // the creation day of every PO of the PO data (for the delivery time PO -> receipt)
 function poCreated(){const d=RAW.po;if(!d)return null;if(PREP.poCr&&PREP.poCr.src===d)return PREP.poCr.m;const m=new Map();for(const a of d.rows){const c=a[0]!==null?a[0]:a[1];if(c!==null&&(!m.has(a[2])||c<m.get(a[2])))m.set(a[2],c);}PREP.poCr={src:d,m};return m;}
+// the PO numbers the server leaves out (/api/po and /api/po-old: removedPos)
+function removedPos(){return new Set([...((RAW.po&&RAW.po.removedPos)||[]),...((RAW.poold&&RAW.poold.removedPos)||[])]);}
 function calcPurchase(){
-  const R=PREP.purchase;if(!R)return null;
+  const R=(PREP.purchase||[]).filter(function(x){return !this.has(x.po);},removedPos());if(!PREP.purchase)return null;
   const pc=poCreated();
   const agg=date=>{let v1=0,v2=0,lw=0,lv=0,lmax=-1;const pos=new Set();
     for(const r of R){if(!plantOk(r.plant)||(date&&!inR(r.day)))continue;if(r.rev)v2+=r.val;else{v1+=r.val;const c=pc&&pc.get(r.po);if(c!==undefined&&r.day!==null){const l=Math.max(0,r.day-c);lw+=l*r.val;lv+=r.val;if(l>lmax)lmax=l;}}pos.add(r.po);}
@@ -285,9 +273,9 @@ function calcPurchase(){
 }
 // pending invoice entries: deliveries (invoices) whose goods receipt is not posted; the value is the delivery quantity at the PO price (PO data)
 function prepInvoice(d){return d.rows.map(a=>({day:a[0],plant:d.plants[a[7]],del:a[2],po:a[4],item:a[5],qty:a[11],age:a[0]===null?0:Math.max(0,d.asofDay-a[0])}));}
-function poPrice(){const d=RAW.po;if(!d)return null;if(PREP.poPrice&&PREP.poPrice.src===d)return PREP.poPrice.m;const m=new Map();for(const a of d.rows)m.set(a[2]+'|'+a[3],[a[17],a[15],a[24]]);PREP.poPrice={src:d,m};return m;}
+function poPrice(){const d=RAW.po;if(!d)return null;if(PREP.poPrice&&PREP.poPrice.src===d&&PREP.poPrice.old===RAW.poold)return PREP.poPrice.m;const m=new Map();for(const a of d.rows)m.set(a[2]+'|'+a[3],[a[17],a[15],a[24]]);if(RAW.poold)for(const a of RAW.poold.rows){const k=a[2]+'|'+a[3];if(!m.has(k))m.set(k,[a[17],a[15],a[24]]);}PREP.poPrice={src:d,old:RAW.poold,m};return m;}
 function calcInvoice(){
-  const R=PREP.invoice;if(!R)return null;const pm=poPrice();
+  const R=PREP.invoice&&PREP.invoice.filter(function(x){return !this.has(x.po);},removedPos());if(!R)return null;const pm=poPrice();
   const agg=date=>{const dels=new Set(),old=new Set();let n=0,val=0;
     for(const r of R){if(!plantOk(r.plant)||(date&&!inR(r.day)))continue;n++;dels.add(r.del);if(r.age>7)old.add(r.del);
       if(pm){const p=pm.get(r.po+'|'+r.item);if(p&&p[1]>0&&p[2]>0)val+=r.qty*p[0]/p[1]*p[2];}}
@@ -306,10 +294,19 @@ function calcPrice(){
   }
   return PVC;
 }
+// the parties that are taken (not the RM suppliers, not the group companies): the same rule as the Payment Ageing page (PARTY in live.js), by the PO data
+function partyKeep(){
+  const d=RAW.ageing;if(!d)return null;
+  if(PREP.agKeep&&PREP.agKeep.a===d&&PREP.agKeep.p===RAW.po)return PREP.agKeep.k;
+  const poi=PARTY.info(RAW.po),k=d.suppliers.map(s=>PARTY.shown(PARTY.type({id:s[0],name:s[1]||'',grp:s[3]},d.partyTypes&&d.partyTypes[s[0]],poi)));
+  PREP.agKeep={a:d,p:RAW.po,k};return k;
+}
 function calcAgeing(){
   const R=PREP.ageing;if(!R)return null;
+  if(!RAW.po&&!ERR.po)return null;   // the RM parties are found with the PO data
+  const keep=partyKeep();
   const sn=new Map(),by=new Map();
-  for(const r of R){sn.set(r.sup,(sn.get(r.sup)||0)+r.pay);let l=by.get(r.sup);if(!l)by.set(r.sup,l=[]);l.push(r);}
+  for(const r of R){if(!keep[r.sup])continue;sn.set(r.sup,(sn.get(r.sup)||0)+r.pay);let l=by.get(r.sup);if(!l)by.set(r.sup,l=[]);l.push(r);}
   const asof=RAW.ageing.asofDay;
   let give=0,giveN=0,get=0,getN=0,pastDue=0,maxOver=-1,oldGet=-1;
   for(const [sup,v] of sn){
@@ -341,7 +338,7 @@ function calcStock(){
   const cut=cutoffDay(d.asofDay),used=!!d.issuesRead;
   let tot=0,store=0,ipm=0,qi=0;const items=new Map();
   for(const a of d.rows){
-    const plant=d.plants[a[1]];if(!plantOk(plant))continue;
+    const plant=d.plants[a[1]];if(!plantOk(plant)||plant==='2020'||/^0*11/.test(String(d.prods[a[0]][0]))||d.ptypes[a[4]]==='ZRMA')continue;  // plant 2020 and RM (11 series / ZRMA) are left out of Store Stock (user, 4-Nov-2026)
     const kind=d.kinds?d.kinds[a[10]]:'',val=a[9];
     tot+=val;if(kind===IPM)ipm+=val;else store+=val;
     if(d.stypes[a[5]]==='02')qi+=val;
@@ -372,7 +369,7 @@ function fillPrint(){
 }
 
 function renderAll(){
-  if(RAW.po&&APTRIED&&PREP.apprFor!==RAW.po)buildApprovals();
+  if(RAW.apptasks&&PREP.apprFor!==RAW.apptasks)buildApprovals();
   // plant list from the data loaded so far
   const pl=new Set();
   for(const k of ['pr','issue','po','stock','purchase','invoice'])if(RAW[k])for(const p of RAW[k].plants)pl.add(p);
@@ -403,8 +400,8 @@ function renderAll(){
     tile(fmtN(po.sel.items),'PO items',all+fmtN(po.all.items),go('/po','items','sel')),
     tile(fmtINR(po.sel.amt),'Net PO value',all+fmtINR(po.all.amt),go('/po','val','sel')),
     tile(po.sel.oldest>=0?fmtN(po.sel.oldest)+' days':'–','Oldest delivery still pending'+(po.sel.oldest>=0?' · average '+fmtN(po.sel.avg)+' days':''),all+(po.all.oldest>=0?fmtN(po.all.oldest)+' days · value-weighted average '+fmtN(po.all.avg)+' days':'–'),go('/po','age','sel'))]));
-  $('body-appr').innerHTML=status('po',ap&&section([
-    tile(fmtN(ap.sel.n),'POs In Approval',all+fmtN(ap.all.n),go('/po-approval','pos','sel')),
+  $('body-appr').innerHTML=status('apptasks',ap&&section([
+    tile(fmtN(ap.sel.n),'POs waiting for approval',all+fmtN(ap.all.n),go('/po-approval','pos','sel')),
     tile(fmtINR(ap.sel.amt),'Net value',all+fmtINR(ap.all.amt),go('/po-approval','val','sel')),
     tile(fmtN(ap.sel.over),'Waiting more than 30 days',all+fmtN(ap.all.over),go('/po-approval','oldest','sel'))]));
   $('body-invoice').innerHTML=status('invoice',iv&&section([
@@ -450,7 +447,7 @@ function updateLive(){
 async function fetchJSON(url){const r=await fetch(url,{cache:'no-store'});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||('HTTP '+r.status));return j;}
 const STAMP={};  // when the server last read each view from SAP (also when nothing changed)
 function load(force,auto){
-  const jobs=[['pr','/api/pr',prepPR],['issue','/api/issue',prepIssue],['po','/api/po',prepPO],['stock','/api/stock',()=>null],['purchase','/api/purchase',prepPurchase],['invoice','/api/invoice',prepInvoice],['ageing','/api/ageing',prepAgeing],['asset','/api/asset',prepAsset]];
+  const jobs=[['pr','/api/pr',prepPR],['issue','/api/issue',prepIssue],['po','/api/po',prepPO],['stock','/api/stock',()=>null],['purchase','/api/purchase',prepPurchase],['invoice','/api/invoice',prepInvoice],['ageing','/api/ageing',prepAgeing],['asset','/api/asset',prepAsset],['poold','/api/po-old',()=>null],['apptasks','/api/po-approval',()=>null]];
   // the first load and the Refresh button show "Loading..."; the 30-second checks draw only when a view has changed
   if(!auto){LOADING=jobs.length;updateLive();}
   let left=jobs.length,changed=0;
@@ -466,8 +463,6 @@ function load(force,auto){
       else if(left===0){if(changed)renderAll();else updateLive();}
     });
   }
-  // the approver list is read again by the first load and the Refresh button
-  if(!auto)fetchJSON('/api/po-approvers').then(j=>{AP=j.approvers||{};RULES=j.rules||[];}).catch(()=>{}).finally(()=>{APTRIED=true;PREP.apprFor=null;renderAll();});
 }
 
 /* ---------- the other pages, one under the other (menu order): Store Issue, Store Stock, Pending PR, ... ---------- */
@@ -516,6 +511,8 @@ function setPg(id,open,save=true){
   if(save){const o=new Set(savedOpen());open?o.add(id):o.delete(id);try{localStorage.setItem('spr-stack-open',JSON.stringify([...o]));}catch(e){}}
 }
 function stackInit(){
+  // the whole-dashboard download reads the Summary in a hidden frame: that copy must not load the other pages again
+  if(/[?&]embed=1/.test(location.search)){const st=$('stack');if(st)st.hidden=true;return;}
   buildStack();
   const opened=new Set(savedOpen());
   for(const id of Object.keys(SECS)){

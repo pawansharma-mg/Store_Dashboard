@@ -113,6 +113,40 @@ tr.sel td{background:rgba(28,173,228,.14)!important}
 .rangekpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:0 0 12px}
 .rangekpi .tile{padding:12px 14px}
 .sm{font-size:.72rem;color:var(--muted);font-weight:400}
+.tilebtn{overflow:hidden}
+.tnames{list-style:none;margin:8px 0 2px;padding:0;display:grid;gap:3px;text-align:left;font-size:.72rem;line-height:1.25;width:100%;max-width:100%;box-sizing:border-box}
+.tnames li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;min-width:0}
+.tnames span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink2);min-width:0}
+.tnames b{white-space:nowrap;color:var(--ink)}
+.tile .tv.val2{font-size:1.5rem}
+/* Month wise / Day wise: the stock graph and the stock in / out graph side by side, the table under them */
+.grid{grid-auto-flow:row dense}
+#monthCard,#dayCard{grid-column:1/-1}
+/* one chart: total inventory (blue), stock in (green) and stock out (red), three thin bars for every month or day, the value above every bar */
+.cm-legend{display:flex;flex-wrap:wrap;gap:16px;font-size:.74rem;color:var(--ink2);margin:2px 0 4px}
+.cm-legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.cm-legend .tot{background:var(--brand)}.cm-legend .in{background:var(--good)}.cm-legend .out{background:var(--crit)}
+.cm-scroll{overflow-x:auto;margin-bottom:10px}
+.cm-inner{padding-top:76px;min-width:var(--cmw,0)}
+.cm-cols{display:flex;align-items:flex-end;height:172px;gap:8px;border-bottom:1px solid var(--grid)}
+.cm-grp{flex:1 1 0;min-width:0;display:flex;align-items:flex-end;justify-content:center;gap:3px}
+.cm-bar{position:relative;flex:1 1 0;max-width:20px;min-width:5px;border:0;padding:0;border-radius:3px 3px 0 0;cursor:pointer;transition:filter .15s}
+.cm-bar.tot{background:linear-gradient(180deg,var(--brand),#0b8ccf)}
+.cm-bar.in{background:linear-gradient(180deg,var(--good),#5fcf8a)}
+.cm-bar.out{background:linear-gradient(180deg,#ef7a7a,var(--crit))}
+.cm-bar:hover{filter:brightness(1.12)}
+.cm-bar.on{box-shadow:0 0 0 2px var(--brand-dark)}
+.cm-v{position:absolute;bottom:100%;left:50%;transform:translateX(-50%) rotate(180deg);writing-mode:vertical-rl;margin-bottom:3px;font-size:.74rem;font-weight:800;color:var(--ink);white-space:nowrap;line-height:1;pointer-events:none}
+.cm-labs{display:flex;gap:8px;margin-top:4px;height:18px}
+.cm-labs span{flex:1 1 0;min-width:0;text-align:center;font-size:.76rem;font-weight:600;color:var(--ink2);white-space:nowrap}
+tr.tlrow>td{padding:4px 6px 14px!important;background:transparent!important}
+.mp{border:1px solid var(--brand);border-left-width:4px;border-radius:10px;background:rgba(28,173,228,.06);padding:10px 12px;margin:8px 0;white-space:normal;font-weight:400;text-align:left}
+.mph{display:flex;flex-wrap:wrap;align-items:center;gap:8px}.mph b{font-size:.95rem}.mph .btn{margin-left:auto;height:28px}
+.mp .tbox{max-height:380px;background:var(--surface);border-radius:8px;margin-top:8px}
+.mp .pager{margin-top:6px}
+/* the opened panel is as wide as the card (it does not stretch the month / day table) */
+#byMonthS,#byDayS{container-type:inline-size}
+#byMonthS .mp,#byDayS .mp{position:sticky;left:0;width:calc(100cqw - 12px);box-sizing:border-box}
 </style>
 <link rel="stylesheet" href="/ui.css">
 <script src="/live.js"></script>
@@ -184,11 +218,13 @@ tr.sel td{background:rgba(28,173,228,.14)!important}
     <article class="card" id="monthCard" data-keep-open>
       <h2><span class="sec-badge">1</span>Month wise stock</h2>
       <p class="hint" id="monthHint"></p>
+      <div class="ioChart" id="ioMonth"></div>
       <div class="tbox" id="byMonthS"></div>
     </article>
     <article class="card" id="dayCard" data-keep-open>
       <h2><span class="sec-badge">1</span>Day wise stock</h2>
       <p class="hint" id="dayHint"></p>
+      <div class="ioChart" id="ioDay"></div>
       <div class="tbox" id="byDayS"></div>
     </article>
     <article class="card" id="catCard">
@@ -210,11 +246,6 @@ tr.sel td{background:rgba(28,173,228,.14)!important}
       <h2><span class="sec-badge">3</span>Material group wise stock</h2>
       <p class="hint">Click a material group to filter everything.</p>
       <div class="tbox" id="byGrp"></div>
-    </article>
-    <article class="card">
-      <h2><span class="sec-badge">3</span>Material type wise stock</h2>
-      <p class="hint">The Store material types (ZCON, ZHMI, ZSPR, ZSRM, ZVRP) are shown first as one group, then the other types. Click a row to filter everything; \u2605 in the list marks a Store material type.</p>
-      <div class="tbox" id="byMtype"></div>
     </article>
     <article class="card">
       <h2><span class="sec-badge">4</span>Stock type wise</h2>
@@ -258,6 +289,9 @@ const SPN={'':'In our stores','O':'At vendor (subcontracting)','E':'Sales order 
 const spName=c=>SPN[c]!==undefined?SPN[c]:'Special stock '+c;
 const PAGE=25,TOP_LIMIT=300;
 const IPM='Internal Plant material';
+// RM (raw material: a material number of the 11 series, or material type ZRMA) is left out of the stock and of the stock in / stock out (user, 4-Nov-2026: "store out me bhi RM ka materials hato")
+const isRM=(id,ptype)=>/^0*11/.test(String(id))||ptype==='ZRMA';
+const EXCL_PLANTS=['2020'];  // user, 4-Nov-2026: "isme se Plant 2020 remove kro" (Store Stock only)
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtN=n=>Math.round(n).toLocaleString('en-IN');
 function fmtINR(v){const a=Math.abs(v);if(a>=1e7)return '₹'+(v/1e7).toFixed(2)+' Cr';if(a>=1e5)return '₹'+(v/1e5).toFixed(2)+' L';return '₹'+Math.round(v).toLocaleString('en-IN');}
@@ -293,7 +327,7 @@ function aggTable(list,head,cell,sel,limit,plain){
     `</tbody><tfoot><tr><td>Total (${fmtN(list.filter(e=>!e[1].sub).length)})</td>${nums(tot)}</tr></tfoot></table>`;
 }
 const DAYMS=864e5;
-const fmtDay=d=>new Date(d*DAYMS).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric',timeZone:'UTC'});
+const fmtDay=d=>new Date(d*DAYMS).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric',timeZone:'UTC'}).replace('Sept','Sep');
 // the day 5 months before the data date (a 31st goes to the end of a shorter month)
 function cutoffDay(asof){const t=new Date(asof*DAYMS);let y=t.getUTCFullYear(),m=t.getUTCMonth()-5;const d=t.getUTCDate();if(m<0){m+=12;y--;}const dim=new Date(Date.UTC(y,m+1,0)).getUTCDate();return Math.floor(Date.UTC(y,m,Math.min(d,dim))/DAYMS);}
 // days since the last goods issue: young = green, old = red; no issue at all since the Store Issue data starts = the last group
@@ -322,9 +356,10 @@ function renderTop(){
   const top=it.slice().sort((a,b)=>b.val-a.val).slice(0,5),topVal=top.reduce((s,x)=>s+x.val,0);
   const dead=used?it.filter(x=>!x.last||x.last<cut).sort((a,b)=>b.val-a.val):[],dv=dead.reduce((s,x)=>s+x.val,0);
   // the two options are tiles next to the other tiles: click to show or hide the table
-  const opt=(key,cls,big,label,sub,open)=>`<button type="button" class="tile tilebtn ${cls}" data-tile="${key}" aria-expanded="${open}"><div class="tv">${big}</div><div class="tl">${label}</div><div class="ts">${sub}</div></button>`;
-  $('kpiOpt').innerHTML=opt('top','opt1',fmtINR(topVal),'Top 5 materials by stock value',(total?(topVal/total*100).toFixed(1)+'% of Store stock · ':'')+(S.top?'click to hide':'click to show'),S.top)
-    +(used?opt('dead','opt2',fmtN(dead.length),'Not used for 5 months (materials)',fmtINR(dv)+' stock value · '+(S.dead?'click to hide':'click to show'),S.dead):'');
+  const opt=(key,cls,big,label,sub,open,extra)=>`<button type="button" class="tile tilebtn ${cls}" data-tile="${key}" aria-expanded="${open}"><div class="tv">${big}</div><div class="tl">${label}</div>${extra||''}<div class="ts">${sub}</div></button>`;
+  // two short tiles (no list inside them): the value on top, a clear heading, and one line under it
+  $('kpiOpt').innerHTML=opt('top','opt1',fmtINR(topVal),'Top 5 materials by value',(total?(topVal/total*100).toFixed(1)+'% of Store stock · ':'')+(S.top?'click to hide':'click to show'),S.top)
+    +(used?opt('dead','opt2',fmtINR(dv),'Not used for 5 months',fmtN(dead.length)+' materials · '+(S.dead?'click to hide':'click to show'),S.dead):'');
   $('topCard').hidden=!S.top;
   $('deadCard').hidden=!(used&&S.dead);
   if(S.top)$('top5').innerHTML=top.length?'<table>'+head('#')+`<th class="num">Share</th><th>Last used · unused for</th></tr></thead><tbody>`+top.map((x,i)=>`<tr>${line(x,i+1)}<td class="num nw">${total?(x.val/total*100).toFixed(1)+'%':'–'}</td><td class="nw">${lastCell(x)}</td></tr>`).join('')+'</tbody></table>':emptyMsg;
@@ -479,12 +514,6 @@ function render(){
   $('slocHint').textContent='Click a storage location to filter everything.'+(sll.length>TOP_LIMIT?` Top ${TOP_LIMIT} of ${fmtN(sll.length)} by value shown; the total covers all.`:'');
   $('bySloc').innerHTML=aggTable(sll,'Storage location',k=>{const x=SLOC.get(k);return `<button type="button" class="lnk" data-sloc="${esc(k)}">${esc(slocLabel(x.code,x.name,x.plant))}</button>`;},S.sloc,TOP_LIMIT);
   $('byGrp').innerHTML=aggTable(byValue(gr),'Material group',k=>`<button type="button" class="lnk" data-grp="${esc(k)}" title="${esc(k?'Material group '+k:'')}">${esc(mgName(k))}</button>`,S.grp);
-  // the Store material types first, as one group (a subtotal row and the five types under it), then the other types
-  const stx=mts.get('STORE');if(stx)stx.sub=true;
-  for(const c of STORE_MT)if(!mty.has(c))mty.set(c,agg());
-  const mtl2=byValue(mty),mtS=mtl2.filter(e=>STORE_MT.includes(e[0])),mtO=mtl2.filter(e=>!STORE_MT.includes(e[0]));
-  for(const e of mtS)e[1].child=true;
-  $('byMtype').innerHTML=aggTable([...(stx?[['STORE',stx]]:[]),...mtS,...mtO],'Material type',k=>k==='STORE'?`<button type="button" class="lnk" data-mt="STORE">Store material types</button> <span title="${esc(STORE_MT.map(mtName).join(', '))}">(${STORE_MT.join(', ')})</span>`:`<button type="button" class="lnk" data-mt="${esc(k)}" title="${esc(k?'Material type '+k:'')}">${STORE_MT.includes(k)?'\u21b3 ':''}${esc(mtName(k))}</button>`,S.mt);
   $('byType').innerHTML=aggTable(byValue(ty),'Stock type',k=>`<button type="button" class="lnk" data-stype="${esc(k)}" title="${esc(k?'Stock type '+k:'')}">${esc(stkName(k))}</button>`,S.stype);
   $('bySp').innerHTML=aggTable(byValue(sp),'Stock held',k=>`<button type="button" class="lnk" data-sp="${esc(k)}">${esc(spName(k))}</button>`,S.sp==='own'?'':S.sp||null,0,true);
   const mtl=byValue(mt);
@@ -517,6 +546,9 @@ document.addEventListener('click',e=>{
   else if(t.dataset.sp!==undefined){S.sp=S.sp===t.dataset.sp?'':t.dataset.sp;$('spSel').value=S.sp;}
   else if(t.dataset.hmon!==undefined){const m=+t.dataset.hmon;S.mon=m;S.asof=monthEnd(m);applyAsOf();return;}
   else if(t.dataset.hday!==undefined){S.asof=+t.dataset.hday;applyAsOf();return;}
+  else if(t.dataset.mv!==undefined){const k=t.dataset.mv;if(S.open.has(k))S.open.delete(k);else S.open.add(k);renderHist();return;}
+  else if(t.dataset.mvclose!==undefined){S.open.delete(t.dataset.mvclose);renderHist();return;}
+  else if(t.dataset.mvall!==undefined){const k=t.dataset.mvall;S.mvAll[k]=!S.mvAll[k];renderHist();return;}
   else if(t.dataset.idle!==undefined){const v=+t.dataset.idle;S.idle=S.idle===v?null:v;}
   else if(t.dataset.clr){const c=t.dataset.clr;
     if((c==='asof'||c==='all')&&S.asof!==null){S.asof=null;setData(LD);syncAsOf();}
@@ -604,7 +636,7 @@ const dayOfIso=s=>Math.floor(Date.parse(s+'T00:00:00Z')/DAYMS);
 const monthOf=d=>{const t=new Date(d*DAYMS);return t.getUTCFullYear()*12+t.getUTCMonth();};
 const monthStart=m=>Math.floor(Date.UTC(Math.floor(m/12),m%12,1)/DAYMS);
 const monthEnd=m=>monthStart(m+1)-1;
-const monthName=m=>new Date(monthStart(m)*DAYMS).toLocaleDateString('en-GB',{month:'short',year:'numeric',timeZone:'UTC'});
+const monthName=m=>new Date(monthStart(m)*DAYMS).toLocaleDateString('en-GB',{month:'short',year:'numeric',timeZone:'UTC'}).replace('Sept','Sep');
 const normId=s=>String(s).replace(/^0+/,'');
 // one entry per plant + location + material: its stock today (all stock types) and its movements [day, qtyIn, valueIn, qtyOut, valueOut]
 function buildModel(){
@@ -659,17 +691,69 @@ function seriesFor(){ // the stock today and the receipts and issues of every da
   return {v0,byDay};
 }
 const valueAt=(sr,day)=>{let v=sr.v0;for(const [d,x] of sr.byDay)if(d>day)v-=x[0]-x[1];return v;};
+// ---- the stock in / stock out of a month or a day, opened right under its row (user, 4-Nov-2026: "Stock in, Stock out ki details bhi chahiye, click kare to details wahi andar open ho")
+const MON3=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const mvKey=(k,s,v)=>k+'|'+s+'|'+v;
+const mvRange=(s,v)=>s==='m'?[Math.max(MV.from,monthStart(v)),Math.min(monthEnd(v),LD.asofDay)]:[v,v];
+const mvWhat=(k,s,v)=>(k==='in'?'Stock in':'Stock out')+' · '+(s==='m'?monthName(v):fmtDay(v));
+function mvCell(k,s,v,val){
+  const key=mvKey(k,s,v),open=S.open.has(key);
+  return `<td class="num nw">${val?`<button type="button" class="lnk" data-mv="${key}" aria-expanded="${open}" title="Click to see the materials of this ${k==='in'?'stock in':'stock out'} right here">${open?'▾ ':''}${fmtINR(val)}</button>`:'–'}</td>`;
+}
+// the materials behind one figure: one row per plant + location + material, the highest value first
+function mvPanel(k,s,v){
+  const key=mvKey(k,s,v),[a,b]=mvRange(s,v),isIn=k==='in',m=new Map();
+  for(const e of model().list){
+    if(!keyPass(e))continue;
+    for(const x of e.mv){
+      if(x[0]<a||x[0]>b)continue;
+      const q=isIn?x[1]:x[3],val=isIn?x[2]:x[4];
+      if(!q&&!val)continue;
+      let t=m.get(e.k);if(!t)m.set(e.k,t={e,q:0,v:0,days:new Set(),last:0});
+      t.q+=q;t.v+=val;t.days.add(x[0]);if(x[0]>t.last)t.last=x[0];
+    }
+  }
+  const list=[...m.values()].sort((p,q)=>q.v-p.v||q.q-p.q),tot=list.reduce((sum,t)=>sum+t.v,0);
+  const all=!!S.mvAll[key],shown=all?list.slice(0,1000):list.slice(0,25);
+  let h=`<div class="mp"><div class="mph"><b>${esc(mvWhat(k,s,v))}</b><span class="sm">${fmtINR(tot)} · ${fmtN(list.length)} materials (per plant and location)</span><button type="button" class="btn alt" data-mvclose="${key}">Close</button></div>`;
+  if(!list.length)return h+'<p class="hint">Nothing for the filters set now.</p></div>';
+  h+=`<div class="tbox"><table><thead><tr><th class="num">#</th><th>Material</th><th>Plant</th><th>Storage location</th><th class="num">Quantity</th><th class="num">Value</th><th>${s==='m'?'Days':'Date'}</th></tr></thead><tbody>`+
+    shown.map((t,i)=>`<tr><td class="num">${i+1}</td><td class="matc"><span class="nw">${esc(t.e.mat)}</span><div class="sm">${esc(t.e.name)}</div></td><td>${esc(t.e.plant)}</td><td>${esc(t.e.slocName?t.e.sloc+' · '+t.e.slocName:t.e.sloc)}</td><td class="num nw">${esc(fmtQ(t.q,t.e.unit))}</td><td class="num nw"><b>${fmtINR(t.v)}</b></td><td class="nw"${s==='m'?` title="Last on ${esc(fmtDay(t.last))}"`:''}>${s==='m'?fmtN(t.days.size)+(t.days.size===1?' day':' days'):esc(fmtDay(v))}</td></tr>`).join('')+
+    `</tbody><tfoot><tr><td colspan="5">Total (${fmtN(list.length)} materials)</td><td class="num nw">${fmtINR(tot)}</td><td></td></tr></tfoot></table></div>`;
+  if(list.length>25)h+=`<div class="pager"><span>${all?(list.length>1000?'The first 1,000 of '+fmtN(list.length)+' shown':'All '+fmtN(list.length)+' shown'):'Showing the first 25 of '+fmtN(list.length)}</span><div><button class="btn" type="button" data-mvall="${key}">${all?'Show first 25':'See all '+fmtN(list.length)}</button></div></div>`;
+  return h+'</div>';
+}
+// the panels that are open under one row (stock in and / or stock out)
+function mvPanels(s,v,cols){
+  const ps=['in','out'].filter(k=>S.open.has(mvKey(k,s,v))).map(k=>mvPanel(k,s,v));
+  return ps.length?`<tr class="tlrow subrow"><td colspan="${cols}">${ps.join('')}</td></tr>`:'';
+}
+// ONE chart for a month or a day (user, 4-Nov-2026: "total inventory, stock in, stock out, 3 chiz month wise alag se mat dikhao, ek graph me"): three thin bars side by side, oldest first:
+// blue = total inventory at the end (a click shows the stock of that day in the whole page), green = stock in, red = stock out (a click opens its materials under the row)
+const cmShort=v=>{const a=Math.abs(v);return a>=1e7?(v/1e7).toFixed(a>=1e8?1:2)+' Cr':a>=1e5?(v/1e5).toFixed(1)+' L':fmtN(v);};
+function comboChart(items,scope){
+  // one scale for the three bars; when the inventory is far bigger than what comes in and goes out (a day: 7.6 Cr against 40 lakh) stock in / out get their own scale, so they stay readable (the values are above every bar)
+  const mEnd=Math.max(1,...items.map(x=>x.end)),mIO=Math.max(1,...items.map(x=>Math.max(x.inn,x.out))),sep=mEnd>4*mIO,max=Math.max(mEnd,mIO),H=172;
+  const hp=(v,io)=>v>0?Math.max(2,Math.round(v/(io&&sep?mIO:sep?mEnd:max)*H)):0,step=items.length>16?2:1;
+  const bar=(cls,v,attr,on,tip)=>`<button type="button" class="cm-bar ${cls}${on?' on':''}" ${attr} style="height:${hp(v,cls!=='tot')}px" title="${esc(tip)}"><span class="cm-v">${v>0.5?cmShort(v):''}</span></button>`;
+  return '<div class="cm-legend"><span><i class="tot"></i>Total inventory (stock at the end)</span><span><i class="in"></i>Stock in</span><span><i class="out"></i>Stock out</span>'+(sep?'<span class="sm">Stock in and stock out are drawn on their own, bigger scale (the inventory is much larger); the value is above every bar.</span>':'')+'</div>'+
+    `<div class="cm-scroll"><div class="cm-inner" style="--cmw:${items.length*(scope==='m'?58:36)}px"><div class="cm-cols">`+items.map(x=>{
+      const ki=mvKey('in',scope,x.key),ko=mvKey('out',scope,x.key);
+      return `<div class="cm-grp">${bar('tot',x.end,scope==='m'?`data-hmon="${x.key}"`:`data-hday="${x.key}"`,false,x.label+' · total inventory '+fmtINR(x.end)+' · click to see the stock of that '+(scope==='m'?'month end':'day')+' in the whole page')}${bar('in',x.inn,`data-mv="${ki}"`,S.open.has(ki),x.label+' · stock in '+fmtINR(x.inn)+' · click for the materials')}${bar('out',x.out,`data-mv="${ko}"`,S.open.has(ko),x.label+' · stock out '+fmtINR(x.out)+' · click for the materials')}</div>`;
+    }).join('')+'</div><div class="cm-labs">'+items.map((x,i)=>`<span>${(items.length-1-i)%step===0?esc(x.label):''}</span>`).join('')+'</div></div></div>';
+}
 function renderHist(){
   const mb=$('byMonthS'),db=$('byDayS');
   if(!LD)return;
+  if(!S.mvAll)S.mvAll={};if(!S.open)S.open=new Set();
   const hint=(el,t)=>{$(el).textContent=t;};
   if(!MV){
     const t=MVERR?'The goods movements could not be read: '+MVERR:'Loading the goods movements of the store locations from SAP (the first time it takes a few minutes; the page works meanwhile)…';
-    mb.innerHTML=db.innerHTML='<div class="empty">'+esc(t)+'</div>';hint('monthHint','');hint('dayHint','');return;
+    mb.innerHTML=db.innerHTML='<div class="empty">'+esc(t)+'</div>';$('ioMonth').innerHTML=$('ioDay').innerHTML='';hint('monthHint','');hint('dayHint','');return;
   }
   const today=LD.asofDay,sr=seriesFor(),m0=monthOf(MV.from),m1=monthOf(today);
   const live=S.stype!==null||S.sp?' The filters Stock type and Stock held do not apply to the history.':'';
-  hint('monthHint','Stock value at the end of every month, with the receipts (stock in) and issues (stock out) of the month, for the filters set now. Click a month to see the stock of that month end below and in the whole page.'+live);
+  hint('monthHint','Stock value at the end of every month, with the receipts (stock in) and issues (stock out) of the month, for the filters set now. One graph: blue = total inventory at the end of the month, green = stock in, red = stock out. Click a month name or a blue bar to see the stock of that month end in the whole page; click a Stock in or Stock out figure (or a green / red bar) to see its materials right there.'+live);
   const months=[];
   for(let m=m1;m>=m0;m--){
     const a=Math.max(MV.from,monthStart(m)),b=Math.min(monthEnd(m),today);
@@ -679,14 +763,16 @@ function renderHist(){
   }
   const sel=S.asof!==null?monthOf(S.asof):null;
   mb.innerHTML='<table><thead><tr><th>Month</th><th class="num">Stock at the end</th><th class="num">Stock in</th><th class="num">Stock out</th><th class="num">Change</th></tr></thead><tbody>'+
-    months.map(x=>`<tr class="${x.m===sel?'sel':''}"><td><button type="button" class="lnk" data-hmon="${x.m}" title="Show the stock as on ${esc(fmtDay(x.endDay))}">${esc(monthName(x.m))}${x.m===m1?' (until today)':''}</button></td><td class="num nw"><b>${fmtINR(x.end)}</b></td><td class="num nw">${fmtINR(x.inn)}</td><td class="num nw">${fmtINR(x.out)}</td><td class="num nw ${x.end-x.start>=0?'up':'dn'}">${x.end-x.start>=0?'+':'-'}${fmtINR(Math.abs(x.end-x.start))}</td></tr>`).join('')+'</tbody></table>';
+    months.map(x=>`<tr class="${x.m===sel?'sel':''}"><td><button type="button" class="lnk" data-hmon="${x.m}" title="Show the stock as on ${esc(fmtDay(x.endDay))}">${esc(monthName(x.m))}${x.m===m1?' (until today)':''}</button></td><td class="num nw"><b>${fmtINR(x.end)}</b></td>${mvCell('in','m',x.m,x.inn)}${mvCell('out','m',x.m,x.out)}<td class="num nw ${x.end-x.start>=0?'up':'dn'}">${x.end-x.start>=0?'+':'-'}${fmtINR(Math.abs(x.end-x.start))}</td></tr>`+mvPanels('m',x.m,5)).join('')+'</tbody></table>';
+  $('ioMonth').innerHTML=comboChart(months.slice().reverse().map(x=>({key:x.m,label:MON3[x.m%12]+' '+String(Math.floor(x.m/12)).slice(2),end:x.end,inn:x.inn,out:x.out})),'m');
   // the days of one month
   if(S.mon===null||S.mon<m0||S.mon>m1)S.mon=S.asof!==null?monthOf(S.asof):m1;
   const a=Math.max(MV.from,monthStart(S.mon)),b=Math.min(monthEnd(S.mon),today),rows=[];
   for(let d=b;d>=a;d--){const x=sr.byDay.get(d)||[0,0];rows.push({d,end:d===today?valueAt(sr,today):valueAt(sr,d),inn:x[0],out:x[1]});}
-  hint('dayHint','Stock value at the end of every day of '+monthName(S.mon)+'. Pick another month in the table on the left; click a day to see the stock of that day in the whole page.'+live);
+  hint('dayHint','Stock value at the end of every day of '+monthName(S.mon)+'. Pick another month in the Month wise stock table above; click a day (or a blue bar) to see the stock of that day in the whole page; click a Stock in or Stock out figure (or a green / red bar) to see its materials right there.'+live);
   db.innerHTML='<table><thead><tr><th>Date</th><th class="num">Stock at the end</th><th class="num">Stock in</th><th class="num">Stock out</th></tr></thead><tbody>'+
-    rows.map(x=>`<tr class="${x.d===S.asof?'sel':''}"><td><button type="button" class="lnk" data-hday="${x.d}" title="Show the stock as on ${esc(fmtDay(x.d))}">${esc(fmtDay(x.d))}</button></td><td class="num nw"><b>${fmtINR(x.end)}</b></td><td class="num nw">${x.inn?fmtINR(x.inn):'–'}</td><td class="num nw">${x.out?fmtINR(x.out):'–'}</td></tr>`).join('')+'</tbody></table>';
+    rows.map(x=>`<tr class="${x.d===S.asof?'sel':''}"><td><button type="button" class="lnk" data-hday="${x.d}" title="Show the stock as on ${esc(fmtDay(x.d))}">${esc(fmtDay(x.d))}</button></td><td class="num nw"><b>${fmtINR(x.end)}</b></td>${mvCell('in','d',x.d,x.inn)}${mvCell('out','d',x.d,x.out)}</tr>`+mvPanels('d',x.d,4)).join('')+'</tbody></table>';
+  $('ioDay').innerHTML=comboChart(rows.slice().reverse().map(x=>({key:x.d,label:String(new Date(x.d*DAYMS).getUTCDate()),end:x.end,inn:x.inn,out:x.out})),'d');
 }
 // date to date (user, 3-Nov-2026): for the period From date ... To date, every material with its opening stock (the end of the day before From), what came in, what went out and the closing stock
 function renderRange(){
@@ -743,7 +829,7 @@ async function loadMoves(force){
     const g=await LIVE.get('/api/stockmoves',force);
     if(g.same)return;
     if(!g.res.ok)throw new Error((g.j&&g.j.error)||('HTTP '+g.res.status));
-    MV=g.j;MODEL=null;MVERR='';
+    MV=g.j;MV.rows=MV.rows.filter(r=>EXCL_PLANTS.indexOf(MV.locs[r[0]][0])<0&&!isRM(MV.prods[r[1]][0]));MODEL=null;MVERR='';
     if(S.asof!==null){setData(asOfData(Math.max(MV.from-1,S.asof)));syncAsOf();}
     render();
   }catch(e){MVERR=e.message==='Failed to fetch'?'the dashboard server is not running':e.message;renderHist();}
@@ -769,6 +855,7 @@ async function load(force,auto){
     const g=await LIVE.get('/api/stock',force),res=g.res,j=g.j;
     if(g.same){setLive('ok','Live from SAP · updated '+hhmm(g.stamp)+' · '+fmtN(R.length)+' stock lines'+(S.asof!==null?' · stock as on '+fmtDay(S.asof):''));loadMoves(false);return;}
     if(!res.ok)throw new Error(j.error||('HTTP '+res.status));
+    j.rows=j.rows.filter(a=>EXCL_PLANTS.indexOf(j.plants[a[1]])<0&&!isRM(j.prods[a[0]][0],j.ptypes[a[4]]));if(j.listed)j.listed=j.listed.filter(l=>EXCL_PLANTS.indexOf(l[0])<0);
     LD=j;MODEL=null;
     setData(S.asof!==null&&MV?asOfData(S.asof):j);applyLink();syncAsOf();render();
     if(S.reveal){const id=S.reveal;S.reveal=null;setTimeout(()=>reveal(id),150);}

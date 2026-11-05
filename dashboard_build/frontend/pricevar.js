@@ -55,6 +55,7 @@
 (function () {
   var STORE_MT = ['ZCON', 'ZHMI', 'ZSPR', 'ZSRM', 'ZVRP'];
   var RM_MT = ['ZRMA'];
+  var INCLUDE_RM = false;                   // user, 4-Nov-2026: "isme se RM hta do, price variance me": the RM lines are left out of the price variance (set true to bring them back)
   var RM_CODE = '11';                       // the 11 series of the material number = raw material
   var RM_PG = ['020'];                      // purchasing group 020 = VP Purchase, the RM purchase
   var RM_PO = ['ZDRM', 'ZIRM', 'ZTRD'];     // the purchase orders it buys on (a stock transport order ZSTO is not a purchase)
@@ -116,6 +117,7 @@
       if (o.to !== null && day > o.to) continue;
       var plant = po.plants[a[6]];
       if (o.plant && plant !== o.plant) continue;
+      if (!INCLUDE_RM && grpOf(a) === 'RM') continue;
       if (EXCLUDE_LOCS.indexOf(po.slocs[a[7]] || '') >= 0) { excluded++; continue; }
       if (GRAM_UNITS.indexOf(String(po.units[a[13]] || '').toUpperCase()) >= 0 && METAL_RE.test(po.texts[a[9]] || '')) { excludedGram++; continue; }
       var mt = po.mtypes[a[11]];

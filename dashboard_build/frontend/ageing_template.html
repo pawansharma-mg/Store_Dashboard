@@ -129,7 +129,7 @@ tr.tlrow>td{padding:4px 6px 14px!important;background:transparent!important}
 <nav class="nav"><a href="/summary">Summary</a><a href="/issue">Store Issue</a><a href="/asset">Capital Issue</a><a href="/stock">Store Stock</a><a href="/">Pending PR</a><a href="/po">Pending Purchase Orders</a><a href="/po-approval">PO Approval Pending</a><a href="/invoice">Pending Invoice Entry</a><a href="/purchase">Purchase</a><a href="/price">Price Variance</a><a href="/ageing" class="on">Payment Ageing</a></nav></div>
 <div class="wrap">
   <section class="bar" aria-label="Filters">
-    <label class="fld"><span>Party type</span><select id="tySel"><option value="">All parties</option><option value="Store">Store</option><option value="RM">RM (raw material)</option><option value="Employees">Employees</option><option value="Group">Group companies</option><option value="Others">Others</option></select></label>
+    <label class="fld"><span>Party type</span><select id="tySel"><option value="">All parties</option><option value="Store">Store</option><option value="Employees">Employees</option><option value="Others">Others</option></select></label>
     <label class="fld"><span>Sort the lists by</span><select id="sortSel"><option value="amt">Biggest amount</option><option value="old">Oldest unpaid first</option><option value="pd">Biggest past due amount</option></select></label>
     <label class="fld grow"><span>Search party</span><input id="q" type="search" placeholder="Party name, number, city or GSTIN"></label>
   </section>
@@ -137,7 +137,7 @@ tr.tlrow>td{padding:4px 6px 14px!important;background:transparent!important}
 
   <section class="card" style="margin-top:12px">
     <h2>Party type wise</h2>
-    <p class="hint">Store = parties we buy Store items from, RM = raw material suppliers, Employees = the employee accounts, Group companies = the Mittal companies, Others = everything else (services, banks, deposits, old parties). Click a row to filter the two lists.</p>
+    <p class="hint">Store = parties we buy Store items from, Employees = the employee accounts, Others = everything else (services, banks, deposits, old parties). The raw material (RM) suppliers and the group companies (Mittal Coin, Mittal Appliances) are not taken. Click a row to filter the two lists.</p>
     <div class="tbox" id="byTy" style="max-height:none"></div>
   </section>
 
@@ -166,7 +166,7 @@ tr.tlrow>td{padding:4px 6px 14px!important;background:transparent!important}
       <div class="tbox plist" id="get"></div>
     </article>
   </section>
-  <details class="notebox"><summary>Notes about these figures</summary><p class="note">Click a party to see its open items (posting date, document, reference, text, due date) and the materials it delivered. SAP's open items do not say which material an invoice is for; the material list is what the party delivered on its purchase orders since 1 Jan 2026 (the PO data of the Pending Purchase Orders page: delivered quantity and delivered value), so it shows what the money was most likely spent on. For the employee accounts the dates are what matters: a debit item is what the company gave (an advance or a payment) on its posting date, a credit item is what was taken back or settled on its posting date. The Dates column of the two lists shows the posting dates of the items that make up the amount (To give: the open invoices and credits; To get: the debit items, what was given). How a party gets its type: a type written in <code>backend/data/party_types.csv</code> (Supplier, Type) wins; then the account group EMPL = Employees; then a name that starts with Mittal Coin or Mittal Appliance = Group companies; then the party's purchase orders since 1 Jan 2026 (Store material types ZCON, ZHMI, ZSPR, ZSRM, ZVRP or purchasing group 010 Store Purchase = Store; PO type ZDRM or ZIRM or material type ZRMA = RM; both = the one with more items); then the account group ZIRM or a name with (R.M) or RM Purchase = RM; all the rest = Others. A party without a purchase order in 2026 is therefore usually in Others. One line per party (supplier or customer account). The amount is the sum of all its open items of both companies (Mittal Appliances Limited 1000 and Mittal Coin Pvt Ltd 2000), in INR, as in SAP's vendor line item list: invoices and credits add up to what we owe, payments and advances that are not cleared yet reduce it. A party whose total is positive is in "To give", a party whose total is negative (we paid more than we owe: an advance, a payment not matched to an invoice) is in "To get". Amounts under 50 paise are left out. The group's own companies (Mittal Coin Pvt Ltd, Mittal Appliances Limited) and employee accounts are listed like any party. Data is refreshed from SAP at most every 30 minutes, or with the Refresh button.</p></details>
+  <details class="notebox"><summary>Notes about these figures</summary><p class="note">Click a party to see its open items (posting date, document, reference, text, due date) and the materials it delivered. SAP's open items do not say which material an invoice is for; the material list is what the party delivered on its purchase orders since 1 Jan 2026 (the PO data of the Pending Purchase Orders page: delivered quantity and delivered value), so it shows what the money was most likely spent on. For the employee accounts the dates are what matters: a debit item is what the company gave (an advance or a payment) on its posting date, a credit item is what was taken back or settled on its posting date. The Dates column of the two lists shows the posting dates of the items that make up the amount (To give: the open invoices and credits; To get: the debit items, what was given). How a party gets its type: a type written in <code>backend/data/party_types.csv</code> (Supplier, Type) wins; then the account group EMPL = Employees; then a name that starts with Mittal Coin or Mittal Appliance = Group company (not taken); then the party's purchase orders since 1 Jan 2026 (Store material types ZCON, ZHMI, ZSPR, ZSRM, ZVRP or purchasing group 010 Store Purchase = Store; raw material items (material of the 11 series, material type ZRMA, PO type ZDRM or ZIRM, purchasing group 020 on a trading PO; the server sends how many of these each supplier has) = RM, not taken; both = the one with more items); then the account group ZIRM or a name with (R.M) or RM Purchase = RM (not taken); all the rest = Others. A party without a purchase order in 2026 is therefore usually in Others. One line per party (supplier or customer account). The amount is the sum of all its open items of both companies (Mittal Appliances Limited 1000 and Mittal Coin Pvt Ltd 2000), in INR, as in SAP's vendor line item list: invoices and credits add up to what we owe, payments and advances that are not cleared yet reduce it. A party whose total is positive is in "To give", a party whose total is negative (we paid more than we owe: an advance, a payment not matched to an invoice) is in "To get". Amounts under 50 paise are left out. Employee accounts are listed like any party; the group's own companies (Mittal Coin Pvt Ltd, Mittal Appliances Limited) and the RM suppliers are left out. Data is refreshed from SAP at most every 30 minutes, or with the Refresh button.</p></details>
 </div>
 <footer class="footer">Mittal Group · Payment Ageing · Source: SAP S/4HANA Cloud, YY1_STORE_VENDOR_AGEING_CDS</footer>
 
@@ -176,22 +176,22 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtN=n=>Math.round(n).toLocaleString('en-IN');
 function fmtINR(v){const a=Math.abs(v),s=v<0?'−':'';if(a>=1e7)return s+'₹'+(a/1e7).toFixed(2)+' Cr';if(a>=1e5)return s+'₹'+(a/1e5).toFixed(2)+' L';return s+'₹'+Math.round(a).toLocaleString('en-IN');}
-let D=null,P=[],q='',ty='',POI=null,POJ=null,POS=new Map(),PM=new Map(),OPENP=new Set(),SORT='amt',AB={g:null,t:null};
+let D=null,P=[],ALLP=[],q='',ty='',POI=null,POJ=null,POS=new Map(),PM=new Map(),OPENP=new Set(),SORT='amt',AB={g:null,t:null};
 // ageing: To give = what is still unpaid by days past the due date; To get = what was given and is not settled by days since the posting date.
 // The payments / debit items that are not cleared yet are set against the oldest invoices first (a party's open items always net to its amount).
 const EDGES=[0,30,60,90,180,365],GL=['Not yet due','1–30 d','31–60 d','61–90 d','91–180 d','181–365 d','Over 1 yr'],TL=['Today','1–30 d','31–60 d','61–90 d','91–180 d','181–365 d','Over 1 yr'];
 const bkt=n=>{for(let i=0;i<EDGES.length;i++)if(n<=EDGES[i])return i;return EDGES.length;};
 const dpill=(n,i,tip,notdue)=>`<span class="agep a${i}" title="${esc(tip||'')}">${notdue&&n<=0?'not due':fmtN(Math.max(0,n))+' d'}</span>`;
 const panId=id=>'pp-'+String(id).replace(/[^A-Za-z0-9]/g,'_');
-const TYPES=['Store','RM','Employees','Group','Others'];
+const TYPES=PARTY.SHOW;   // the types that are listed; RM parties and the group companies are not taken (PARTY in live.js)
 const TNAME={Store:'Store',RM:'RM (raw material)',Employees:'Employees',Group:'Group companies',Others:'Others'};
 const STORE_MT=['ZCON','ZHMI','ZSPR','ZSRM','ZVRP'];
 // a link can open the page on one type: /ageing?ty=RM (Store, RM, Employees, Group, Others)
 try{const v=new URLSearchParams(location.search).get('ty');if(TYPES.includes(v))ty=v;}catch(e){}
-const fmtDay=d=>d===null||d===undefined?'–':new Date(d*864e5).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric',timeZone:'UTC'});
+const fmtDay=d=>d===null||d===undefined?'–':new Date(d*864e5).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric',timeZone:'UTC'}).replace('Sept','Sep');
 const tile=(big,label)=>`<div class="tile"><div class="tv">${big}</div><div class="tl">${esc(label)}</div></div>`;
 // one table: the parties, the biggest first, with the exact rupees on hover
-const fmtDayS=d=>new Date(d*864e5).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit',timeZone:'UTC'});
+const fmtDayS=d=>new Date(d*864e5).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit',timeZone:'UTC'}).replace('Sept','Sep');
 function dates(p,sign){
   const a=sign>0?p.cmin:p.dmin,b=sign>0?p.cmax:p.dmax;
   if(a===null||a===undefined)return '–';
@@ -336,8 +336,8 @@ function setData(d){
       else{if(p.dmin===null||a[0]<p.dmin)p.dmin=a[0];if(p.dmax===null||a[0]>p.dmax)p.dmax=a[0];}
     }
   }
-  P=[...m.values()];PM=m;
-  for(const p of P)calcAge(p);
+  ALLP=[...m.values()];PM=m;
+  for(const p of ALLP)calcAge(p);
   classifyAll();
 }
 function calcAge(p){
@@ -364,25 +364,13 @@ function calcAge(p){
   }
 }
 // the type of a party: the hand-made list, the employee account group, the Mittal companies, its purchase orders (Store or RM), then the RM account group / name
-function classify(p){
-  const mine=D.partyTypes&&D.partyTypes[p.id];if(mine&&TYPES.includes(mine))return mine;
-  if(p.grp==='EMPL')return 'Employees';
-  if(/^mittal (coin|appliance)/i.test(p.name))return 'Group';
-  const i=POI&&POI.get(p.id);
-  if(i&&(i[0]||i[1]))return i[1]&&i[1]>=i[0]?'RM':'Store';
-  if(p.grp==='ZIRM'||/\(R\.?M\b|\bRM Purchase|\(RM\)/i.test(p.name))return 'RM';
-  return 'Others';
-}
-function classifyAll(){for(const p of P){p.type=classify(p);p.hay=(p.name+' '+p.id+' '+p.city+' '+p.gstin+' '+TNAME[p.type]).toLowerCase();}}
+function classify(p){return PARTY.type(p,D.partyTypes&&D.partyTypes[p.id],POI);}
+// P = the parties that are listed (RM parties and group companies are dropped), ALLP = every party of SAP
+function classifyAll(){for(const p of ALLP){p.type=classify(p);p.hay=(p.name+' '+p.id+' '+p.city+' '+p.gstin+' '+TNAME[p.type]).toLowerCase();}P=ALLP.filter(p=>PARTY.shown(p.type));}
 // the purchase orders of every supplier (PO data since 1 Jan 2026): [Store items, RM items]
 function setPO(j){
-  POI=new Map();POJ=j;POS=new Map();
-  for(const a of j.rows){
-    const id=j.suppliers[a[5]][0];let i=POI.get(id);if(!i)POI.set(id,i=[0,0]);
-    let l=POS.get(id);if(!l)POS.set(id,l=[]);l.push(a);
-    if(STORE_MT.includes(j.mtypes[a[11]])||j.pgs[a[19]]==='010')i[0]++;
-    const pt=j.types[a[4]];if(pt==='ZDRM'||pt==='ZIRM'||j.mtypes[a[11]]==='ZRMA')i[1]++;
-  }
+  POI=PARTY.info(j);POJ=j;POS=new Map();
+  for(const a of j.rows){const id=j.suppliers[a[5]][0];let l=POS.get(id);if(!l)POS.set(id,l=[]);l.push(a);}
   if(D){classifyAll();render();}
 }
 function setLive(kind,text){$('liveDot').style.background=kind==='ok'?'var(--good)':kind==='err'?'var(--crit)':'var(--warn)';$('liveTxt').textContent=text;$('refresh').disabled=kind==='busy';}
@@ -396,9 +384,12 @@ async function load(force,auto){
     const g=await LIVE.get('/api/ageing',force),res=g.res,j=g.j;
     if(g.same){setLive('ok','Live from SAP · updated '+hhmm(g.stamp)+' · '+fmtN(P.length)+' parties');poP.then(p=>{if(p)setPO(p);});return;}
     if(!res.ok)throw new Error(j.error||('HTTP '+res.status));
-    setData(j);render();
+    setData(j);
+    // the RM parties are found with the PO data, so the lists wait for it (at most 20 seconds) instead of showing them for a moment
+    if(!POI){const x=await Promise.race([poP,new Promise(r=>setTimeout(()=>r(null),20000))]);if(x)setPO(x);}
+    render();
     setLive('ok','Live from SAP · updated '+hhmm(j.fetchedAt)+' · '+fmtN(P.length)+' parties');
-    poP.then(x=>{if(x)setPO(x);});
+    poP.then(x=>{if(x&&x!==POJ)setPO(x);});
   }catch(e){
     const msg=e.message==='Failed to fetch'?'The dashboard server is not running. Start it again with Start_Live_Dashboard.bat.':e.message;
     setLive('err',msg);

@@ -44,3 +44,38 @@
   }
   window.AGE = { EDGES: EDGES, LABELS: LABELS, N: LABELS.length, bucket: bucket, label: function (d) { return LABELS[bucket(d)]; }, pill: pill, words: words };
 })();
+
+// Payment Ageing parties: the type of a party, the same on the Payment Ageing page and on the Summary.
+// RM (raw material) parties and the Group companies (Mittal Coin, Mittal Appliances) are NOT taken: only the types in SHOW are listed and counted
+// (user, 5-Nov-2026: "payment ageing se bhi RM & Group companies remove kro").
+(function () {
+  var ALL = ['Store', 'RM', 'Employees', 'Group', 'Others'];
+  var SHOW = ['Store', 'Employees', 'Others'];
+  var STORE_MT = ['ZCON', 'ZHMI', 'ZSPR', 'ZSRM', 'ZVRP'];
+  // supplier number -> [Store items, RM items] of the PO data (/api/po); the RM items the server does not send any more come as po.rmSuppliers
+  function info(po) {
+    var m = new Map();
+    function get(id) { var i = m.get(id); if (!i) m.set(id, i = [0, 0]); return i; }
+    if (!po) return m;
+    po.rows.forEach(function (a) {
+      var i = get(po.suppliers[a[5]][0]);
+      if (STORE_MT.indexOf(po.mtypes[a[11]]) >= 0 || po.pgs[a[19]] === '010') i[0]++;
+      var pt = po.types[a[4]]; if (pt === 'ZDRM' || pt === 'ZIRM' || po.mtypes[a[11]] === 'ZRMA') i[1]++;
+    });
+    var rs = po.rmSuppliers || {};
+    Object.keys(rs).forEach(function (id) { get(id)[1] += rs[id]; });
+    return m;
+  }
+  // p = {id, name, grp (account group)}; mine = the type written in backend/data/party_types.csv; poi = info(po)
+  // order: the hand-made list, the employee account group, the Mittal companies, its purchase orders (Store or RM, the one with more items), then the RM account group / name
+  function type(p, mine, poi) {
+    if (mine && ALL.indexOf(mine) >= 0) return mine;
+    if (p.grp === 'EMPL') return 'Employees';
+    if (/^mittal (coin|appliance)/i.test(p.name || '')) return 'Group';
+    var i = poi && poi.get(p.id);
+    if (i && (i[0] || i[1])) return i[1] && i[1] >= i[0] ? 'RM' : 'Store';
+    if (p.grp === 'ZIRM' || /\(R\.?M\b|\bRM Purchase|\(RM\)/i.test(p.name || '')) return 'RM';
+    return 'Others';
+  }
+  window.PARTY = { ALL: ALL, SHOW: SHOW, info: info, type: type, shown: function (t) { return SHOW.indexOf(t) >= 0; } };
+})();

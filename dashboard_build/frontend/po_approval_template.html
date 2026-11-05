@@ -107,7 +107,7 @@ tr.subrow th,tr.subrow td{border-bottom:1px solid var(--grid);padding:4px 10px;b
 <div class="stick"><header class="top">
   <div class="brand"><img class="logo" src="/logo.png" alt="Mittal Group"><div>
     <h1>Mittal Group</h1>
-    <p class="sub">PO Approval Pending · purchase orders created since 1 Jan 2026 that are In Approval in SAP. Source: S/4HANA Cloud, YY1_PO_ITEM_SUPPLIER_CDS.</p>
+    <p class="sub">PO Approval Pending · every purchase order that waits for approval in SAP (raw material too), and the person each one waits for. Source: S/4HANA Cloud, YY1_PO_PENDING_APPROVAL_CDS (the open tasks of the PO release workflow) and YY1_PO_ITEM_SUPPLIER_CDS (the items of these POs).</p>
   </div></div>
   <div class="tools">
     <div class="live"><span class="dot" id="liveDot" style="background:var(--warn)"></span><span id="liveTxt">Connecting to SAP…</span></div>
@@ -118,11 +118,10 @@ tr.subrow th,tr.subrow td{border-bottom:1px solid var(--grid);padding:4px 10px;b
 <nav class="nav"><a href="/summary">Summary</a><a href="/issue">Store Issue</a><a href="/asset">Capital Issue</a><a href="/stock">Store Stock</a><a href="/">Pending PR</a><a href="/po">Pending Purchase Orders</a><a href="/po-approval" class="on">PO Approval Pending</a><a href="/invoice">Pending Invoice Entry</a><a href="/purchase">Purchase</a><a href="/price">Price Variance</a><a href="/ageing">Payment Ageing</a></nav></div>
 <div class="wrap">
   <section class="bar" aria-label="Filters">
-    <label class="fld"><span>Show</span><select id="showSel"><option value="appr">Pending (In Approval, state 03)</option><option value="rel">On the old SAP list, released now (state 05)</option><option value="other">Rejected (state 08)</option><option value="all">All</option></select></label>
     <label class="fld"><span>Plant</span><select id="plantSel"></select></label>
     <label class="fld"><span>PO type</span><select id="typeSel"></select></label>
     <label class="fld"><span>Approver</span><select id="apprSel"></select></label>
-    <label class="fld"><span>Purch. group</span><select id="pgSel"></select></label>
+    <label class="fld"><span>Purchasing group</span><select id="pgSel"></select></label>
     <label class="fld"><span>Created by</span><select id="userSel"></select></label>
     <label class="fld"><span>Pending for</span><select id="ageSel"></select></label>
     <label class="fld"><span>PO creation date from</span><input id="dFrom" type="date"></label>
@@ -141,52 +140,46 @@ tr.subrow th,tr.subrow td{border-bottom:1px solid var(--grid);padding:4px 10px;b
 
   <section class="grid">
     <article class="card">
-      <h2><span class="sec-badge">1</span>Pending for how long</h2>
-      <p class="hint">Days since the PO was created. Click a row to filter everything.</p>
-      <div class="tbox" id="byAge"></div>
-    </article>
-    <article class="card">
-      <h2><span class="sec-badge">2</span>Approver wise</h2>
+      <h2><span class="sec-badge">1</span>Approver wise</h2>
       <p class="hint" id="apprHint">Click an approver to filter everything.</p>
       <div class="tbox" id="byAppr"></div>
     </article>
     <article class="card">
-      <h2><span class="sec-badge">3</span>Created by</h2>
+      <h2><span class="sec-badge">2</span>Created by</h2>
       <p class="hint">Click a user to filter everything.</p>
       <div class="tbox" id="byUser"></div>
     </article>
     <article class="card">
-      <h2><span class="sec-badge">4</span>PO type wise</h2>
+      <h2><span class="sec-badge">3</span>PO type wise</h2>
       <p class="hint">Click a PO type to filter everything.</p>
       <div class="tbox" id="byType"></div>
     </article>
     <article class="card">
-      <h2><span class="sec-badge">5</span>Plant wise</h2>
+      <h2><span class="sec-badge">4</span>Plant wise</h2>
       <p class="hint">Click a plant to filter everything.</p>
       <div class="tbox" id="byPlant"></div>
     </article>
     <article class="card">
-      <h2><span class="sec-badge">6</span>Supplier wise</h2>
+      <h2><span class="sec-badge">5</span>Supplier wise</h2>
       <p class="hint">Click a supplier to filter everything.</p>
       <div class="tbox" id="bySup"></div>
     </article>
     <article class="card">
-      <h2><span class="sec-badge">7</span>Purchasing group wise</h2>
-      <p class="hint">Purchasing organisation / group of the PO. The likely approver follows this pair. Click a row to filter.</p>
+      <h2><span class="sec-badge">6</span>Purchasing group wise</h2>
+      <p class="hint">Purchasing organisation / group of the PO. Click a row to filter.</p>
       <div class="tbox" id="byPg"></div>
     </article>
   </section>
 
   <section class="card tablecard">
-    <h2><span class="sec-badge">8</span>Purchase orders waiting for approval</h2>
+    <h2><span class="sec-badge">7</span>Purchase orders waiting for approval</h2>
     <p class="hint" id="tcount"></p>
     <div class="tscroll"><table id="tbl"></table></div>
     <div class="pager"><span id="pinfo"></span><div><button class="btn" id="seeAll" type="button">See all</button></div></div>
   </section>
-  <details class="notebox"><summary>Notes about these figures</summary><p class="note">The page lists only the pending POs: a PO is "In approval" when its processing state in the SAP view is 03 (state 05 = release complete, so it is not pending). This matches the SAP app Manage Purchase Orders with Status = In Approval (checked for September 2026: 3 POs). POs in state 08 are Rejected in SAP (checked against an export of the SAP Purchase Order Items list: all 5 rejected items are state 08), so they are kept apart ("Show" filter). The oldest PO is shown first, and the age counts calendar days from the PO creation date. Click the item count of a PO to see its items. Values are the net order value in INR; a PO in another currency shows its own currency and is not added into the INR totals.
-  The approver is not in any SAP view the dashboard can read, so it comes from a list exported from the Manage Purchase Orders app (Status = In Approval, then Export to Excel) and saved as po_approvers.xlsx in the dashboard_build/backend/data folder; it is read again on every refresh. The list is a snapshot, so it goes out of date: a PO that was On the list but shows state 05 now has been approved since (or, rarely, it was changed after its release and is In Approval again in SAP while the data view still says released). Such POs are not counted as pending; "Show: On the old SAP list, released now (state 05)" lists them. Likely approver (shown as ~ name in italics): the approver is decided by SAP's workflow, which the dashboard cannot read. The likely approver comes from po_approver_rules.csv: the approver list sent on 18-Oct-2026 (how many POs each approver has pending) was matched with the purchasing group, PO type and value of the POs in approval, and the POs SAP showed with a known approver. It reproduces those counts, but it is an inference, not a confirmed approver; the hover on ~ name gives the basis and how strong it is. The PO creation date starts as the whole current month and moves to the next month by itself; change it (or clear it with the x on its chip) to see older POs. Data is refreshed from SAP at most every 30 minutes, or with the Refresh button.</p></details>
+  <details class="notebox"><summary>Notes about these figures</summary><p class="note">The page lists every purchase order that SAP's release workflow has an open task for (the view YY1_PO_PENDING_APPROVAL_CDS: one row per open task, status READY, step ReleasePO), with no date, plant or material rule: raw material (RM) purchase orders and internal stock transfers are shown here too, although the other pages of the dashboard do not take them (user, 5-Nov-2026). The date fields start empty, so all pending POs show; fill them to look at the POs created in a period. The approver is the person the task waits with (the field Recipient, a SAP user id such as CB9980000039); the name is written from the user list of the dashboard (backend/pr_data.py, USER_NAMES), and an id that is not in the list is shown as it is. A PO that waits for two people is listed as "A + B". The items, the supplier, the plant and the value of a PO are read from SAP for exactly these POs (YY1_PO_ITEM_SUPPLIER_CDS). "Pending" counts calendar days from the PO creation date; "With approver since" is the day the task reached the approver and how many days ago that was. Click the item count of a PO to see its items. Values are the net order value in INR; a PO in another currency shows its own currency and is not added into the INR totals. Data is refreshed from SAP at most every 30 seconds while the page is open, or with the Refresh button.</p></details>
 </div>
-<footer class="footer">Mittal Group · PO Approval Pending · Source: SAP S/4HANA Cloud, YY1_PO_ITEM_SUPPLIER_CDS</footer>
+<footer class="footer">Mittal Group · PO Approval Pending · Source: SAP S/4HANA Cloud, YY1_PO_PENDING_APPROVAL_CDS</footer>
 
 <script id="users" type="application/json">__USERS__</script>
 <script id="pgs" type="application/json">__PGS__</script>
@@ -200,31 +193,27 @@ const pgName=c=>PG_NAMES[c]||c;
 const pgTip=c=>'Purchasing group '+c+(PG_NAMES[c]?'':' (no description yet)');
 const pgDisp=key=>{const i=key.indexOf(' / ');return i<0?key:key.slice(0,i)+' / '+pgName(key.slice(i+3));};
 const uTip=id=>USER_NAMES[id]?id+(USER_NAMES[id][1]?' ('+USER_NAMES[id][1]+')':''):id;
-const PO_TYPES={NB:'Standard PO',NB2:'Enh.Ret.to Supplier',UB:'Stock Transp. Order',UD:'StockTranspOrderDel',ZAST:'Asset PO',ZBNG:'Prepaid Bank Guarant',ZDNB:'Domestic-Others',ZDRM:'Domestic PO - Raw',ZIMP:'Import PO - Others',ZIRM:'Import PO - Raw',ZPRE:'Prepaid Expenses',ZPRI:'Prepaid Insurance',ZSER:'Service PO',ZSTO:'STO PO',ZSUB:'Sub Contracting PO',ZTRD:'Trading PO'};
+const PO_TYPES={NB:'Standard PO',NB2:'Enhanced Return to Supplier',UB:'Stock Transport Order',UD:'Stock Transport Order (Delivery)',ZAST:'Asset PO',ZBNG:'Prepaid Bank Guarantee',ZDNB:'Domestic PO - Others',ZDRM:'Domestic PO - Raw Material',ZIMP:'Import PO - Others',ZIRM:'Import PO - Raw Material',ZPRE:'Prepaid Expenses',ZPRI:'Prepaid Insurance',ZSER:'Service PO',ZSTO:'Stock Transfer PO',ZSUB:'Subcontracting PO',ZTRD:'Trading PO'};
 const typeName=t=>PO_TYPES[t]?t+' · '+PO_TYPES[t]:t;
-const procName=s=>s==='03'?'In approval':s==='08'?'Rejected':s==='05'?'Released':s==='02'?'Active':s;
 const typeShort=t=>PO_TYPES[t]?t+' · '+PO_TYPES[t].replace(/\s*\(.*$/,''):t;  // the dropdown shows the SAP name only, the tables show the meaning too
 const AGES=['0–2 days','3–7 days','8–15 days','16–30 days','31–90 days','Over 90 days'];
 const ageBucket=a=>a<=2?0:a<=7?1:a<=15?2:a<=30?3:a<=90?4:5;
-const UNKNOWN='(not on the approver list)';
 const PAGE=25;
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtN=n=>Math.round(n).toLocaleString('en-IN');
 function fmtINR(v){const a=Math.abs(v);if(a>=1e7)return '₹'+(v/1e7).toFixed(2)+' Cr';if(a>=1e5)return '₹'+(v/1e5).toFixed(2)+' L';return '₹'+Math.round(v).toLocaleString('en-IN');}
 const fmtAmt=(v,cur)=>cur==='INR'?fmtINR(v):v.toLocaleString('en-IN',{maximumFractionDigits:2})+' '+cur;
-const fmtDay=d=>new Date(d*864e5).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric',timeZone:'UTC'});
+const fmtDay=d=>new Date(d*864e5).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric',timeZone:'UTC'}).replace('Sept','Sep');
 const dayOf=v=>v?Math.floor(Date.parse(v)/864e5):null;
 const iso=d=>new Date(d*864e5).toISOString().slice(0,10);
-function setMonthDates(){const t=new Date(D.asofDay*864e5);const y=t.getUTCFullYear(),m=t.getUTCMonth();const a=Date.UTC(y,m,1)/864e5,b=Date.UTC(y,m+1,0)/864e5;S.from=a;S.to=b;$('dFrom').value=iso(a);$('dTo').value=iso(b);}
 
-let D=null,P=[],AP={},RULES=[],APINFO={file:'',savedAt:0},CUR=null,tileToken=0;
-// show: 'appr' = pending, In Approval (state 03), 'rel' = on the saved SAP list but released now (state 05), 'other' = release not completed but not In Approval (state 08), 'all'
-const S={tile:null,tileAll:false,all:false,show:'appr',plant:'',type:null,user:null,appr:null,pg:null,age:null,sup:null,from:null,to:null,q:'',page:0};
+// T = the open approval tasks (/api/po-approval), D = the items of these POs (T.po, the layout of /api/po), P = the POs that wait for approval (built from both), LEFT = tasks of POs without items
+let D=null,T=null,P=[],LEFT={rm:0,nodata:0},CUR=null,tileToken=0;
+const S={tile:null,tileAll:false,all:false,plant:'',type:null,user:null,appr:null,pg:null,age:null,sup:null,from:null,to:null,q:'',page:0};
 const OPEN=new Set();
 
 function pass(p,skip){
   skip=skip||[];
-  if(S.show!=='all'&&p.group!==S.show)return false;
   if(!skip.includes('plant')&&S.plant&&!p.plants.has(S.plant))return false;
   if(!skip.includes('type')&&S.type!==null&&p.type!==S.type)return false;
   if(!skip.includes('user')&&S.user!==null&&p.user!==S.user)return false;
@@ -250,7 +239,6 @@ function aggTable(list,head,cell,sel){
 const byCount=m=>[...m.entries()].sort((a,b)=>b[1].n-a[1].n||b[1].amt-a[1].amt);
 const supName=i=>D.suppliers[i][1]||D.suppliers[i][0];
 const supLabel=i=>supName(i)+' ('+D.suppliers[i][0]+')';
-const SHOW_TXT={appr:'In approval',rel:'released now (state 05)',other:'Rejected (state 08)',all:'All groups'};
 
 function poValue(p){
   const parts=[];if(p.amt||!p.fx.size)parts.push(fmtINR(p.amt));
@@ -259,7 +247,7 @@ function poValue(p){
 }
 
 const byValue=m=>[...m.entries()].sort((a,b)=>b[1].amt-a[1].amt||b[1].n-a[1].n);
-const apprCell=p=>p.approver?`<b>${esc(p.approver)}</b>${p.proc==='03'?'':' *'}`:p.likely?`<i title="${esc('Likely, not confirmed. '+p.likely.basis)}">~ ${esc(p.likely.approver)}</i>`:'–';
+const apprCell=p=>`<b title="${esc(p.ids.map(uTip).join(', '))}">${esc(p.approver)}</b>`;
 const poHead=first=>`<thead><tr><th>${first}</th><th>PO</th><th>Created on</th><th class="num">Pending</th><th>Supplier</th><th>PO type</th><th>Plant</th><th class="num">Items</th><th class="num">Net value</th><th>Approver</th></tr></thead>`;
 const poRow=(p,i)=>`<tr><td>${i+1}</td><td class="nw">${esc(p.po)}</td><td class="nw">${fmtDay(p.day)}</td><td class="num"><span class="pill a${p.bucket}">${fmtN(p.age)} d</span></td><td title="${esc('Supplier '+D.suppliers[p.sup][0])}">${esc(supName(p.sup))}</td><td title="${esc(typeName(p.type))}">${esc(typeShort(p.type))}</td><td class="nw">${esc(p.plant)}</td><td class="num">${fmtN(p.items.length)}</td><td class="num nw">${poValue(p)}</td><td class="nw">${apprCell(p)}</td></tr>`;
 const shareOf=(v,t)=>t?(v/t*100).toFixed(1)+'%':'–';
@@ -269,7 +257,7 @@ const TILE_INFO={
   items:['PO items','Every PO item of the POs of the current filters, most value first.'],
   sups:['Suppliers','Suppliers of the POs of the current filters, most net value first.'],
   oldest:['Waiting the longest','How long the POs have waited (days since the PO was created), and the 10 that have waited longest.'],
-  appr:['Approvers','Who the POs wait for: confirmed (the approver list) and likely (a rule, not confirmed), one row per approver, most POs first.']
+  appr:['Approvers','Who the POs wait for in the release workflow of SAP, one row per approver, most POs first.']
 };
 function renderTile(){
   const k=S.tile;
@@ -297,17 +285,15 @@ function renderTile(){
     thead='<thead><tr><th>#</th><th>Supplier</th><th>GSTIN</th><th class="num">POs</th><th class="num">Items</th><th class="num">Net value</th><th class="num">Waiting longest</th><th class="num">Share</th></tr></thead>';
     rowFn=([s,x],i)=>`<tr><td>${i+1}</td><td>${esc(supLabel(s))}</td><td class="nw">${esc(D.suppliers[s][2]||'–')}</td><td class="num">${fmtN(x.n)}</td><td class="num">${fmtN(x.items)}</td><td class="num nw"><b>${x.amt===0&&x.fx>0?'other cur.':fmtINR(x.amt)}</b></td><td class="num nw">${fmtN(x.oldest)} days</td><td class="num">${shareOf(x.amt,CUR.amt)}</td></tr>`;
   }else if(k==='oldest'){
-    const ag=new Map();for(const p of rows)add(ag,p.bucket,p);
     const top=oldestFirst().slice(0,10);
-    html='<h3 class="subh">Pending for how long</h3>'+aggTable([...ag.entries()].sort((a,b)=>a[0]-b[0]),'Pending for',x=>esc(AGES[x]))+
-      '<h3 class="subh">The 10 POs that have waited longest</h3>'+(top.length?`<table>${poHead('#')}<tbody>${top.map(poRow).join('')}</tbody></table>`:none);
+    html='<h3 class="subh">The 10 POs that have waited longest</h3>'+(top.length?`<table>${poHead('#')}<tbody>${top.map(poRow).join('')}</tbody></table>`:none);
   }else if(k==='appr'){
     const m=new Map();
-    for(const p of rows){let x=m.get(p.apprKey);if(!x)m.set(p.apprKey,x={n:0,sure:0,likely:0,amt:0,fx:0,oldest:0});x.n++;if(p.approver)x.sure++;else if(p.likely)x.likely++;x.amt+=p.amt;if(p.fx.size)x.fx++;if(p.age>x.oldest)x.oldest=p.age;}
+    for(const p of rows){let x=m.get(p.apprKey);if(!x)m.set(p.apprKey,x={n:0,items:0,amt:0,fx:0,oldest:0,wait:0});x.n++;x.items+=p.items.length;x.amt+=p.amt;if(p.fx.size)x.fx++;if(p.age>x.oldest)x.oldest=p.age;if(p.wait!==null&&p.wait>x.wait)x.wait=p.wait;}
     const ls=[...m.entries()].sort((a,b)=>b[1].n-a[1].n||b[1].amt-a[1].amt);
-    const tot=ls.reduce((s,[,x])=>({n:s.n+x.n,sure:s.sure+x.sure,likely:s.likely+x.likely,amt:s.amt+x.amt}),{n:0,sure:0,likely:0,amt:0});
-    const row=([k2,x])=>`<tr><td>${esc(k2)}</td><td class="num">${fmtN(x.n)}</td><td class="num">${fmtN(x.sure)}</td><td class="num">${fmtN(x.likely)}</td><td class="num nw">${x.amt===0&&x.fx>0?'other cur.':fmtINR(x.amt)}</td><td class="num nw">${fmtN(x.oldest)} days</td></tr>`;
-    html=ls.length?`<table><thead><tr><th>Approver</th><th class="num">POs</th><th class="num">Confirmed</th><th class="num">Likely</th><th class="num">Net value</th><th class="num">Waiting longest</th></tr></thead><tbody>${ls.map(row).join('')}</tbody><tfoot><tr><td>Total (${fmtN(ls.length)})</td><td class="num">${fmtN(tot.n)}</td><td class="num">${fmtN(tot.sure)}</td><td class="num">${fmtN(tot.likely)}</td><td class="num nw">${fmtINR(tot.amt)}</td><td></td></tr></tfoot></table><p class="hint">Likely approvers come from po_approver_rules.csv and are an inference, not a confirmed approver.</p>`:none;
+    const tot=ls.reduce((t,[,x])=>({n:t.n+x.n,items:t.items+x.items,amt:t.amt+x.amt}),{n:0,items:0,amt:0});
+    const row=([k2,x])=>`<tr><td>${esc(k2)}</td><td class="num">${fmtN(x.n)}</td><td class="num">${fmtN(x.items)}</td><td class="num nw">${x.amt===0&&x.fx>0?'other cur.':fmtINR(x.amt)}</td><td class="num nw">${fmtN(x.oldest)} days</td><td class="num nw">${fmtN(x.wait)} days</td></tr>`;
+    html=ls.length?`<table><thead><tr><th>Approver</th><th class="num">POs</th><th class="num">Items</th><th class="num">Net value</th><th class="num">Oldest PO</th><th class="num">Longest with the approver</th></tr></thead><tbody>${ls.map(row).join('')}</tbody><tfoot><tr><td>Total (${fmtN(ls.length)})</td><td class="num">${fmtN(tot.n)}</td><td class="num">${fmtN(tot.items)}</td><td class="num nw">${fmtINR(tot.amt)}</td><td></td><td></td></tr></tfoot></table>`:none;
     n=ls.length;
   }
   if(list){
@@ -326,16 +312,15 @@ const reveal=id=>{const el=$(id);if(el&&!el.hidden)el.scrollIntoView({behavior:'
 function render(){
   if(!D)return;  // the data is still loading
   const rows=P.filter(p=>pass(p));
-  let amt=0,items=0,fx=0,known=0,likely=0,oldest=null;const sups=new Set();
-  for(const p of rows){amt+=p.amt;items+=p.items.length;sups.add(p.sup);if(p.fx.size)fx++;if(p.approver)known++;else if(p.likely)likely++;if(oldest===null||p.age>oldest.age)oldest=p;}
-  CUR={rows,amt,items,known,likely,oldest};
+  let amt=0,items=0,fx=0,oldest=null;const sups=new Set(),aps=new Set();
+  for(const p of rows){amt+=p.amt;items+=p.items.length;sups.add(p.sup);aps.add(p.apprKey);if(p.fx.size)fx++;if(oldest===null||p.age>oldest.age)oldest=p;}
+  CUR={rows,amt,items,oldest};
   // every tile opens its details under the tiles
-  $('kpis').innerHTML=[[fmtN(rows.length),SHOW_TXT[S.show]==='In approval'?'POs In Approval':'POs ('+SHOW_TXT[S.show].toLowerCase()+')','pos'],[fmtINR(amt),'Net value (INR)'+(fx?` · ${fmtN(fx)} other-currency POs not added`:''),'val'],[fmtN(items),'PO items','items'],[fmtN(sups.size),'Suppliers','sups'],[oldest?fmtN(oldest.age)+' days':'–',oldest?'Oldest: PO '+oldest.po+' ('+fmtDay(oldest.day)+')':'Oldest','oldest'],[fmtN(known)+' + '+fmtN(likely)+' of '+fmtN(rows.length),'POs: confirmed approver + likely approver','appr']]
+  $('kpis').innerHTML=[[fmtN(rows.length),'POs waiting for approval','pos'],[fmtINR(amt),'Net value (INR)'+(fx?` · ${fmtN(fx)} other-currency POs not added`:''),'val'],[fmtN(items),'PO items','items'],[fmtN(sups.size),'Suppliers','sups'],[oldest?fmtN(oldest.age)+' days':'–',oldest?'Oldest: PO '+oldest.po+' ('+fmtDay(oldest.day)+')':'Oldest','oldest'],[fmtN(aps.size),'Approvers · who the POs wait for','appr']]
     .map(t=>`<button type="button" class="tile tilebtn" data-tile="${t[2]}" aria-expanded="${S.tile===t[2]}"><div class="tv">${t[0]}</div><div class="tl">${esc(t[1])}</div>${S.tile===t[2]?'<div class="ts">click to hide</div>':''}</button>`).join('');
   renderTile();
   // chips
   const c=[];
-  if(S.show!=='appr')c.push(['show','Show: '+SHOW_TXT[S.show]]);
   if(S.plant)c.push(['plant','Plant '+S.plant]);
   if(S.type!==null)c.push(['type','PO type: '+typeName(S.type)]);
   if(S.appr!==null)c.push(['appr','Approver: '+S.appr]);
@@ -347,9 +332,8 @@ function render(){
   if(S.q)c.push(['q','Search: '+S.q]);
   $('chips').innerHTML=c.map(x=>`<button type="button" class="chip" data-clr="${x[0]}">${esc(x[1])} ×</button>`).join('')+(c.length?'<button type="button" class="chip" data-clr="all">Reset filters</button>':'');
   // each table ignores its own filter, so the list stays when you pick a row
-  const ag=new Map(),ap=new Map(),us=new Map(),ty=new Map(),pl=new Map(),sp=new Map(),pgm=new Map();
+  const ap=new Map(),us=new Map(),ty=new Map(),pl=new Map(),sp=new Map(),pgm=new Map();
   for(const p of P){
-    if(pass(p,['age']))add(ag,p.bucket,p);
     if(pass(p,['appr']))add(ap,p.apprKey,p);
     if(pass(p,['pg']))add(pgm,p.pgKey,p);
     if(pass(p,['user']))add(us,p.user,p);
@@ -357,9 +341,8 @@ function render(){
     if(pass(p,['plant']))for(const k of p.plants)add(pl,k,p);
     if(pass(p,['sup']))add(sp,p.sup,p);
   }
-  $('byAge').innerHTML=aggTable([...ag.entries()].sort((a,b)=>a[0]-b[0]),'Pending for',k=>`<button type="button" class="lnk" data-age="${k}">${AGES[k]}</button>`,S.age);
   $('byAppr').innerHTML=aggTable(byCount(ap),'Approver',k=>`<button type="button" class="lnk" data-appr="${esc(k)}">${esc(k)}</button>`,S.appr);
-  $('apprHint').textContent=APINFO.file?`Approver names come from ${APINFO.file}, saved ${new Date(APINFO.savedAt).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}. A PO that is not on that list shows "${UNKNOWN}". Each approver is listed once, with confirmed and likely POs together (the list marks the likely ones with ~). Click an approver to filter.`:'No approver list found (po_approvers.xlsx in the dashboard_build/backend/data folder), so no approver is known. See the note at the bottom.';
+  $('apprHint').textContent='The person each PO waits for in the release workflow of SAP (the view YY1_PO_PENDING_APPROVAL_CDS), named from the user list. A PO that waits for two people is listed as "A + B". Click an approver to filter.';
   $('byPg').innerHTML=aggTable(byCount(pgm),'Purch. org / group',k=>`<button type="button" class="lnk" data-pg="${esc(k)}">${esc(pgDisp(k))}</button>`,S.pg);
   $('byUser').innerHTML=aggTable(byCount(us),'Created by',k=>`<button type="button" class="lnk" data-user="${esc(k)}" title="${esc(uTip(k))}">${esc(uName(k))}</button>`,S.user);
   $('byType').innerHTML=aggTable(byCount(ty),'PO type',k=>`<button type="button" class="lnk" data-type="${esc(k)}">${esc(typeName(k))}</button>`,S.type);
@@ -372,14 +355,14 @@ function render(){
   const body=[];
   for(const p of slice){
     const open=OPEN.has(p.po);
-    const stTitle=p.proc==='03'?'Processing state 03: In Approval (pending)':p.group==='rel'?'Processing state '+p.proc+': release complete. The saved SAP list had this PO In Approval, so it was approved since (or changed after its release, which this view cannot show).':'Processing state '+p.proc+': Rejected in SAP';
-    body.push(`<tr><td class="nw">${esc(p.po)}</td><td class="nw">${fmtDay(p.day)}</td><td class="num"><span class="pill a${p.bucket}">${fmtN(p.age)} d</span></td><td title="${esc(typeName(p.type))}">${esc(typeShort(p.type))}</td><td class="nw">${esc(p.plant)}</td><td class="nw" title="${esc('Purchasing org '+p.org+' · '+pgTip(p.pg))}">${esc(pgName(p.pg))}</td><td title="${esc(D.suppliers[p.sup][2]?'Supplier '+D.suppliers[p.sup][0]+' · GSTIN '+D.suppliers[p.sup][2]:'Supplier '+D.suppliers[p.sup][0])}">${esc(supName(p.sup))}</td><td class="num"><button type="button" class="lnk" data-po="${esc(p.po)}">${open?'▾':'▸'} ${p.items.length}</button></td><td class="num nw">${poValue(p)}</td><td class="nw">${p.approver?`<b>${esc(p.approver)}</b>${p.proc==='03'?'':` <span title="Only the approver list says this PO is In Approval (the data view shows it as released). If it has been approved since, remove it from the list or export the list again.">*</span>`}`:p.likely?`<i title="${esc('Likely, not confirmed. '+p.likely.basis+' Same purchasing org / group: '+p.pgKey)}">~ ${esc(p.likely.approver)}</i>`:'<span title="'+esc(UNKNOWN)+'">–</span>'}</td><td class="nw" title="${esc(uTip(p.user))}">${esc(uName(p.user))}</td><td class="nw" title="${esc(stTitle)}">${esc(procName(p.proc))}</td></tr>`);
+    body.push(`<tr><td class="nw">${esc(p.po)}</td><td class="nw">${fmtDay(p.day)}</td><td class="num"><span class="pill a${p.bucket}">${fmtN(p.age)} d</span></td><td title="${esc(typeName(p.type))}">${esc(typeShort(p.type))}</td><td class="nw">${esc(p.plant)}</td><td class="nw" title="${esc('Purchasing org '+p.org+' · '+pgTip(p.pg))}">${esc(pgName(p.pg))}</td><td title="${esc(D.suppliers[p.sup][2]?'Supplier '+D.suppliers[p.sup][0]+' · GSTIN '+D.suppliers[p.sup][2]:'Supplier '+D.suppliers[p.sup][0])}">${esc(supName(p.sup))}</td><td class="num"><button type="button" class="lnk" data-po="${esc(p.po)}">${open?'▾':'▸'} ${p.items.length}</button></td><td class="num nw">${poValue(p)}</td><td class="nw">${apprCell(p)}</td><td class="nw" title="${esc(uTip(p.user))}">${esc(uName(p.user))}</td><td class="nw" title="The day the approval task reached the approver">${p.since===null?'–':fmtDay(p.since)+' · '+fmtN(p.wait)+' d'}</td></tr>`);
     if(open)body.push(`<tr class="subrow"><td colspan="12"><table><thead><tr><th>Item</th><th>Material</th><th>S.Loc</th><th class="num">Quantity</th><th class="num">Price</th><th class="num">Net value</th></tr></thead><tbody>`+
       p.items.map(r=>`<tr><td>${r.item}</td><td>${r.mat?esc(r.mat)+' · ':''}${esc(r.text)}</td><td>${r.sloc?esc(r.sloc):'–'}</td><td class="num nw">${r.qty.toLocaleString('en-IN',{maximumFractionDigits:3})} ${esc(r.unit)}</td><td class="num nw">${fmtAmt(r.price,r.cur)}</td><td class="num nw">${fmtAmt(r.amt,r.cur)}</td></tr>`).join('')+`</tbody></table></td></tr>`);
   }
-  $('tbl').innerHTML='<thead><tr><th>PO</th><th>Created on</th><th class="num">Pending</th><th>PO type</th><th>Plant</th><th>Purch. group</th><th>Supplier</th><th class="num">Items</th><th class="num">Net value</th><th>Approver</th><th>Created by</th><th>Status</th></tr></thead><tbody>'+
+  $('tbl').innerHTML='<thead><tr><th>PO</th><th>Created on</th><th class="num">Pending</th><th>PO type</th><th>Plant</th><th>Purch. group</th><th>Supplier</th><th class="num">Items</th><th class="num">Net value</th><th>Approver</th><th>Created by</th><th>With approver since</th></tr></thead><tbody>'+
     (body.length?body.join(''):'<tr><td colspan="12" class="empty">Nothing matches the filters.</td></tr>')+'</tbody>';
-  $('tcount').textContent=fmtN(rows.length)+' purchase orders · '+fmtN(items)+' items';
+  const total=new Set(T.rows.map(t=>t[0])).size;
+  $('tcount').textContent=fmtN(rows.length)+' purchase orders · '+fmtN(items)+' items · '+(rows.length<total?'of the '+fmtN(total)+' that wait for approval in SAP (the filters hide the rest)':'all that wait for approval in SAP')+(LEFT.nodata?' · '+fmtN(LEFT.nodata)+' without item data':'')+'.';
   $('pinfo').textContent=!rows.length?'':rows.length<=PAGE||S.all?`All ${fmtN(rows.length)} purchase orders shown`:`Showing the first ${fmtN(PAGE)} of ${fmtN(rows.length)}`;
   $('seeAll').hidden=rows.length<=PAGE;$('seeAll').textContent=S.all?'Show first '+PAGE:'See all '+fmtN(rows.length);
 }
@@ -395,7 +378,6 @@ document.addEventListener('click',e=>{
   else if(t.dataset.plant!==undefined){S.plant=S.plant===t.dataset.plant?'':t.dataset.plant;$('plantSel').value=S.plant;}
   else if(t.dataset.sup!==undefined){const v=+t.dataset.sup;S.sup=S.sup===v?null:v;}
   else if(t.dataset.clr){const c=t.dataset.clr;
-    if(c==='show'||c==='all'){S.show='appr';$('showSel').value='appr';}
     if(c==='plant'||c==='all'){S.plant='';$('plantSel').value='';}
     if(c==='type'||c==='all'){S.type=null;$('typeSel').value='';}
     if(c==='appr'||c==='all'){S.appr=null;$('apprSel').value='';}
@@ -404,7 +386,6 @@ document.addEventListener('click',e=>{
     if(c==='age'||c==='all'){S.age=null;$('ageSel').value='';}
     if(c==='sup'||c==='all')S.sup=null;
     if(c==='date'){S.from=S.to=null;$('dFrom').value=$('dTo').value='';}
-    if(c==='all')setMonthDates();
     if(c==='q'||c==='all'){S.q='';$('q').value='';}}
   else if(t.dataset.tile!==undefined){const k=t.dataset.tile;S.tile=S.tile===k?null:k;S.tileAll=false;render();if(S.tile)reveal('tileCard');return;}
   else if(t.id==='tileAll'){S.tileAll=!S.tileAll;renderTile();return;}
@@ -412,7 +393,6 @@ document.addEventListener('click',e=>{
   else return;
   S.page=0;render();
 });
-$('showSel').addEventListener('change',e=>{S.show=e.target.value;S.page=0;fillSelects();render();});
 $('plantSel').addEventListener('change',e=>{S.plant=e.target.value;S.page=0;render();});
 $('typeSel').addEventListener('change',e=>{S.type=e.target.value===''?null:e.target.value;S.page=0;render();});
 $('apprSel').addEventListener('change',e=>{S.appr=e.target.value===''?null:e.target.value;S.page=0;render();});
@@ -429,43 +409,43 @@ let savedTheme='dark';try{savedTheme=localStorage.getItem('spr-theme')||'dark';}
 setTheme(savedTheme==='light'?'light':'dark',false);
 document.getElementById('themeSeg').addEventListener('click',e=>{const b=e.target.closest('button[data-th]');if(b)setTheme(b.dataset.th,true);});
 
-// first rule of the PO's purchasing org + group whose value band fits (the band uses the INR value; a PO in another currency matches only rules without a band)
-function ruleFor(p){
-  for(const r of RULES){
-    if(r.org!==p.org||r.pg!==p.pg)continue;
-    const banded=r.min!==null||r.max!==null;
-    if(banded&&p.fx.size)continue;
-    if(r.min!==null&&!(p.amt>=r.min))continue;
-    if(r.max!==null&&!(p.amt<r.max))continue;
-    return r;
-  }
-  return null;
-}
-// one entry per purchase order. A PO is listed when SAP's release is not completed (state 03 / 08) or when it is on the saved approver list (kept apart as 'rel' when it is released now).
+// one entry per purchase order that SAP's release workflow has an open task for (T, /api/po-approval); its items come from the PO data (D, /api/po).
+// A task whose PO has no item data is counted in LEFT.nodata. Nothing is left out: raw material and internal stock transfers are shown here too.
 function buildPOs(){
+  const items=new Map();
+  for(const a of D.rows){let l=items.get(a[2]);if(!l)items.set(a[2],l=[]);l.push(a);}
+  const gone=new Set(D.removedPos||[]),tk=new Map();
+  for(const t of T.rows){let l=tk.get(t[0]);if(!l)tk.set(t[0],l=[]);l.push(t);}
+  LEFT={rm:0,nodata:0};
   const m=new Map();
-  for(const a of D.rows){
-    if(!(a[18]&1)&&AP[a[2]]===undefined)continue;
-    const r={po:a[2],item:a[3],day:a[0],type:D.types[a[4]],sup:a[5],pg:D.pgs[a[19]],org:D.orgs[a[20]],plant:D.plants[a[6]],sloc:D.slocs[a[7]],mat:D.mats[a[8]],text:D.texts[a[9]],user:D.users[a[12]],unit:D.units[a[13]],cur:D.curs[a[14]],qty:a[15],price:a[16],amt:a[17],proc:D.procs[a[21]]};
-    let p=m.get(r.po);
-    if(!p){p={po:r.po,day:r.day,type:r.type,user:r.user,sup:r.sup,org:r.org,pg:r.pg,proc:r.proc,plants:new Set(),items:[],amt:0,fx:new Map()};m.set(r.po,p);}
-    p.items.push(r);p.plants.add(r.plant);
-    if(r.cur==='INR')p.amt+=r.amt;else p.fx.set(r.cur,(p.fx.get(r.cur)||0)+r.amt);
+  for(const [po,ts] of tk){
+    const rows=items.get(po);
+    if(!rows){if(gone.has(po))LEFT.rm++;else LEFT.nodata++;continue;}
+    let p=null;
+    for(const a of rows){
+      const r={po,item:a[3],day:a[0]!==null?a[0]:a[1],type:D.types[a[4]],sup:a[5],pg:D.pgs[a[19]],org:D.orgs[a[20]],plant:D.plants[a[6]],sloc:D.slocs[a[7]],mat:D.mats[a[8]],text:D.texts[a[9]],user:D.users[a[12]],unit:D.units[a[13]],cur:D.curs[a[14]],qty:a[15],price:a[16],amt:a[17]};
+      if(!p)p={po,day:r.day,type:r.type,user:r.user,sup:r.sup,org:r.org,pg:r.pg,plants:new Set(),items:[],amt:0,fx:new Map()};
+      p.items.push(r);p.plants.add(r.plant);
+      if(r.cur==='INR')p.amt+=r.amt;else p.fx.set(r.cur,(p.fx.get(r.cur)||0)+r.amt);
+    }
+    // the approvers = the people the open tasks wait with (SAP user ids, named from the user list); since = the day the task reached the (first) approver
+    p.ids=[...new Set(ts.map(t=>T.recipients[t[1]]))];
+    p.approver=p.ids.map(uName).join(' + ');
+    const days=ts.map(t=>t[2]).filter(x=>x!==null&&x!==undefined);p.since=days.length?Math.min(...days):null;
+    m.set(po,p);
   }
   P=[...m.values()];
   for(const p of P){
-    p.age=Math.max(0,D.asofDay-p.day);p.bucket=ageBucket(p.age);
+    p.age=Math.max(0,D.asofDay-p.day);p.bucket=ageBucket(p.age);p.wait=p.since===null?null:Math.max(0,D.asofDay-p.since);
     p.plant=[...p.plants].sort().join(' / ');
     p.items.sort((a,b)=>a.item-b.item);
-    p.approver=AP[p.po]||'';p.pgKey=p.org+' / '+p.pg;p.likely=p.approver?null:ruleFor(p);
-    p.apprKey=p.approver||(p.likely?p.likely.approver:UNKNOWN);
-    p.group=p.proc==='03'?'appr':(AP[p.po]!==undefined&&p.proc!=='08')?'rel':'other';
-    p.hay=(p.po+' '+D.suppliers[p.sup][0]+' '+D.suppliers[p.sup][1]+' '+p.approver+' '+p.user+' '+uName(p.user)+' '+p.type+' '+(PO_TYPES[p.type]||'')+' '+p.items.map(r=>r.mat+' '+r.text).join(' ')).toLowerCase();
+    p.pgKey=p.org+' / '+p.pg;p.apprKey=p.approver;
+    p.hay=(p.po+' '+D.suppliers[p.sup][0]+' '+D.suppliers[p.sup][1]+' '+p.approver+' '+p.ids.join(' ')+' '+p.user+' '+uName(p.user)+' '+p.type+' '+(PO_TYPES[p.type]||'')+' '+p.items.map(r=>r.mat+' '+r.text).join(' ')).toLowerCase();
   }
 }
-// the filter lists follow the "Show" choice, so every entry has at least one PO
+// the filter lists: every entry has at least one PO
 function fillSelects(){
-  const base=P.filter(p=>S.show==='all'||p.group===S.show);
+  const base=P;
   const opts=(all,list,label)=>`<option value="">${all}</option>`+list.map(e=>`<option value="${esc(e[0])}">${esc(label(e[0]))}</option>`).join('');
   const cnt=f=>{const c=new Map();for(const p of base)for(const k of f(p))c.set(k,(c.get(k)||0)+1);return [...c.entries()].sort((a,b)=>b[1]-a[1]);};
   const keep=(sel,val,list)=>{if(val!==null&&val!==''&&!list.some(e=>e[0]===val))return null;return val;};
@@ -478,10 +458,6 @@ function fillSelects(){
   $('ageSel').innerHTML='<option value="">Any time</option>'+AGES.map((l,i)=>ac.has(i)?`<option value="${i}">${l}</option>`:'').join('');
   if(S.age!==null&&!ac.has(S.age))S.age=null;$('ageSel').value=S.age===null?'':S.age;
   if(S.sup!==null&&!base.some(p=>p.sup===S.sup))S.sup=null;
-}
-function setData(d,ap){
-  D=d;AP=(ap&&ap.approvers)||{};RULES=(ap&&ap.rules)||[];APINFO={file:(ap&&ap.file)||'',savedAt:(ap&&ap.savedAt)||0};
-  buildPOs();fillSelects();
 }
 // a link from the Summary page: ?tile=pos&plant=1010&from=2026-10-01&to=2026-10-31 (dates=all clears the dates); used once, on the first load
 let LINK=(()=>{try{const q=new URLSearchParams(location.search);return q.has('tile')||q.has('plant')||q.has('from')||q.has('to')||q.has('dates')?q:null;}catch(e){return null;}})();
@@ -497,16 +473,16 @@ const hhmm=ms=>new Date(ms).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2
 let loading=false;
 async function load(force,auto){
   if(loading)return;loading=true;
-  if(!auto||!D)setLive('busy',D?'Refreshing from SAP…':'Loading purchase order data from SAP (first load can take a minute)…');
+  if(!auto||!D)setLive('busy',D?'Refreshing from SAP…':'Loading the approval tasks and their purchase orders from SAP (first load can take a minute)…');
   try{
-    const [g,ares]=await Promise.all([LIVE.get('/api/po',force),fetch('/api/po-approvers',{cache:'no-store'}).catch(()=>null)]);
-    const res=g.res,j=g.j;
-    if(g.same){setLive('ok','Live from SAP · updated '+hhmm(g.stamp)+' · '+fmtN(P.filter(p=>p.group==='appr').length)+' POs In Approval');return;}
-    if(!res.ok)throw new Error(j.error||('HTTP '+res.status));
-    const ap=ares&&ares.ok?await ares.json().catch(()=>null):null;
-    setData(j,ap);if(!S.dInit){S.dInit=true;setMonthDates();applyLink();}render();if(S.reveal){S.reveal=false;setTimeout(()=>reveal('tileCard'),150);}
-    const n=P.filter(p=>p.group==='appr').length;
-    setLive('ok','Live from SAP · updated '+hhmm(j.fetchedAt)+' · '+fmtN(n)+' POs In Approval');
+    const g=await LIVE.get('/api/po-approval',force);
+    if(!g.same&&!g.res.ok)throw new Error((g.j&&g.j.error)||('HTTP '+g.res.status));
+    const waiting=()=>fmtN(P.length)+' POs waiting for approval';
+    if(g.same){setLive('ok','Live from SAP · updated '+hhmm(g.stamp||Date.now())+' · '+waiting());return;}
+    T=g.j;D=T.po;   // T = the tasks, D = the items of these POs (same layout as /api/po)
+    buildPOs();fillSelects();
+    if(!S.dInit){S.dInit=true;applyLink();}render();if(S.reveal){S.reveal=false;setTimeout(()=>reveal('tileCard'),150);}
+    setLive('ok','Live from SAP · updated '+hhmm(T.fetchedAt||Date.now())+' · '+waiting());
   }catch(e){
     const msg=e.message==='Failed to fetch'?'The dashboard server is not running. Start it again with Start_Live_Dashboard.bat.':e.message;
     setLive('err',msg);

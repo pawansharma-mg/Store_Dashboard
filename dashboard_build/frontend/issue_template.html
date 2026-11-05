@@ -92,6 +92,21 @@ tr.sel td{background:rgba(28,173,228,.14)!important}
 .tile.opt1{border-top-color:var(--brand-red)}
 .topcard{margin-top:16px;border-top:3px solid var(--brand-red);scroll-margin-top:150px}
 .subh{margin:16px 0 6px;font-size:.85rem;font-weight:700;color:var(--ink2)}
+.lnk[aria-expanded="true"]::before{content:"▾ "}
+tr.tlrow>td{padding:4px 6px 14px!important;background:transparent!important}
+.mp{border:1px solid var(--brand);border-left-width:4px;border-radius:10px;background:rgba(28,173,228,.06);padding:10px 12px;margin:8px 0;white-space:normal;font-weight:400;text-align:left}
+.mph{display:flex;flex-wrap:wrap;align-items:center;gap:8px}.mph b{font-size:.95rem}.mph .sm{font-size:.72rem;color:var(--muted)}
+.mpb{margin-left:auto;display:flex;gap:6px}
+.mp .btn{height:28px;font-size:.78rem}
+.mp .tbox{max-height:380px;background:var(--surface);border-radius:8px;margin-top:8px}
+.mp .pager{margin-top:6px}
+.mp td.sm,.mp .sm{font-size:.72rem;color:var(--muted);font-weight:400}
+/* the month card is full width and its opened panel is as wide as the card (it does not stretch the month table) */
+#monCard{grid-column:1/-1}
+.grid{grid-auto-flow:row dense}
+#byMonth{container-type:inline-size}
+#byMonth:has(.mp){max-height:none}
+#byMonth .mp{position:sticky;left:0;width:calc(100cqw - 12px);box-sizing:border-box}
 </style>
 <link rel="stylesheet" href="/ui.css">
 <script src="/live.js"></script>
@@ -156,9 +171,9 @@ tr.sel td{background:rgba(28,173,228,.14)!important}
       <p class="hint">Top 50 by net value for the current filters.</p>
       <div class="tbox" id="byMat"></div>
     </article>
-    <article class="card">
+    <article class="card" id="monCard">
       <h2><span class="sec-badge">5</span>Month-wise issue</h2>
-      <p class="hint">By posting date. Click a month to see it day by day.</p>
+      <p class="hint">By posting date. Click a month (or its bar) to see its items right here; the Day-wise card shows that month day by day.</p>
       <div class="tbox" id="byMonth"></div>
     </article>
     <article class="card">
@@ -197,13 +212,13 @@ const fmtN=n=>Math.round(n).toLocaleString('en-IN');
 // a negative value (a reversal) reads -₹15,600: the minus in front of the rupee sign
 function fmtINR(v){const a=Math.abs(v),s=v<-0.5?'-':'';if(a>=1e7)return s+'₹'+(a/1e7).toFixed(2)+' Cr';if(a>=1e5)return s+'₹'+(a/1e5).toFixed(2)+' L';return s+'₹'+Math.round(a).toLocaleString('en-IN');}
 const fmtRs=v=>'₹'+Math.round(v).toLocaleString('en-IN');
-const fmtDay=d=>new Date(d*864e5).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric',timeZone:'UTC'});
+const fmtDay=d=>new Date(d*864e5).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric',timeZone:'UTC'}).replace('Sept','Sep');
 const mIdx=d=>{const t=new Date(d*864e5);return t.getUTCFullYear()*12+t.getUTCMonth();};
 const mName=k=>MON[k%12]+' '+Math.floor(k/12);
 const dayOf=v=>v?Math.floor(Date.parse(v)/864e5):null;
 
 let D=null,R=[],renderToken=0,CUR=null,tileToken=0;
-const S={tile:null,tileAll:false,top:true,topMode:'val',all:false,plant:'',mvt:'',cc:null,dept:null,age:null,rsv:'',from:null,to:null,q:'',mon:null,page:0};
+const S={tile:null,tileAll:false,top:true,topMode:'val',all:false,plant:'',mvt:'',cc:null,dept:null,age:null,rsv:'',from:null,to:null,q:'',mon:null,openMon:new Set(),monAll:{},page:0};
 
 function pass(r,skip){
   skip=skip||[];
@@ -222,12 +237,12 @@ function pass(r,skip){
 
 const agg=()=>({n:0,amt:0});
 function add(m,k,r){let x=m.get(k);if(!x)m.set(k,x=agg());x.n++;x.amt+=r.amt;}
-function aggTable(list,head,cell,sel){
+function aggTable(list,head,cell,sel,under){
   if(!list.length)return '<div class="empty">Nothing matches the filters.</div>';
   const tot=agg();for(const [,x] of list){tot.n+=x.n;tot.amt+=x.amt;}
   const nums=x=>`<td class="num">${fmtN(x.n)}</td><td class="num nw">${fmtINR(x.amt)}</td>`;
   return `<table><thead><tr><th>${head}</th><th class="num">Lines</th><th class="num">Net value</th></tr></thead><tbody>`+
-    list.map(([k,x])=>`<tr${k===sel?' class="sel"':''}><td>${cell(k)}</td>${nums(x)}</tr>`).join('')+
+    list.map(([k,x])=>`<tr${k===sel?' class="sel"':''}><td>${cell(k)}</td>${nums(x)}</tr>`+(under?under(k):'')).join('')+
     `</tbody><tfoot><tr><td>Total (${fmtN(list.length)})</td>${nums(tot)}</tr></tfoot></table>`;
 }
 const byValue=m=>[...m.entries()].sort((a,b)=>b[1].amt-a[1].amt);
@@ -320,6 +335,22 @@ function renderTile(){
 }
 const reveal=id=>{const el=$(id);if(el&&!el.hidden)el.scrollIntoView({behavior:'smooth',block:'start'});};
 
+function monHead(k,line,extra){
+  return `<div class="mp"><div class="mph"><b>${esc(mName(k))}</b><span class="sm">${line}</span><span class="mpb"><button type="button" class="btn alt" data-monfilter="${k}" title="Filter the whole page and the list to this month">Filter the whole page</button><button type="button" class="btn alt" data-monclose="${k}">Close</button></span></div>`;
+}
+function monMore(k,n,all){
+  return n>25?`<div class="pager"><span>${all?(n>600?'The first 600 of '+fmtN(n)+' shown':'All '+fmtN(n)+' shown'):'Showing the first 25 of '+fmtN(n)}</span><div><button class="btn" type="button" data-monall="${k}">${all?'Show first 25':'See all '+fmtN(n)}</button></div></div>`:'';
+}
+function monPanel(k){
+  const rows=R.filter(r=>r.day!==null&&pass(r,['date'])&&mIdx(r.day)===k).sort((a,b)=>Math.abs(b.amt)-Math.abs(a.amt)||(b.day||0)-(a.day||0)||b.doc.localeCompare(a.doc));
+  const net=rows.reduce((s,r)=>s+r.amt,0),all=!!S.monAll[k],shown=all?rows.slice(0,600):rows.slice(0,25);
+  let h=monHead(k,`${fmtN(rows.length)} lines · net ${fmtINR(net)} · the highest value first`);
+  if(!rows.length)return h+'<p class="hint">No lines match the filters.</p></div>';
+  h+=`<div class="tbox"><table><thead><tr><th class="num">#</th><th>Posting date</th><th class="num">Age</th><th>Mat. doc</th><th>Mvt</th><th>Cost center</th><th>Department</th><th>Material</th><th class="num">Qty</th><th class="num">Value</th><th>Posted by</th></tr></thead><tbody>`+
+    shown.map((r,i)=>`<tr><td class="num">${i+1}</td><td class="nw">${fmtDay(r.day)}</td><td class="num nw">${AGE.pill(r.age,r.age===null?'':AGE.words(r.age)+' since the posting date')}</td><td class="nw">${esc(r.doc)}</td><td class="nw">${mvtCell(r.mvt)}</td><td>${esc(r.ccId)}${r.ccName?`<div class="sm">${esc(r.ccName)}</div>`:''}</td><td class="nw">${esc(deptLabel(r.dept))}</td><td>${esc(r.mat)}</td><td class="num nw">${r.qty.toLocaleString('en-IN',{maximumFractionDigits:3})} ${esc(r.unit)}</td><td class="num nw"><b>${fmtINR(r.amt)}</b></td><td class="nw" title="${esc(uTip(r.user))}">${esc(uName(r.user))}</td></tr>`).join('')+'</tbody></table></div>'+monMore(k,rows.length,all);
+  return h+'</div>';
+}
+
 function render(){
   if(!D)return;  // the data is still loading
   const rows=R.filter(r=>pass(r));
@@ -355,7 +386,7 @@ function render(){
   const mon=new Map(),day=new Map();
   if(S.mon===null)S.mon=mIdx(D.asofDay);
   for(const r of R){if(r.day===null||!pass(r,['date']))continue;const k=mIdx(r.day);add(mon,k,r);if(k===S.mon)add(day,r.day,r);}
-  $('byMonth').innerHTML=aggTable([...mon.entries()].sort((a,b)=>b[0]-a[0]),'Month',k=>`<button type="button" class="lnk" data-mon="${k}">${mName(k)}</button>`,S.mon);
+  $('byMonth').innerHTML=aggTable([...mon.entries()].sort((a,b)=>b[0]-a[0]),'Month',k=>`<button type="button" class="lnk" data-mon="${k}" aria-expanded="${S.openMon.has(k)}" title="Click to see the items of this month right here">${mName(k)}</button>`,S.mon,k=>S.openMon.has(k)?`<tr class="tlrow subrow"><td colspan="3">${monPanel(k)}</td></tr>`:'');
   $('dayTitle').textContent='Day-wise issue · '+mName(S.mon);
   $('byDay').innerHTML=aggTable([...day.entries()].sort((a,b)=>a[0]-b[0]),'Posting date',k=>`<button type="button" class="lnk" data-day="${k}">${fmtDay(k)}</button>`);
   // lines, newest first
@@ -380,7 +411,10 @@ document.addEventListener('click',e=>{
   if(t.dataset.cc!==undefined){S.cc=S.cc===t.dataset.cc?null:t.dataset.cc;}
   else if(t.dataset.dept!==undefined){S.dept=S.dept===t.dataset.dept?null:t.dataset.dept;$('deptSel').value=S.dept===null?'':S.dept;}
   else if(t.dataset.age!==undefined){const v=+t.dataset.age;S.age=S.age===v?null:v;}
-  else if(t.dataset.mon!==undefined){S.mon=+t.dataset.mon;}
+  else if(t.dataset.mon!==undefined){const k=+t.dataset.mon;S.mon=k;if(S.openMon.has(k))S.openMon.delete(k);else S.openMon.add(k);}
+  else if(t.dataset.monclose!==undefined){S.openMon.delete(+t.dataset.monclose);}
+  else if(t.dataset.monall!==undefined){const k=+t.dataset.monall;S.monAll[k]=!S.monAll[k];}
+  else if(t.dataset.monfilter!==undefined){const k=+t.dataset.monfilter,y=Math.floor(k/12),m=k%12;S.from=Date.UTC(y,m,1)/864e5;S.to=Date.UTC(y,m+1,0)/864e5;S.mon=k;S.openMon.delete(k);$('dFrom').value=iso(S.from);$('dTo').value=iso(S.to);}
   else if(t.dataset.day!==undefined){const d=+t.dataset.day;S.from=S.to=d;$('dFrom').value=$('dTo').value=iso(d);}
   else if(t.dataset.clr){const c=t.dataset.clr;
     if(c==='plant'||c==='all'){S.plant='';$('plantSel').value='';}

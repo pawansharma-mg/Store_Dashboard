@@ -30,9 +30,9 @@ import webbrowser
 from concurrent.futures import ThreadPoolExecutor
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from pr_data import (EXCLUDE_PLANTS, AGEING_FIELDS, AGEING_FILTER, ASSET_FIELDS, ASSET_FILTER, CONSUME_FIELDS, CONSUME_MVTS, FIELDS, INVOICE_FIELDS, INVOICE_FILTER, ISSUE_DATE_FILTER, ISSUE_FIELDS, ISSUE_FILTER, PURCHASE_FIELDS, PURCHASE_FILTER, PO_DATE_FILTER, PO_FIELDS, PO_STATUS_FIELDS, STOCK_FIELDS, STOCK_ORDER,
+from pr_data import (EXCLUDE_LOCATIONS, EXCLUDE_PLANTS, po_split, po_rm_suppliers, row_is_rm, rm_material, AGEING_FIELDS, AGEING_FILTER, APPROVAL_FIELDS, ASSET_FIELDS, ASSET_FILTER, CONSUME_FIELDS, CONSUME_MVTS, FIELDS, INVOICE_FIELDS, INVOICE_FILTER, ISSUE_DATE_FILTER, ISSUE_FIELDS, ISSUE_FILTER, PURCHASE_FIELDS, PURCHASE_FILTER, PO_DATE_FILTER, PO_FIELDS, PO_STATUS_FIELDS, STOCK_FIELDS, STOCK_ORDER,
                      MG_NAMES, PG_NAMES, USER_NAMES,
-                     ageing_compact, asset_compact, consume_fold, move_fold, moves_compact, MOVE_FIELDS, MOVE_FROM, invoice_compact, issue_compact, po_compact, purchase_compact, stock_compact, to_compact)
+                     ageing_compact, approval_compact, asset_compact, consume_fold, move_fold, moves_compact, MOVE_FIELDS, MOVE_FROM, invoice_compact, issue_compact, po_compact, purchase_compact, stock_compact, to_compact)
 
 HERE = os.path.dirname(os.path.abspath(__file__))  # backend/
 FRONTEND = os.path.join(os.path.dirname(HERE), 'frontend')  # the pages and the logo
@@ -92,10 +92,14 @@ ASSET_QUERY = [{'$select': ','.join(ASSET_FIELDS), '$filter': ASSET_FILTER, '$or
 # goods issues (stock out) since 1 Jan 2026, read together with the stock to find the last use of each material
 CONSUME_QUERY = {'$select': ','.join(CONSUME_FIELDS), '$orderby': _ORDER,
                  '$filter': ISSUE_DATE_FILTER + " and DebitCreditCode eq 'H' and (" + ' or '.join(f"GoodsMovementType_1 eq '{m}'" for m in CONSUME_MVTS) + ')'}
+# the open approval tasks of the purchase orders (about 60 rows): who a PO waits for
+APPROVAL_BASE = 'https://my413077-api.s4hana.cloud.sap/sap/opu/odata/sap/YY1_PO_PENDING_APPROVAL_CDS'
+APPROVAL_QUERY = [{'$select': ','.join(APPROVAL_FIELDS), '$orderby': 'WorkflowTaskInternalID'}]
 
 
 MOVES_FULL_EVERY = 21600  # the whole movement history (about 1.2 million lines, 2-3 minutes) is read again every 6 hours; in between only the last MOVES_RECENT_DAYS days
 MOVES_RECENT_DAYS = 10
+MOVES_KEEP_DAYS = 8  # a saved movement history is used when its last full read is at most this old: the recent days (MOVES_RECENT_DAYS) fill the gap
 MOVE_QUERY = {'$select': ','.join(MOVE_FIELDS), '$orderby': _ORDER, '$filter': f"PostingDate ge datetime'{MOVE_FROM}T00:00:00'"}
 
 
@@ -135,6 +139,10 @@ def _source_version():
 
 
 SOURCE_VERSION = _source_version()
+# A saved view is used when it has the same data layout (user, 4-Nov-2026: the pages must open at once after a restart, not wait for SAP): CACHE_LAYOUT changes when the compact data of a view changes
+# (a new field, a left-out plant or storage location). It is no longer the hash of the program files, so an edit that does not change the data keeps the saved views.
+CACHE_LAYOUT = 'L10|' + ','.join(EXCLUDE_PLANTS) + '|' + ','.join(EXCLUDE_LOCATIONS)
+CACHE_OK = (CACHE_LAYOUT, SOURCE_VERSION, 'cd6fffa04b5fcd6f')  # the last one: the files written on 4-Nov-2026 by the program version before this change (same layout)
 CLOUD = bool(os.environ.get('K_SERVICE'))
 CSP = ("default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; "
        "base-uri 'none'; form-action 'none'; frame-ancestors 'self'")
@@ -238,6 +246,8 @@ class Sap:
         # (base, entity, query[, fold[, optional]]) of views fetched together with this one; their rows are passed to compact after the main rows.
         # An optional one that fails is left out (compact then gets one argument less) instead of failing the whole view.
         self.extra = list(extra)
+        self.pre_view = None       # a function that sees all rows before the RM rows are dropped (set for the PO view in main())
+        self.row_skip = None       # a view's own rule for rows that are not taken, set in main() (the Pending PR view: purchasing group 020)
         token = base64.b64encode(f'{user}:{password}'.encode('utf-8')).decode('ascii')
         self._auth = 'Basic ' + token
         self.ttl, self.min_refresh = ttl, min_refresh
@@ -263,7 +273,7 @@ class Sap:
             os.makedirs(CACHE_DIR, exist_ok=True)
             tmp = self._path() + '.tmp'
             with open(tmp, 'wb') as f:
-                pickle.dump({'v': SOURCE_VERSION, 'fetched_at': c[0], 'gz': c[2], 'digest': c[3], 'stamp': c[4], 'xstate': self._xstate}, f, protocol=4)
+                pickle.dump({'v': CACHE_LAYOUT, 'mv': 1, 'fetched_at': c[0], 'gz': c[2], 'digest': c[3], 'stamp': c[4], 'xstate': self._xstate}, f, protocol=4)
             os.replace(tmp, self._path())
             self._saved = (c[3], time.time())
         except Exception as e:  # a disk problem must never stop the dashboard
@@ -276,7 +286,7 @@ class Sap:
         try:
             with open(self._path(), 'rb') as f:
                 d = pickle.load(f)
-            if d.get('v') != SOURCE_VERSION:
+            if d.get('v') not in CACHE_OK:
                 return False
             if int((d['fetched_at'] + IST) // 86400) != int((time.time() + IST) // 86400):
                 return False
@@ -394,6 +404,11 @@ class Sap:
         n_all = len(rows)
         if self.drop_plants and EXCLUDE_PLANTS:
             rows = [r for r in rows if (r.get('Plant') or '') not in EXCLUDE_PLANTS]
+        if EXCLUDE_LOCATIONS:  # a row of an excluded storage location (the views without a storage location have none)
+            rows = [r for r in rows if (r.get('StorageLocation') or '') not in EXCLUDE_LOCATIONS]
+        if self.pre_view:
+            self.pre_view(rows)  # sees every row, also the RM ones that are dropped next (the PO view notes which POs and suppliers are RM)
+        rows = [r for r in rows if not row_is_rm(r) and not (self.row_skip and self.row_skip(r))]  # RM is not taken (user, 5-Nov-2026)
         extra, used = [], []
         for i, x in enumerate(self.extra):
             try:
@@ -423,7 +438,7 @@ class Sap:
         stamp = int(time.time() * 1000)
         raw = body[:-1] + b',"fetchedAt":' + str(stamp).encode('ascii') + b'}'
         self.cache = (time.time(), raw, gzip.compress(raw, 6), digest, stamp)
-        log(f'fetched {n_all:,} rows from SAP ({self.entity})' + (f' (plants {", ".join(EXCLUDE_PLANTS)} left out: {n_all - len(rows):,})' if n_all != len(rows) else '') + ''.join(f' + {len(x):,} ({e})' for x, (_, e, *_) in zip(extra, used)) + f' in {time.time() - t0:.1f} s')
+        log(f'fetched {n_all:,} rows from SAP ({self.entity})' + (f' (plants {", ".join(EXCLUDE_PLANTS)} and storage locations {", ".join(EXCLUDE_LOCATIONS)} left out: {n_all - len(rows):,})' if n_all != len(rows) else '') + ''.join(f' + {len(x):,} ({e})' for x, (_, e, *_) in zip(extra, used)) + f' in {time.time() - t0:.1f} s')
         self.save_disk()
         return self.cache[1:]
 
@@ -464,81 +479,6 @@ class Sap:
             return self._refresh()
 
 
-# Approver of a purchase order that is In Approval. SAP's OData views do not carry it, so it comes from a list that is
-# exported from the Manage Purchase Orders app (Status = In Approval, Export to Excel) and saved as po_approvers.xlsx (or .csv)
-# in backend/data. It is read again on every request, so a new export shows without a restart. Local PC only: the file is not
-# packed into the Cloud Run image.
-APPROVER_FILES = [os.path.join(DATA, 'po_approvers.xlsx'), os.path.join(DATA, 'po_approvers.csv')]
-
-
-def _table_rows(path):
-    if path.endswith('.csv'):
-        with open(path, newline='', encoding='utf-8-sig') as f:
-            return [list(r) for r in csv.reader(f)]
-    from openpyxl import load_workbook
-    wb = load_workbook(path, read_only=True, data_only=True)
-    try:
-        return [list(r) for r in wb.worksheets[0].iter_rows(values_only=True)]
-    finally:
-        wb.close()
-
-
-def load_approvers():
-    """{'file': name, 'savedAt': ms, 'approvers': {PO number: approver name}} from the first approver file found."""
-    for path in APPROVER_FILES:
-        if not os.path.exists(path):
-            continue
-        try:
-            rows = _table_rows(path)
-            head = next((i for i, r in enumerate(rows[:15]) if any('approver' in str(c or '').lower() for c in r)
-                         and any(str(c or '').strip().lower().startswith('purchase order') for c in r)), None)
-            if head is None:
-                log(f'{os.path.basename(path)}: no header row with "Purchase Order" and "Approver"')
-                continue
-            h = [str(c or '').strip().lower() for c in rows[head]]
-            c_po = next(i for i, x in enumerate(h) if x.startswith('purchase order'))
-            c_ap = next(i for i, x in enumerate(h) if 'approver' in x)
-            c_st = next((i for i, x in enumerate(h) if x in ('status', 'approval status')), None)
-            out = {}
-            for r in rows[head + 1:]:
-                m = re.search(r'(?<!\d)(\d{10})(?!\d)', str(r[c_po] if c_po < len(r) else ''))
-                ap = str(r[c_ap] if c_ap < len(r) and r[c_ap] is not None else '').strip()
-                st = str(r[c_st] if c_st is not None and c_st < len(r) and r[c_st] is not None else '').lower()
-                if m and ap and (not st or 'approval' in st):
-                    out[m.group(1)] = ap
-            return {'file': os.path.basename(path), 'savedAt': int(os.path.getmtime(path) * 1000), 'approvers': out}
-        except Exception as e:  # a bad export must not break the page
-            log(f'{os.path.basename(path)}: could not be read ({e})')
-    return {'file': '', 'savedAt': 0, 'approvers': {}}
-
-
-# Likely approver by purchasing organisation + purchasing group, optionally a net value band (po_approver_rules.csv: Purchasing org,
-# Purchasing group, Min value (INR), Max value (INR), Approver, Basis). The approval is decided by SAP's workflow, which the dashboard cannot read; this is a pattern seen on
-# POs whose approver is known, shown on the page as "likely", never as confirmed.
-RULES_FILE = os.path.join(DATA, 'po_approver_rules.csv')
-
-
-def load_rules():
-    """Rules from po_approver_rules.csv as a list: org, group, min / max net value in INR (None = no limit), approver, basis."""
-    out = []
-
-    def num(x):
-        x = (x or '').strip().replace(',', '')
-        return float(x) if x else None
-    try:
-        with open(RULES_FILE, newline='', encoding='utf-8-sig') as f:
-            for r in csv.DictReader(f):
-                org, pg, ap = (r.get('Purchasing org') or '').strip(), (r.get('Purchasing group') or '').strip(), (r.get('Approver') or '').strip()
-                if org and pg and ap:
-                    out.append({'org': org, 'pg': pg, 'min': num(r.get('Min value (INR)')), 'max': num(r.get('Max value (INR)')), 'approver': ap,
-                                'basis': (r.get('Basis') or '').strip()})
-    except FileNotFoundError:
-        pass
-    except Exception as e:
-        log(f'po_approver_rules.csv could not be read ({e})')
-    return out
-
-
 # The storage locations the Store Stock page covers: stock_locations.csv (Plant, Storage location, Name, Type). Stock in any other location is left out.
 # Type is "Internal Plant material" for the in-process (I/P) stores and "Store" for the others (a blank type counts as Store).
 # The file is read again at every refresh from SAP, so a location added to it shows up at the next refresh (the Refresh button reads SAP at once).
@@ -551,7 +491,7 @@ def load_stock_locations():
     try:
         with open(STOCK_LOCATIONS_FILE, newline='', encoding='utf-8-sig') as f:
             for r in csv.reader(f):
-                if len(r) >= 2 and r[0].strip() and r[1].strip() and r[0].strip().lower() != 'plant' and r[0].strip() not in EXCLUDE_PLANTS:
+                if len(r) >= 2 and r[0].strip() and r[1].strip() and r[0].strip().lower() != 'plant' and r[0].strip() not in EXCLUDE_PLANTS and r[1].strip() not in EXCLUDE_LOCATIONS:
                     out[(r[0].strip(), r[1].strip())] = ((r[3].strip() if len(r) > 3 else '') or 'Store', r[2].strip() if len(r) > 2 else '')
     except FileNotFoundError:
         pass
@@ -590,8 +530,23 @@ def ageing_view(rows, asof_day):
     return data
 
 
+# what po_pre() saw in the rows of the last PO read, before the RM rows were dropped: the RM suppliers and the purchase orders that are left out as a whole
+PO_PRE = {'rmSuppliers': {}, 'gone': set()}
+
+
+def po_pre(rows):
+    kept, gone = po_split(rows)
+    kept_pos = {r.get('PurchaseOrder') for r in kept}
+    # a PO with no item left (all its items are RM or internal stock transfer) is left out as a whole
+    PO_PRE['gone'] = gone | {r.get('PurchaseOrder') for r in rows if r.get('PurchaseOrder') not in kept_pos}
+    PO_PRE['rmSuppliers'] = po_rm_suppliers(rows)
+
+
 def po_view(rows, asof_day, *extra):
+    rows, gone = po_split(rows)
     data = po_compact(rows, asof_day, *extra)
+    data['rmSuppliers'] = dict(PO_PRE['rmSuppliers'])  # supplier number -> RM items left out: Payment Ageing finds its RM parties with it
+    data['removedPos'] = sorted(gone | PO_PRE['gone'])  # purchase orders left out as a whole: their receipts and pending invoices are left out on the pages
     # the store locations of stock_locations.csv as [plant, location, category]: the Price Variance page counts as Store only the PO lines delivered to them
     locs = load_stock_locations()
     data['storeLocs'] = sorted([p, c, v[0]] for (p, c), v in locs.items()) if locs else None
@@ -610,6 +565,38 @@ class MoveSap(Sap):
     """The goods movement history of the listed store locations (for the stock of a past date). The first read takes the whole history, later reads only the last days; the state is
     kept per document line, so nothing is counted twice."""
 
+    def _build(self, state, fetched_at=None):
+        """The page data (month, day wise) of the movement state: the listed store locations of today (a location taken out of the list drops out at once), the stock of today's date."""
+        listed = load_stock_locations()
+        asof_day = int((time.time() + 5.5 * 3600) // 86400)
+        data = moves_compact(state, asof_day, listed)
+        body = json.dumps(data, separators=(',', ':'), ensure_ascii=False).encode('utf-8')
+        digest = hashlib.sha1(body).hexdigest()[:20]
+        stamp = int(time.time() * 1000)
+        raw = body[:-1] + b',"fetchedAt":' + str(stamp).encode('ascii') + b'}'
+        self.cache = (fetched_at if fetched_at is not None else time.time(), raw, gzip.compress(raw, 6), digest, stamp)
+
+    def load_disk(self):
+        """The movement history is not tied to a day or to the program files (it is the history since 1 Dec 2025): a saved one whose last full read is at most MOVES_KEEP_DAYS days old is
+        shown at once, the recent days are read again at once and the whole history again 10 minutes later."""
+        if not self.key or CLOUD:
+            return False
+        try:
+            with open(self._path(), 'rb') as f:
+                d = pickle.load(f)
+            st = (d.get('xstate') or {}).get(0)
+            if d.get('mv', 1) != 1 or not st or time.time() - st[1] > MOVES_KEEP_DAYS * 86400:
+                return False
+            self._xstate = {0: (st[0], max(st[1], time.time() - MOVES_FULL_EVERY + 600))}
+            self._build(st[0], fetched_at=d.get('fetched_at') or 0)
+            self._saved = (self.cache[3], time.time())
+            return True
+        except FileNotFoundError:
+            return False
+        except Exception as e:
+            log(f'{self.key}: the saved movements could not be read ({e}); they are read from SAP')
+            return False
+
     def _refresh(self):
         t0 = time.time()
         listed = load_stock_locations()
@@ -619,14 +606,95 @@ class MoveSap(Sap):
         q = MOVE_QUERY if full else move_recent_query()
         res = self._fetch_rows(self.base, self.entity, [q], lambda st, rows: move_fold(st, rows, listed_set), init=None if full else dict(prev[0]))
         self._xstate[0] = (res.state, time.time() if full else prev[1])
+        self._build(res.state)
+        log(f'goods movements of the store locations: read {res.n:,} lines ({"whole history" if full else "last days"}), {len(res.state["lines"]):,} kept, in {time.time() - t0:.1f} s')
+        self.save_disk()
+        return self.cache[1:]
+
+
+class OldPoSap(Sap):
+    """The PO items of the pending invoices whose purchase order is older than the PO data (which starts at 1 Jan 2026): the invoice view has no price, so these items had no value on
+    the Pending Invoice Entry page (user, 4-Nov-2026: "inki value kyu nahi aa rhi hai"). Same layout as /api/po, only for those purchase orders; they are asked from SAP by PO number
+    (a few at a time) once, and again after 6 hours or when a new old PO appears."""
+    sources = None  # (invoice view, PO view), set in main()
+
+    def _needed(self):
+        inv, po = self.sources
+        if not (inv.cache and po.cache):
+            return None
+        have = {a[2] for a in json.loads(po.cache[1])['rows']}
+        return sorted({a[4] for a in json.loads(inv.cache[1])['rows'] if a[4] and a[4] not in have})
+
+    def _refresh(self):
+        t0 = time.time()
+        need = self._needed()
+        if need is None:  # the invoice or PO view is not there yet: nothing to price now, try again at the next request
+            raise SapError('The pending invoices and the PO data are not loaded yet.', 503)
+        prev = self._xstate.get(0)
+        bank, bank_at = (dict(prev[0]), prev[1]) if prev and time.time() - prev[1] < 21600 else ({}, time.time())
+        new = [x for x in need if x not in bank]
+        for i in range(0, len(new), 12):
+            chunk = new[i:i + 12]
+            flt = ' or '.join(f"PurchaseOrder eq '{x}'" for x in chunk)
+            got = self._fetch_rows(self.base, self.entity, [{'$select': ','.join(PO_FIELDS), '$filter': flt}])
+            for x in chunk:
+                bank[x] = []
+            for r in got:
+                if (r.get('Plant') or '') in EXCLUDE_PLANTS or (r.get('StorageLocation') or '') in EXCLUDE_LOCATIONS:
+                    continue
+                bank.setdefault(r.get('PurchaseOrder') or '', []).append(r)
+        self._xstate[0] = (bank, bank_at)
+        rows = [r for x in need for r in bank.get(x, [])]
         asof_day = int((time.time() + 5.5 * 3600) // 86400)
-        data = moves_compact(res.state, asof_day, listed)
+        rows, gone = po_split(rows)
+        data = po_compact(rows, asof_day)
+        data['removedPos'] = sorted(gone)
         body = json.dumps(data, separators=(',', ':'), ensure_ascii=False).encode('utf-8')
         digest = hashlib.sha1(body).hexdigest()[:20]
         stamp = int(time.time() * 1000)
         raw = body[:-1] + b',"fetchedAt":' + str(stamp).encode('ascii') + b'}'
         self.cache = (time.time(), raw, gzip.compress(raw, 6), digest, stamp)
-        log(f'goods movements of the store locations: read {res.n:,} lines ({"whole history" if full else "last days"}), {len(res.state["lines"]):,} kept, in {time.time() - t0:.1f} s')
+        if new:
+            log(f'old purchase orders of the pending invoices: {len(new)} asked from SAP, {len(rows)} items in {time.time() - t0:.1f} s')
+        self.save_disk()
+        return self.cache[1:]
+
+
+class ApprovalSap(Sap):
+    """The purchase orders that wait for approval: the open tasks of SAP's release workflow (YY1_PO_PENDING_APPROVAL_CDS) and the items of exactly those POs, ALL of them: raw material
+    and internal stock transfers too (user, 5-Nov-2026: "PO Pending Approval me sabhi PO dikhne chahiye ... RM se leke sab" - this is the one page that shows RM). The items are asked from
+    SAP by PO number (12 at a time), kept for 10 minutes, and a PO that is new in the task list is asked at once. Result: the tasks (approval_compact) and `po` = the items in the
+    layout of /api/po (po_compact), without any RM / plant / location rule."""
+    po_base = None  # the PO item view, set in main()
+
+    def _refresh(self):
+        t0 = time.time()
+        asof_day = int((time.time() + 5.5 * 3600) // 86400)
+        data = approval_compact(self._fetch_rows(), asof_day)
+        need = sorted({r[0] for r in data['rows']})
+        keep = set(need)
+        bank = {po: v for po, v in (self._xstate.get(0) or {}).items() if po in keep}  # a PO that is not pending any more is forgotten
+        now = time.time()
+        todo = [po for po in need if po not in bank or now - bank[po][1] > 600]
+        for i in range(0, len(todo), 12):
+            chunk = todo[i:i + 12]
+            flt = ' or '.join(f"PurchaseOrder eq '{x}'" for x in chunk)
+            got = self._fetch_rows(self.po_base, 'YY1_PO_ITEM_SUPPLIER', [{'$select': ','.join(PO_FIELDS), '$filter': flt, '$orderby': 'PurchaseOrder,PurchaseOrderItem'}])
+            by = {x: [] for x in chunk}
+            for r in got:
+                by.setdefault(r.get('PurchaseOrder') or '', []).append(r)
+            for x in chunk:
+                bank[x] = (by.get(x, []), now)
+        self._xstate[0] = bank
+        items = [r for po in need for r in bank[po][0]]
+        data['po'] = po_compact(items, asof_day)
+        body = json.dumps(data, separators=(',', ':'), ensure_ascii=False).encode('utf-8')
+        digest = hashlib.sha1(body).hexdigest()[:20]
+        stamp = int(time.time() * 1000)
+        raw = body[:-1] + b',"fetchedAt":' + str(stamp).encode('ascii') + b'}'
+        self.cache = (time.time(), raw, gzip.compress(raw, 6), digest, stamp)
+        if todo:
+            log(f'purchase orders waiting for approval: {len(need)} tasks, items of {len(todo)} POs asked from SAP, {len(items)} item rows in {time.time() - t0:.1f} s')
         self.save_disk()
         return self.cache[1:]
 
@@ -684,8 +752,6 @@ def make_handler(apis):
             if u.path == '/logo.png':
                 with open(LOGO, 'rb') as f:
                     return self._send(200, f.read(), 'image/png', cache='public, max-age=86400')
-            if u.path == '/api/po-approvers':
-                return self._send(200, json.dumps({**load_approvers(), 'rules': load_rules()}, ensure_ascii=False).encode('utf-8'), 'application/json; charset=utf-8')
             if u.path in apis:
                 force = 'refresh' in urllib.parse.parse_qs(u.query)
                 try:
@@ -739,6 +805,7 @@ def main():
         password = password or getpass.getpass('SAP password (typing is hidden): ').strip()
     typed = (user, password) if not CLOUD and not saved else None
     sap = Sap(args.base_url, 'YY1_Store_Pending_PR', PR_QUERY, to_compact, user, password, args.ttl, min_refresh=MIN_REFRESH)
+    sap.row_skip = lambda r: (r.get('PurchasingGroup') or '') == '020'  # the RM purchase (VP Purchase) is not taken
     # Every view is read again 25 seconds after its last read (a little under the 30 seconds the pages ask again), but only while a page is open; a read of the
     # biggest views takes 10-25 seconds, so they are nearly always being read while a page is open.
     issue = Sap(ISSUE_BASE, 'YY1_Store_Reservation', ISSUE_QUERY, issue_compact, user, password,
@@ -746,6 +813,7 @@ def main():
     # PO items: about 72,000 lines since 1 Jan 2026.
     po = Sap(PO_BASE, 'YY1_PO_ITEM_SUPPLIER', PO_QUERY, po_view, user, password, args.ttl, min_refresh=MIN_REFRESH,
              extra=[(PO_STATUS_BASE, 'YY1_PO_ITEM_STATUS', PO_STATUS_QUERY)])
+    po.pre_view = po_pre
     # Store stock: about 27,000 rows from SAP of which about 5,000 hold stock. The goods issues read with it (about 300,000 rows, 60 calls) are read in full
     # every 30 minutes; the refreshes in between read only the last 7 days (consume_recent_query) and add them to that state.
     stock = Sap(STOCK_BASE, STOCK_ENTITY, STOCK_QUERY, stock_view, user, password, args.ttl, min_refresh=MIN_REFRESH,
@@ -759,12 +827,17 @@ def main():
     invoice = Sap(INVOICE_BASE, 'YY1_STORE_INVOICE_VL06', INVOICE_QUERY, invoice_compact, user, password, args.ttl, min_refresh=MIN_REFRESH)
     # Payment ageing: about 25,000 open vendor items.
     ageing = Sap(AGEING_BASE, 'YY1_STORE_VENDOR_AGEING', AGEING_QUERY, ageing_view, user, password, args.ttl, min_refresh=MIN_REFRESH)
+    # Purchase orders waiting for approval: the open tasks of the release workflow (about 60 rows) and the items of exactly those POs, raw material included.
+    approval = ApprovalSap(APPROVAL_BASE, 'YY1_PO_PENDING_APPROVAL', APPROVAL_QUERY, approval_compact, user, password, args.ttl, min_refresh=MIN_REFRESH)
+    approval.po_base = PO_BASE
     # Asset transactions (acquisitions, retirements, transfers): about 3,000 lines that change a few times a day.
     asset = Sap(ASSET_BASE, 'YY1_STORE_ASSET_TR', ASSET_QUERY, asset_compact, user, password, args.ttl, min_refresh=MIN_REFRESH)
     asset.drop_plants = False
     # The goods movements of the listed store locations: with them the stock of an earlier day is rebuilt from the stock of today (day wise / month wise stock).
     stockmoves = MoveSap(ISSUE_BASE, 'YY1_Store_Reservation', MOVE_QUERY, None, user, password, args.ttl, min_refresh=MIN_REFRESH)
-    apis = {'/api/pr': sap, '/api/issue': issue, '/api/po': po, '/api/stock': stock, '/api/purchase': purchase, '/api/invoice': invoice, '/api/ageing': ageing, '/api/asset': asset, '/api/stockmoves': stockmoves}
+    old_po = OldPoSap(PO_BASE, 'YY1_PO_ITEM_SUPPLIER', PO_QUERY, None, user, password, args.ttl, min_refresh=MIN_REFRESH)
+    old_po.sources = (invoice, po)
+    apis = {'/api/po-old': old_po, '/api/pr': sap, '/api/issue': issue, '/api/po': po, '/api/stock': stock, '/api/purchase': purchase, '/api/invoice': invoice, '/api/ageing': ageing, '/api/po-approval': approval, '/api/asset': asset, '/api/stockmoves': stockmoves}
     del password
     restored = []
     for path, view in apis.items():
@@ -803,7 +876,8 @@ def main():
                     forget_login()
                     log('SAP rejected the saved password; it was removed. Close this window, start the dashboard again and type the current password.')
             with ThreadPoolExecutor(max_workers=3) as ex:
-                list(ex.map(one, (stock, po, issue, ageing, purchase, sap, invoice, asset, stockmoves)))
+                list(ex.map(one, (stock, po, issue, ageing, purchase, sap, invoice, asset, approval, stockmoves)))
+            one(old_po)  # after the invoice and PO views: it needs their data
             log('every view is ready (a view that was restored from the disk is being read from SAP again in the background)')
         threading.Thread(target=warm, daemon=True).start()
         host = '0.0.0.0' if args.lan else '127.0.0.1'

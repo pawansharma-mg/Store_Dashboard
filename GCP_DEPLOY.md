@@ -105,7 +105,7 @@ Link kholne par Google login aayega, jisko access diya hai wahi dekh payega.
 |---|---|
 | Code ya dashboard badalna | Step 5 ka deploy command dobara chalao |
 | Stock ki locations badalna | `backend/data/stock_locations.csv` me row add/hatao, phir Step 5 dobara chalao (Cloud Run me ye file image ke andar hai; local PC par har refresh par dobara padhi jaati hai) |
-| Naam / department / approver rules badalna | `backend/pr_data.py` (naam, department) ya `backend/data/po_approver_rules.csv` (likely approver), phir Step 5 dobara chalao |
+| Naam / department badalna | `backend/pr_data.py` (naam, department; approver ka naam bhi yahin `USER_NAMES` me), phir Step 5 dobara chalao |
 | SAP password badalna | Secret Manager mein `sap-password` ka new version add karo, phir Step 5 dobara chalao (naya revision) |
 | Galat password ya SAP error | Logs: Cloud Run, store-pending-pr, Logs. Dashboard par bhi lal dot ke saath message dikhta hai |
 | Data kitna fresh hai | Server SAP se max 5 minute purana data deta hai. Page ka Refresh button 30 second se jaldi dobara SAP nahi bulata |
@@ -115,6 +115,6 @@ Link kholne par Google login aayega, jisko access diya hai wahi dekh payega.
 
 - **SAP ki taraf IP allowlist** ho to Cloud Run ke IP SAP tak nahi pahunchenge. Tab Cloud NAT se fixed outbound IP lagana padega. Step 0 pass ho aur GCP par "Could not reach SAP" aaye to yahi wajah hogi.
 - **SAP user** ko in CDS views ka read access chahiye (Power BI wala user chal sakta hai): `YY1_STORE_PENDING_PR_CDS`, `YY1_STORE_RESERVATION_CDS`, `YY1_PO_ITEM_SUPPLIER_CDS`, `YY1_PO_ITEM_STATUS_CDS`, `YY1_STORE_STOCK_CDS`.
-- **Approver ke confirmed naam** (`po_approvers.xlsx/.csv`, SAP se export) Cloud Run image me nahi jaate; wahan PO Approval page par sirf "likely" approver (rules se) dikhta hai. Confirmed naam sirf local PC par dikhte hain.
+- **PO Approval Pending ka approver** SAP ke `YY1_PO_PENDING_APPROVAL_CDS` se aata hai (workflow ka asli approver); koi approver file nahi hai, Cloud Run par bhi wahi dikhta hai.
 - **Cost:** Idle rehne par lagbhag zero. Dashboard kholte hi pehli baar 1-2 minute lag sakte hain (SAP se bada data aata hai); baad me turant khulta hai.
 - **Region:** `asia-south1` (Mumbai). Badalna ho to har command mein `--region` badlo.

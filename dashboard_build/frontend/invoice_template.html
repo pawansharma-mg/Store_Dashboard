@@ -64,6 +64,20 @@ tbody tr:hover td{background:rgba(28,173,228,.07)}
 tr.sel td{background:rgba(28,173,228,.14)!important}
 .num{text-align:right;font-variant-numeric:tabular-nums}
 .nw{white-space:nowrap}
+.lnk[aria-expanded="true"]::before{content:"▾ "}
+tr.tlrow>td{padding:4px 6px 14px!important;background:transparent!important}
+.mp{border:1px solid var(--brand);border-left-width:4px;border-radius:10px;background:rgba(28,173,228,.06);padding:10px 12px;margin:8px 0;white-space:normal;font-weight:400;text-align:left}
+.mph{display:flex;flex-wrap:wrap;align-items:center;gap:8px}.mph b{font-size:.95rem}.mph .sm{font-size:.72rem;color:var(--muted)}
+.mpb{margin-left:auto;display:flex;gap:6px}
+.mp .btn{height:28px;font-size:.78rem}
+.mp .tbox{max-height:380px;background:var(--surface);border-radius:8px;margin-top:8px}
+.mp .pager{margin-top:6px}
+/* the opened panel is as wide as the card, it does not stretch the month table */
+#monCard{grid-column:1/-1}
+.grid{grid-auto-flow:row dense}
+#byMonth{container-type:inline-size}
+#byMonth:has(.mp){max-height:none}
+#byMonth .mp{position:sticky;left:0;width:calc(100cqw - 12px);box-sizing:border-box}
 .lnk{border:0;background:none;padding:0;color:var(--brand-dark);font-weight:600;text-decoration:underline;text-align:left}
 .tablecard{margin-top:12px}
 .tscroll{overflow:auto;max-height:75vh}
@@ -158,9 +172,9 @@ tr.sel td{background:rgba(28,173,228,.14)!important}
       <p class="hint">Days since the delivery date of the invoice. Click a row to filter everything.</p>
       <div class="tbox" id="byAge"></div>
     </article>
-    <article class="card">
+    <article class="card" id="monCard">
       <h2><span class="sec-badge">5</span>Month-wise pending</h2>
-      <p class="hint">By delivery date. Click a month to see it day by day.</p>
+      <p class="hint">By delivery date. Click a month (or its bar) to see its pending items right here; the Day-wise card shows that month day by day.</p>
       <div class="tbox" id="byMonth"></div>
     </article>
     <article class="card">
@@ -195,7 +209,7 @@ const PAGE=25;
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtN=n=>Math.round(n).toLocaleString('en-IN');
 function fmtINR(v){const a=Math.abs(v);if(a>=1e7)return '₹'+(v/1e7).toFixed(2)+' Cr';if(a>=1e5)return '₹'+(v/1e5).toFixed(2)+' L';return '₹'+Math.round(v).toLocaleString('en-IN');}
-const fmtDay=d=>new Date(d*864e5).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric',timeZone:'UTC'});
+const fmtDay=d=>new Date(d*864e5).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric',timeZone:'UTC'}).replace('Sept','Sep');
 const mIdx=d=>{const t=new Date(d*864e5);return t.getUTCFullYear()*12+t.getUTCMonth();};
 const mName=k=>MON[k%12]+' '+Math.floor(k/12);
 const dayOf=v=>v?Math.floor(Date.parse(v)/864e5):null;
@@ -209,13 +223,15 @@ const qSum=rows=>{const m=new Map();for(const r of rows)m.set(r.unit,(m.get(r.un
 const BUCKETS=[['Today',0,0],['1 day',1,1],['2–7 days',2,7],['8–30 days',8,30],['31–90 days',31,90],['Over 90 days',91,1e9]];
 const OLD_DAYS=7;
 
-let D=null,R=[],CUR=null,renderToken=0,tileToken=0,POD=null,POMAP=new Map(),SUPN=new Map();
-const S={tile:null,tileAll:false,all:false,plant:'',dept:null,sup:null,st:'',age:null,from:null,to:null,q:'',mon:null};
+let D=null,R=[],CUR=null,renderToken=0,tileToken=0,POD=null,POOLD=null,POMAP=new Map(),SUPN=new Map();
+const S={tile:null,tileAll:false,all:false,plant:'',dept:null,sup:null,st:'',age:null,from:null,to:null,q:'',mon:null,openMon:new Set(),monAll:{}};
 const supName=id=>SUPN.get(id)||'';
 const supLabel=id=>supName(id)?supName(id)+' ('+id+')':'Supplier '+id;
 
+let REMOVED=new Set();  // PO numbers the server leaves out (raw-material POs, internal STOs of VP Purchase): their pending invoices are not shown
 function pass(r,skip){
   skip=skip||[];
+  if(REMOVED.has(r.po))return false;
   if(!skip.includes('plant')&&S.plant&&r.plant!==S.plant)return false;
   if(!skip.includes('dept')&&S.dept!==null&&r.dept!==S.dept)return false;
   if(!skip.includes('sup')&&S.sup!==null&&r.supId!==S.sup)return false;
@@ -235,11 +251,11 @@ const byCnt=m=>[...m.entries()].sort((a,b)=>b[1].n-a[1].n||b[1].dels.size-a[1].d
 const none='<div class="empty">Nothing matches the filters.</div>';
 const valTxt=x=>x.vn?fmtINR(x.val)+(x.vn<x.n?'<span class="qmore" title="'+fmtN(x.vn)+' of '+fmtN(x.n)+' items have a PO price in the 2026 data"> *</span>':''):'–';
 const nums=x=>`<td class="num">${fmtN(x.dels.size)}</td><td class="num">${fmtN(x.n)}</td><td class="num nw">${valTxt(x)}</td><td class="num nw">${x.old?fmtN(x.old)+' d':'–'}</td>`;
-function aggTable(list,head,cell,sel){
+function aggTable(list,head,cell,sel,under){
   if(!list.length)return none;
   const tot=agg();for(const [,x] of list)merge(tot,x);
   return `<table><thead><tr><th>${head}</th><th class="num">Invoice</th><th class="num">Items</th><th class="num">Value (approx.)</th><th class="num">Oldest</th></tr></thead><tbody>`+
-    list.map(([k,x])=>`<tr${k===sel?' class="sel"':''}><td>${cell(k)}</td>${nums(x)}</tr>`).join('')+
+    list.map(([k,x])=>`<tr${k===sel?' class="sel"':''}><td>${cell(k)}</td>${nums(x)}</tr>`+(under?under(k):'')).join('')+
     `</tbody><tfoot><tr><td>Total (${fmtN(list.length)})</td>${nums(tot)}</tr></tfoot></table>`;
 }
 
@@ -252,6 +268,18 @@ const itemTxt=r=>(r.matName||r.mat)+' · '+fmtQty(r.qty,r.unit);
 const matLines=items=>{const e=items.map(r=>esc(itemTxt(r)));if(e.length<=3)return e.join('<br>');return e.slice(0,3).join('<br>')+`<br><span class="qmore" title="${esc(items.map(itemTxt).join('\n'))}">+ ${e.length-3} more items</span>`;};
 const valSum=rows=>{let v=0,n=0;for(const r of rows)if(r.val!==null){v+=r.val;n++;}return [v,n];};
 const lineFoot=rows=>{const [v,n]=valSum(rows);return `<tfoot><tr><td colspan="12">Total (${fmtN(rows.length)} items, ${fmtN(new Set(rows.map(r=>r.del)).size)} deliveries)</td><td class="num nw qlist">${qCap(qSum(rows),3)}</td><td colspan="2"></td><td class="num nw">${n?fmtINR(v):'–'}</td><td colspan="4"></td></tr></tfoot>`;};
+
+// the pending invoice items of one delivery month, opened right under its row in the Month-wise card (all filters apply except the dates)
+function monPanel(k){
+  const rows=R.filter(r=>r.ddate!==null&&pass(r,['date'])&&mIdx(r.ddate)===k).sort((a,b)=>(b.ddate||0)-(a.ddate||0)||b.del.localeCompare(a.del)||a.item-b.item);
+  const [v,vn]=valSum(rows),dels=new Set(rows.map(r=>r.del)).size,all=!!S.monAll[k],shown=all?rows.slice(0,600):rows.slice(0,25);
+  let h=`<div class="mp"><div class="mph"><b>${esc(mName(k))}</b><span class="sm">${fmtN(dels)} invoices (deliveries) · ${fmtN(rows.length)} items${vn?' · '+fmtINR(v)+(vn<rows.length?' *':''):''}</span><span class="mpb"><button type="button" class="btn alt" data-monfilter="${k}" title="Filter the whole page and the item list to this month">Filter the whole page</button><button type="button" class="btn alt" data-monclose="${k}">Close</button></span></div>`;
+  if(!rows.length)return h+'<p class="hint">No items match the filters.</p></div>';
+  h+=`<div class="tbox"><table><thead><tr><th class="num">#</th><th>Delivery</th><th>Item</th><th>Delivery date</th><th class="num">Waiting</th><th>Supplier</th><th>PO / item</th><th>Material</th><th class="num">Delivery qty</th><th class="num">Value (approx.)</th><th>Department</th><th>Goods receipt</th></tr></thead><tbody>`+
+    shown.map((r,i)=>`<tr><td class="num">${i+1}</td><td class="nw"><b>${esc(r.del)}</b></td><td>${r.item}</td><td class="nw">${fmtDay(r.ddate)}</td><td class="num nw">${ageTxt(r.age)}</td><td class="supc">${esc(supName(r.supId)||('Supplier '+r.supId))}</td><td class="nw">${esc(r.po||'–')}${r.poItem?' / '+r.poItem:''}</td><td class="matc"><span class="nw">${esc(r.mat)}</span><div class="sm">${esc(r.matName)}</div></td><td class="num nw">${fmtQty(r.qty,esc(r.unit))}</td><td class="num nw">${r.val===null?'–':'<b>'+fmtINR(r.val)+'</b>'}</td><td class="nw">${esc(r.dept)}</td><td>${stPill(r.st)}</td></tr>`).join('')+'</tbody></table></div>';
+  if(rows.length>25)h+=`<div class="pager"><span>${all?(rows.length>600?'The first 600 of '+fmtN(rows.length)+' shown':'All '+fmtN(rows.length)+' shown'):'Showing the first 25 of '+fmtN(rows.length)}</span><div><button class="btn" type="button" data-monall="${k}">${all?'Show first 25':'See all '+fmtN(rows.length)}</button></div></div>`;
+  return h+'</div>';
+}
 
 // ---------------------------------------------------------------- details of a tile
 const TILE_INFO={
@@ -363,7 +391,7 @@ function render(){
   const mon=new Map(),day=new Map();
   if(S.mon===null)S.mon=mIdx(D.asofDay);
   for(const r of R){if(r.ddate===null||!pass(r,['date']))continue;const k=mIdx(r.ddate);add(mon,k,r);if(k===S.mon)add(day,r.ddate,r);}
-  $('byMonth').innerHTML=aggTable([...mon.entries()].sort((a,b)=>b[0]-a[0]),'Month',k=>`<button type="button" class="lnk" data-mon="${k}">${mName(k)}</button>`,S.mon);
+  $('byMonth').innerHTML=aggTable([...mon.entries()].sort((a,b)=>b[0]-a[0]),'Month',k=>`<button type="button" class="lnk" data-mon="${k}" aria-expanded="${S.openMon.has(k)}" title="Click to see the pending items of this month right here">${mName(k)}</button>`,S.mon,k=>S.openMon.has(k)?`<tr class="tlrow subrow"><td colspan="5">${monPanel(k)}</td></tr>`:'');
   $('dayTitle').textContent='Day-wise pending · '+mName(S.mon);
   $('byDay').innerHTML=aggTable([...day.entries()].sort((a,b)=>a[0]-b[0]),'Delivery date',k=>`<button type="button" class="lnk" data-day="${k}">${fmtDay(k)}</button>`);
   // the items, newest delivery first
@@ -387,7 +415,10 @@ document.addEventListener('click',e=>{
   else if(t.dataset.plant!==undefined){S.plant=S.plant===t.dataset.plant?'':t.dataset.plant;$('plantSel').value=S.plant;}
   else if(t.dataset.sup!==undefined){S.sup=S.sup===t.dataset.sup?null:t.dataset.sup;$('supSel').value=S.sup===null?'':S.sup;}
   else if(t.dataset.age!==undefined){const a=+t.dataset.age;S.age=S.age===a?null:a;}
-  else if(t.dataset.mon!==undefined){S.mon=+t.dataset.mon;}
+  else if(t.dataset.mon!==undefined){const k=+t.dataset.mon;S.mon=k;if(S.openMon.has(k))S.openMon.delete(k);else S.openMon.add(k);}
+  else if(t.dataset.monclose!==undefined){S.openMon.delete(+t.dataset.monclose);}
+  else if(t.dataset.monall!==undefined){const k=+t.dataset.monall;S.monAll[k]=!S.monAll[k];}
+  else if(t.dataset.monfilter!==undefined){const k=+t.dataset.monfilter,y=Math.floor(k/12),m=k%12;S.from=Date.UTC(y,m,1)/864e5;S.to=Date.UTC(y,m+1,0)/864e5;S.mon=k;S.openMon.delete(k);syncDates();}
   else if(t.dataset.day!==undefined){const d=+t.dataset.day;S.from=S.to=d;syncDates();}
   else if(t.dataset.qk){const k=t.dataset.qk;
     if(k==='today')S.from=S.to=D.asofDay;else if(k==='yest')S.from=S.to=D.asofDay-1;else if(k==='month')setMonthDates();else S.from=S.to=null;
@@ -453,11 +484,19 @@ function setData(d){
 }
 // PO + item -> [net amount, order quantity, rate to INR]; the supplier names (id -> name) of the PO data
 function setPO(j){
-  POD=j;POMAP=new Map();SUPN=new Map();
+  POD=j;POMAP=new Map();SUPN=new Map();REMOVED=new Set([...(j.removedPos||[]),...(POOLD&&POOLD.removedPos||[])]);
   for(const s of j.suppliers)if(s[1])SUPN.set(s[0],s[1]);
   for(const a of j.rows)POMAP.set(a[2]+'|'+a[3],[a[17],a[15],a[24]]);
+  addOldPO();
   if(D){assign();fillSelects();render();}
 }
+// the older purchase orders of the pending invoices (/api/po-old: asked from SAP by PO number): their price gives the pending items of those POs a value, and the supplier names come with them
+function addOldPO(){
+  if(!POOLD)return;
+  for(const s of POOLD.suppliers)if(s[1]&&!SUPN.has(s[0]))SUPN.set(s[0],s[1]);
+  for(const a of POOLD.rows){const k=a[2]+'|'+a[3];if(!POMAP.has(k))POMAP.set(k,[a[17],a[15],a[24]]);}
+}
+function setPOOld(j){POOLD=j;REMOVED=new Set([...REMOVED,...(j.removedPos||[])]);addOldPO();if(D){assign();fillSelects();render();}}
 // a link from the Summary page: ?tile=dels&plant=1010&from=2026-10-01&to=2026-10-31 (dates=all clears the dates); used once, on the first load
 let LINK=(()=>{try{const q=new URLSearchParams(location.search);return q.has('tile')||q.has('plant')||q.has('from')||q.has('to')||q.has('dates')?q:null;}catch(e){return null;}})();
 function applyLink(){
@@ -475,6 +514,7 @@ async function load(force,auto){
   if(!auto||!D)setLive('busy',D?'Refreshing from SAP…':'Loading pending invoices from SAP…');
   // the PO data (price and supplier names) is fetched in parallel; the page is drawn as soon as the invoices are there
   const poP=LIVE.get('/api/po',force).then(g=>g.same||!g.res.ok?null:g.j).catch(()=>null);
+  LIVE.get('/api/po-old',force).then(g=>{if(!g.same&&g.res.ok)setPOOld(g.j);}).catch(()=>null);
   try{
     const g=await LIVE.get('/api/invoice',force),res=g.res,j=g.j;
     if(g.same){setLive('ok','Live from SAP · updated '+hhmm(g.stamp)+' · '+fmtN(R.length)+' pending items');poP.then(p=>{if(p)setPO(p);});return;}

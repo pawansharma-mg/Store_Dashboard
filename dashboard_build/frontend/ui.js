@@ -1,7 +1,7 @@
 /* Helpers shared by every page (loaded with defer, after the page's own script). Nothing here changes a figure; it only draws.
    - bars behind the value column of the summary tables
    - an icon on every tile, and numbers that count up (or move from the old to the new number when a filter changes)
-   - bar and donut charts above the month / day / ageing / plant / category tables (a click on a bar or a slice does what the table row does)
+   - bar charts above the month / day / ageing tables (a click on a bar does what the table row does; there are no round charts)
    - a CSV button in the heading of every table card (a list that shows only its first rows is opened to all rows first, then put back)
    - a shadow under the header once scrolled, a back-to-top button, and "/" to jump to the search box */
 (function () {
@@ -215,22 +215,24 @@
   // ---------------------------------------------------------------- charts above the summary tables
   var PALETTE = ['#0E7FAE', '#7CC8E8', '#2A78D6', '#BFE3F4', '#0B5E87', '#4FB3E0', '#6DA7EC', '#3E5C76']; // the one blue of the dashboard in light and dark steps
   var OTHER = '#94A3B8';
-  // page -> table container -> chart. col: which column to draw (a header test); rev: the table lists the newest first
+  // Pending Purchase Orders: the Delivery filter decides what a bar is. "Pending delivery" (the default) = Value to be delivered (the same as the tile Pending value), "All" = Net value.
+  // Net value of a pending item also holds what is already received, so on the pending list it is more than the pending value (user, 5-Nov-2026: "Graph me value galt kyu aa rha hai").
+  function poVal() { var s = document.getElementById('delSel'); return s && s.value === 'every' ? /net value/i : /value to be delivered/i; }
+  // page -> table container -> chart. col: which column to draw (a header test, or a function that gives it); rev: the table lists the newest first; note: write the name of the column above the chart
   var CHARTS = {
-    '/issue': [{ id: 'byAge', type: 'cols', col: /value/i }, { id: 'byMonth', type: 'cols', col: /value/i, rev: true }, { id: 'byDay', type: 'cols', col: /value/i }, { id: 'byDept', type: 'donut', col: /value/i }],
-    '/po': [{ id: 'byAge', type: 'cols', col: /value to be delivered/i }, { id: 'byMonth', type: 'cols', col: /net value/i, rev: true }, { id: 'byDay', type: 'cols', col: /net value/i }, { id: 'byPlant', type: 'donut', col: /net value/i }, { id: 'byType', type: 'donut', col: /net value/i }],
-    '/po-approval': [{ id: 'byAge', type: 'cols', col: /^pos$/i }, { id: 'byAppr', type: 'donut', col: /^pos$/i }, { id: 'byPlant', type: 'donut', col: /net value/i }],
-    '/invoice': [{ id: 'byAge', type: 'cols', col: /^items$/i }, { id: 'byMonth', type: 'cols', col: /^items$/i, rev: true }, { id: 'byDay', type: 'cols', col: /^items$/i }, { id: 'byDept', type: 'donut', col: /^items$/i }, { id: 'byPlant', type: 'donut', col: /^items$/i }],
-    '/purchase': [{ id: 'byAge', type: 'cols', col: /net value/i }, { id: 'byLead', type: 'cols', col: /net value/i }, { id: 'byMonth', type: 'cols', col: /net value/i, rev: true }, { id: 'byDay', type: 'cols', col: /net value/i }, { id: 'byDept', type: 'donut', col: /net value/i }, { id: 'byPlant', type: 'donut', col: /net value/i }],
-    '/asset': [{ id: 'byAge', type: 'cols', col: /^amount$/i }, { id: 'byMonth', type: 'cols', col: /^amount$/i, rev: true }, { id: 'byDay', type: 'cols', col: /^amount$/i }, { id: 'byCo', type: 'donut', col: /^amount$/i }, { id: 'byCls', type: 'donut', col: /^amount$/i }],
-    '/ageing': [{ id: 'byAgeG', type: 'cols', col: /^amount$/i }, { id: 'byAgeT', type: 'cols', col: /^amount$/i }],
-    '/stock': [{ id: 'byIdle', type: 'cols', col: /stock value/i }, { id: 'byMonthS', type: 'cols', col: /stock at the end/i, rev: true }, { id: 'byDayS', type: 'cols', col: /stock at the end/i, rev: true }, { id: 'byCat', type: 'donut', col: /value/i }, { id: 'byMtype', type: 'donut', col: /value/i }, { id: 'byType', type: 'donut', col: /total value/i }, { id: 'byPlant', type: 'donut', col: /total value/i }]
+    '/issue': [{ id: 'byAge', col: /value/i }, { id: 'byMonth', col: /value/i, rev: true }, { id: 'byDay', col: /value/i }],
+    '/po': [{ id: 'byAge', col: /value to be delivered/i }, { id: 'byMonth', col: poVal, rev: true, note: true }, { id: 'byDay', col: poVal, note: true }],
+    '/invoice': [{ id: 'byAge', col: /^items$/i }, { id: 'byMonth', col: /^items$/i, rev: true }, { id: 'byDay', col: /^items$/i }],
+    '/purchase': [{ id: 'byAge', col: /net value/i }, { id: 'byLead', col: /net value/i }, { id: 'byMonth', col: /net value/i, rev: true }, { id: 'byDay', col: /net value/i }],
+    '/asset': [{ id: 'byAge', col: /^amount$/i }, { id: 'byMonth', col: /^amount$/i, rev: true }, { id: 'byDay', col: /^amount$/i }],
+    '/ageing': [{ id: 'byAgeG', col: /^amount$/i }, { id: 'byAgeT', col: /^amount$/i }],
+    '/stock': [{ id: 'byIdle', col: /stock value/i }]
   };
   function readTable(box, colTest, rev) {
     var t = box.querySelector('table');
     if (!t || !t.tHead || !t.tBodies[0]) return null;
-    var head = t.tHead.rows[0], col = -1;
-    for (var c = 0; c < head.cells.length; c++) if (colTest.test(head.cells[c].textContent.trim())) col = c;
+    var head = t.tHead.rows[0], col = -1, test = typeof colTest === 'function' ? colTest() : colTest;
+    for (var c = 0; c < head.cells.length; c++) if (test.test(head.cells[c].textContent.trim())) col = c;
     if (col < 0) return null;
     var rows = [], money = false;
     for (var r = 0; r < t.tBodies[0].rows.length; r++) {
@@ -244,50 +246,42 @@
       rows.push({ label: row.cells[0].textContent.trim(), value: v, text: cell.textContent.trim(), link: link, sel: row.classList.contains('sel') });
     }
     if (rev) rows.reverse();
-    return { rows: rows, money: money };
+    return { rows: rows, money: money, colName: head.cells[col].textContent.trim().replace(/\s+/g, ' ') };
   }
   function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
-  function short(label) { // "Oct 2026" -> "Oct 26", "01 Oct 2026" -> "1", "0–2 days" stays
-    var m = /^(\w{3}) (\d{4})$/.exec(label);
-    if (m) return m[1] + ' ' + m[2].slice(2);
-    m = /^(\d{1,2}) \w{3,4} \d{4}$/.exec(label);
-    return m ? String(parseInt(m[1], 10)) : label;
+  function short(label, roomy, per) { // "Oct 2026" -> "Oct 26", "01 Oct 2026" -> "1" (with room: "01 Oct"), "16–30 days" -> "16–30" in a narrow column
+    var m = /^(\w{3,5}) (\d{4})/.exec(label);
+    if (m) return m[1].slice(0, 3) + ' ' + m[2].slice(2);
+    m = /^(\d{1,2}) (\w{3,4}) \d{4}$/.exec(label);
+    if (m) return roomy ? ('0' + parseInt(m[1], 10)).slice(-2) + ' ' + m[2].slice(0, 3) : String(parseInt(m[1], 10));
+    m = /^(\d+(?:–\d+)?) days$/.exec(label);
+    if (m && per && per < 80) return m[1];
+    if (label === 'Over 1 year' && per && per < 80) return '>1 yr';
+    return label;
   }
   function columns(data, width) {
-    var rows = data.rows, max = 0, i;
+    var rows = data.rows, max = 0, i, H = 168;  // H = the height of .uc-cols in ui.css
     for (i = 0; i < rows.length; i++) if (rows[i].value > max) max = rows[i].value;
-    // what fits: a value above each bar needs about 54 px, a month name about 36 px; with less room the labels are thinned out (the last bar always keeps its name)
     var per = (width || 320) / Math.max(1, rows.length);
-    var dense = per < 54, step = per >= 36 ? 1 : per >= 24 ? 2 : per >= 16 ? 3 : 5;
-    var h = '<div class="uc-cols">';
+    var step = per >= 36 ? 1 : per >= 24 ? 2 : per >= 16 ? 3 : 5;
+    // a value is about 7 px per character (bold): when it does not fit across its column it is written upright (it reads from the bottom up) and the bars get a little lower
+    var maxLen = 0;
+    for (i = 0; i < rows.length; i++) if (String(rows[i].text).length > maxLen) maxLen = String(rows[i].text).length;
+    var textW = Math.ceil(maxLen * 7.1) + 4, rot = textW > per - 8;
+    var roomy = per >= 44, labs = [], wrapAny = false;
+    for (i = 0; i < rows.length; i++) { labs.push(short(rows[i].label, roomy, per)); if (labs[i].length > 11) wrapAny = true; }
+    var valH = rot ? textW + 4 : 16, labH = wrapAny ? 40 : 18;
+    var barMax = Math.max(24, H - valH - labH - 10);   // the value, the bar and the name together fit the height of the chart
+    // a few bars (two days, three groups) stay together in the middle instead of being spread over the whole width; with little room the last label is moved to the right edge
+    var h = '<div class="uc-cols' + (rows.length <= 8 && per >= 110 ? ' few' : '') + (per < 40 ? ' dense' : '') + '">';
     for (i = 0; i < rows.length; i++) {
-      var r = rows[i], pct = max > 0 ? Math.max(r.value > 0 ? 3 : 0, r.value / max * 100) : 0;
-      var showLab = (rows.length - 1 - i) % step === 0;
+      var r = rows[i], px = max > 0 && r.value > 0 ? Math.max(3, Math.round(r.value / max * barMax)) : 0;
+      var showLab = (rows.length - 1 - i) % step === 0, sl = labs[i];
       h += '<button type="button" class="uc-col' + (r.sel ? ' sel' : '') + '" data-i="' + i + '" title="' + esc(r.label + ': ' + r.text) + '">' +
-        (dense ? '' : '<span class="uc-val">' + esc(r.text) + '</span>') +
-        '<span class="uc-bar" style="height:' + pct.toFixed(1) + '%"></span><span class="uc-lab">' + (showLab ? esc(short(r.label)) : '&nbsp;') + '</span></button>';
+        '<span class="uc-val' + (rot ? ' rot' : '') + '">' + esc(r.text) + '</span>' +
+        '<span class="uc-bar" style="height:' + px + 'px"></span><span class="uc-lab' + (sl.length > 11 && showLab ? ' uc-wrap' : '') + '">' + (showLab ? esc(sl) : '&nbsp;') + '</span></button>';
     }
     return h + '</div>';
-  }
-  function donut(data) {
-    var rows = data.rows.filter(function (r) { return r.value > 0; }).sort(function (a, b) { return b.value - a.value; });
-    var total = 0, i;
-    for (i = 0; i < rows.length; i++) total += rows[i].value;
-    if (!(total > 0)) return null;
-    var shown = rows.slice(0, 6), rest = rows.slice(6);
-    if (rest.length) shown.push({ label: 'Others (' + rest.length + ')', value: rest.reduce(function (s, r) { return s + r.value; }, 0), text: data.money ? inr(rest.reduce(function (s, r) { return s + r.value; }, 0)) : plain(rest.reduce(function (s, r) { return s + r.value; }, 0)), other: true });
-    var R = 44, C = 2 * Math.PI * R, off = 0, segs = '', leg = '';
-    data._items = shown;
-    for (i = 0; i < shown.length; i++) {
-      var s = shown[i], len = s.value / total * C, color = s.other ? OTHER : PALETTE[i % PALETTE.length], pct = (s.value / total * 100);
-      var tip = esc(s.label + ': ' + s.text + ' (' + pct.toFixed(1) + '%)');
-      segs += '<circle class="uc-seg' + (s.sel ? ' sel' : '') + '" data-i="' + i + '" cx="60" cy="60" r="' + R + '" stroke="' + color + '" stroke-dasharray="' + Math.max(0, len - 1.5).toFixed(2) + ' ' + (C - Math.max(0, len - 1.5)).toFixed(2) + '" stroke-dashoffset="' + (-off).toFixed(2) + '"><title>' + tip + '</title></circle>';
-      leg += '<li><button type="button" class="' + (s.sel ? 'sel' : '') + '" data-i="' + i + '" title="' + tip + '"><i style="background:' + color + '"></i><b>' + esc(s.label) + '</b><span>' + esc(s.text) + ' · ' + pct.toFixed(pct < 10 ? 1 : 0) + '%</span></button></li>';
-      off += len;
-    }
-    var center = data.money ? inr(total) : plain(total);
-    return '<svg class="uc-svg" viewBox="0 0 120 120" role="img" aria-label="Chart"><circle class="uc-ring" cx="60" cy="60" r="' + R + '"/>' + segs +
-      '<text class="uc-center" x="60" y="62">' + esc(center) + '</text><text class="uc-sub" x="60" y="75">total</text></svg><ul class="uc-leg">' + leg + '</ul>';
   }
   function charts() {
     var cfg = CHARTS[location.pathname];
@@ -298,14 +292,12 @@
       var data = readTable(box, c.col, c.rev);
       var host = box._uc;
       if (!data || !data.rows.length) { if (host) host.hidden = true; continue; }
-      var inner = c.type === 'cols' ? columns(data, box.clientWidth) : donut(data);
-      if (!inner) { if (host) host.hidden = true; continue; }
       if (!host) {
         host = document.createElement('div');
-        host.className = 'uichart uichart-' + c.type;
+        host.className = 'uichart uichart-cols';
         box.parentNode.insertBefore(host, box);
         box._uc = host;
-        // a click on a bar, a slice or a legend line does what the table row does
+        // a click on a bar does what the table row does
         host.addEventListener('click', function (e) {
           var el = e.target.closest('[data-i]');
           if (!el || !this._rows) return;
@@ -314,7 +306,21 @@
         });
       }
       host.hidden = false;
-      host._rows = c.type === 'cols' ? data.rows : data._items;
+      if (window.ResizeObserver && !host._ro) {
+        // one observer per chart (the variable `host` of this loop is shared by all charts, so the chart is passed in)
+        (function (h) {
+          h._ro = new ResizeObserver(function () {
+            if (Math.abs(h.clientWidth - (h._w || 0)) > 6) { clearTimeout(h._rt); h._rt = setTimeout(charts, 120); }
+          });
+          h._ro.observe(h);
+        })(host);
+      }
+      // the width of the chart itself (a card can put the chart beside another one), not of the table under it
+      host._w = host.clientWidth || 0;
+      var inner = columns(data, host.clientWidth || box.clientWidth);
+      if (!inner) { host.hidden = true; continue; }
+      if (c.note) inner = '<div class="uc-note">Bars: ' + esc(data.colName) + '</div>' + inner;
+      host._rows = data.rows;
       // draw again only when something changed, so the charts do not replay their animation on every keystroke
       var sig = inner;
       if (host._sig !== sig) { host.innerHTML = inner; host._sig = sig; }
@@ -573,7 +579,8 @@
   }
   function docInfo(kind, chips) {
     var live = document.getElementById('liveTxt'), desc = document.querySelector('.pagehead p');
-    return { page: pageName(), kind: kind, desc: desc ? desc.textContent.replace(/\s+/g, ' ').trim() : '', live: live ? live.textContent.replace(/\s+/g, ' ').trim() : '', filters: filtersList(), chips: chips || [], downloaded: stampNow().text };
+    var cs = getComputedStyle(document.documentElement), c1 = cssRgb(cs.getPropertyValue('--pc'), [0.055, 0.561, 0.796]), c2 = cssRgb(cs.getPropertyValue('--pc2'), c1);
+    return { page: pageName(), kind: kind, desc: desc ? desc.textContent.replace(/\s+/g, ' ').trim() : '', live: live ? live.textContent.replace(/\s+/g, ' ').trim() : '', filters: filtersList(), chips: chips || [], downloaded: stampNow().text, pc: c1, pc2: c2 };
   }
 
   // ---- the PDF file (A4 landscape, A3 landscape for a very wide list; Helvetica, so the rupee sign is written as Rs)
@@ -682,6 +689,7 @@
     var IM = [], imgIndex = {}, jobs = [];
     function wantIcon(it, col) { var key = it.ico + '|' + rgbHex(col); if (imgIndex[key] === undefined && it.ti) { imgIndex[key] = null; jobs.push(loadImg(iconSvg(it.ti, col)).then(function (img) { if (img) { imgIndex[key] = IM.length; IM.push(rgbaOf(img, 96, 96)); } })); } return key; }
     doc.blocks.forEach(function (b) { if (b.type === 'tiles') b.items.forEach(function (it) { it.key = wantIcon(it, it.hero ? WHITE : (ICO_COLOR[it.ico] ? hexRgb(ICO_COLOR[it.ico]) : pc)); }); });
+    doc.blocks.forEach(function (b) { if (b.type === 'chartrow') b.cards.forEach(function (c) { c.imgs.forEach(function (im) { im.idx = IM.length; IM.push({ w: im.w, h: im.h, data: im.data }); }); }); });  // the pictures of the graphs
     var logoEl = document.querySelector('.logo'), logoIdx = -1;
     if (logoEl) jobs.push(loadImg(logoEl.currentSrc || logoEl.src).then(function (img) {
       if (!img) return;
@@ -742,6 +750,7 @@
         C.text(x + 7.5, top + 10.3, s, 7.4, bold !== false, tc);
         return w;
       }
+      var runTitle = title, heads = 0;
       function newPage(first) {
         cur = [];
         pages.push(cur);
@@ -778,17 +787,52 @@
           C.rect(0, 30, W, 2.2, RED);
           C.image(logoIdx, M, 5, 21, 21);
           C.text(M + 27, 20, 'Mittal Group', 10, true, pc);
-          C.text(W - M - textW(norm(title), 8.4, true), 20, norm(title), 8.4, true, GRAY);
+          C.text(W - M - textW(norm(runTitle), 8.4, true), 20, norm(runTitle), 8.4, true, GRAY);
           y = 44;
         }
       }
       function ensure(h) { if (y + h > bottom) newPage(false); }
+      // the whole-dashboard PDF: a bar in the colour of the page starts every page of the dashboard on a new sheet (the first one follows the title of the file)
+      function pagehead(b) {
+        runTitle = title + ' · ' + b.title;
+        if (heads++ > 0) newPage(false); else ensure(60);
+        var ac = b.accent || pc, ac2 = b.accent2 || ac, hh = 30;
+        C.grad(M, y, avail, hh, [ac, ac2], false, rr(M, y, avail, hh, 8));
+        C.text(M + 14, y + 20.5, norm(b.title), 15, true, WHITE);
+        if (b.sub) { var sub = wrapText(norm(b.sub), avail * 0.62, 7.2, false, 1)[0] || ''; C.text(W - M - 14 - textW(sub, 7.2, false), y + 19, sub, 7.2, false, WHITE); }
+        y += hh + 12;
+      }
       function section(s, accent) {
-        ensure(60);
+        ensure(84);   // the heading and the first row of tiles stay together
         y += 4;
         C.rrect(M, y + 1, 9, 9, 2.5, accent || pc);
         C.text(M + 15, y + 9.5, norm(s), 11.5, true, INK);
         y += 20;
+      }
+      // one row of graph cards (one wide graph, or two narrow ones side by side): the card of the page without its table, the picture of every graph inside
+      function chartrow(b) {
+        var n = b.cards.length, gap = 10, pad = 8, head = 27, cw = n === 1 && b.cards[0].wide ? avail : (avail - gap) / 2, iw = cw - 2 * pad, rowH = 0;
+        b.cards.forEach(function (c) {
+          var h = head + pad;
+          c.imgs.forEach(function (im, i) { im.sc = Math.min(1, iw / im.pw); h += im.ph * im.sc + (i ? 4 : 0); });
+          c.h = h + pad; rowH = Math.max(rowH, c.h);
+        });
+        ensure(rowH + 12);
+        b.cards.forEach(function (c, i) {
+          var x = M + i * (cw + gap), ac = c.accent || pc;
+          C.rrect(x, y, cw, rowH, 8, WHITE, BORDER, 0.6);
+          C.clip(rr(x, y, cw, rowH, 8), function () { C.rect(x, y, cw, 2.8, ac); });
+          if (c.badge) { C.rrect(x + 8, y + 8.5, 14, 14, 4, ac, null); C.text(x + 15 - textW(c.badge, 7.6, true) / 2, y + 18.6, c.badge, 7.6, true, WHITE); } else C.rrect(x + 8, y + 10.5, 9, 9, 2.5, ac, null);
+          C.text(x + (c.badge ? 29 : 24), y + 19, wrapText(norm(c.title), cw - 40, 10.5, true, 1)[0] || '', 10.5, true, INK);
+          var iy = y + head;
+          c.imgs.forEach(function (im, k) {
+            var w = im.pw * im.sc, h = im.ph * im.sc;
+            if (k) iy += 4;
+            C.image(im.idx, x + pad + (iw - w) / 2, iy, w, h);
+            iy += h;
+          });
+        });
+        y += rowH + 12;
       }
       function tiles(items) {
         var cols = avail > 900 ? 6 : 4, gap = 9, bw = (avail - gap * (cols - 1)) / cols, bh = 54, rowTop = 0;
@@ -1038,7 +1082,9 @@
       }
       newPage(true);
       doc.blocks.forEach(function (b, bi) {
-        if (b.type === 'section') section(b.title, b.accent);
+        if (b.type === 'pagehead') pagehead(b);
+        else if (b.type === 'chartrow') chartrow(b);
+        else if (b.type === 'section') section(b.title, b.accent);
         else if (b.type === 'tiles') tiles(b.items);
         else if (b.type === 'table') table(b);
         else if (b.type === 'matlist') matlist(b);
@@ -1137,6 +1183,135 @@
       });
     }).then(function () { var d = docInfo('details', ['Rows: ' + rows.toLocaleString('en-IN')]); d.blocks = all; return d; });
   }
+  // ---------------------------------------------------------------- the whole dashboard in one PDF
+  // (user, 5-Nov-2026: "Download ho to pura dashboard hi download ho, Summary ke sath, PDF me"): the Summary first, then every page of the menu with its tiles, its summary tables
+  // and (the full version) its lists. Every page is loaded in a hidden frame with its own default filters, and the frame's own ui.js writes its blocks (window.__dashPdf).
+  var WHOLE = [['Summary', '/summary'], ['Store Issue', '/issue'], ['Capital Issue', '/asset'], ['Store Stock', '/stock'], ['Pending PR', '/'], ['Pending Purchase Orders', '/po'],
+    ['PO Approval Pending', '/po-approval'], ['Pending Invoice Entry', '/invoice'], ['Purchase', '/purchase'], ['Price Variance', '/price'], ['Payment Ageing', '/ageing']];
+  function framePage(path) { // -> Promise of {win, frame} once the page has its data (the live line says "updated hh:mm")
+    return new Promise(function (resolve, reject) {
+      var f = document.createElement('iframe'), t0 = Date.now(), done = false;
+      f.setAttribute('aria-hidden', 'true');
+      f.tabIndex = -1;
+      f.style.cssText = 'position:fixed;left:-20000px;top:0;width:1400px;height:900px;border:0;opacity:0;pointer-events:none';
+      var fail = function (msg) { if (!done) { done = true; f.remove(); reject(new Error(msg)); } };
+      f.addEventListener('load', function () {
+        (function tick() {
+          if (done) return;
+          try {
+            var d = f.contentDocument, w = f.contentWindow, live = d && d.getElementById('liveTxt'), txt = live ? live.textContent : '';
+            if (w.__dashPdf && /updated \d{1,2}:\d{2}/.test(txt)) { done = true; try { w.document.documentElement.dataset.theme = 'light'; } catch (e) { /* stays as it is */ } setTimeout(function () { resolve({ win: w, frame: f }); }, 1800); return; }
+          } catch (e) { /* the frame is not ready yet */ }
+          if (Date.now() - t0 > 150000) return fail('The page did not load in time.');
+          setTimeout(tick, 500);
+        })();
+      });
+      f.src = path + (path.indexOf('?') < 0 ? '?' : '&') + 'embed=1';
+      document.body.appendChild(f);
+    });
+  }
+  // A graph as a picture: the element is copied with every computed style into an SVG (foreignObject), drawn on a canvas at twice the size and kept as RGBA for the PDF
+  // (the graphs are made of HTML bars, SVG lines and legends; a picture is the only way to show them as on the screen). null when the browser refuses.
+  function copyStyles(src, dst) {
+    var cs = getComputedStyle(src), st = '';
+    for (var i = 0; i < cs.length; i++) { var p = cs[i]; if (p.indexOf('animation') === 0 || p.indexOf('transition') === 0) continue; st += p + ':' + cs.getPropertyValue(p) + ';'; }
+    dst.setAttribute('style', st + 'animation:none;transition:none;');   // a bar that grows when it appears must be drawn full grown
+    for (var j = 0; j < src.children.length; j++) if (dst.children[j]) copyStyles(src.children[j], dst.children[j]);
+  }
+  function snap(el, scale) { // -> Promise of {w, h, pw, ph, data} (pixels, css pixels, RGBA) or null
+    var r = el.getBoundingClientRect(), w = Math.ceil(r.width), h = Math.ceil(r.height);
+    if (w < 20 || h < 20) return Promise.resolve(null);
+    var clone = el.cloneNode(true);
+    copyStyles(el, clone);
+    clone.style.margin = '0'; clone.style.width = w + 'px'; clone.style.height = h + 'px'; clone.style.boxSizing = 'border-box'; clone.style.position = 'static'; clone.style.transform = 'none';
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h + '"><foreignObject x="0" y="0" width="' + w + '" height="' + h + '">' + new XMLSerializer().serializeToString(clone) + '</foreignObject></svg>';
+    return new Promise(function (res) {
+      var img = new Image();
+      img.onload = function () {
+        try {
+          var c = document.createElement('canvas');
+          c.width = Math.round(w * scale); c.height = Math.round(h * scale);
+          var x = c.getContext('2d');
+          x.scale(scale, scale); x.drawImage(img, 0, 0, w, h);
+          res({ w: c.width, h: c.height, pw: w, ph: h, data: x.getImageData(0, 0, c.width, c.height).data });
+        } catch (e) { res(null); }
+      };
+      img.onerror = function () { res(null); };
+      img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+    });
+  }
+  var CHART_SEL = '[data-chart], .uichart:not([hidden]), .ioChart';
+  function chartCards() { // -> Promise of [{title, badge, accent, imgs, wide}]: one entry per card of the page that holds a graph, in the order of the page
+    var cards = [].filter.call(document.querySelectorAll('.wrap .card'), function (c) { return !c.closest('[hidden]') && c.querySelector(CHART_SEL); });
+    var folded = cards.filter(function (c) { return c.classList.contains('folded'); }), out = [];
+    folded.forEach(function (c) { c.classList.remove('folded'); });
+    var t0 = Date.now();
+    // the in / out graphs of Store Stock stay empty until the goods movements are read (about half a minute after the page opens): wait for them, at most a minute
+    function movesWait() { var empty = [].some.call(document.querySelectorAll('.ioChart'), function (e) { return !e.children.length && !e.closest('[hidden]'); }); return empty && Date.now() - t0 < 60000 ? new Promise(function (r) { setTimeout(r, 1000); }).then(movesWait) : null; }
+    return new Promise(function (r) { setTimeout(r, 700); }).then(movesWait).then(function () {   // the graphs draw again at their real width
+      return sequence(cards, function (card) {
+        var hosts = [].filter.call(card.querySelectorAll(CHART_SEL), function (e) { var b = e.getBoundingClientRect(); return b.width > 40 && b.height > 30; });
+        if (!hosts.length) return null;
+        var sels = [], imgs = [];
+        hosts.forEach(function (h) { [].forEach.call(h.querySelectorAll('.sel'), function (e) { e.classList.remove('sel'); sels.push(e); }); });   // the chosen bar is not marked in the picture
+        return sequence(hosts, function (h) { return snap(h, 2).then(function (im) { if (im) imgs.push(im); }); }).then(function () {
+          sels.forEach(function (e) { e.classList.add('sel'); });
+          if (!imgs.length) return;
+          var on = card.querySelector('.sc [aria-pressed="true"]'), badge = card.querySelector('.sec-badge');
+          out.push({ title: cardTitle(card) + (on ? ' · ' + on.textContent.trim() : ''), badge: badge ? badge.textContent.trim() : '', accent: cssRgb(getComputedStyle(card).getPropertyValue('--cc'), null), imgs: imgs, wide: Math.max.apply(null, imgs.map(function (i) { return i.pw; })) >= 800 });
+        });
+      });
+    }).then(function () { folded.forEach(function (c) { c.classList.add('folded'); }); return out; });
+  }
+  function buildShort() { // the main things of the page: its tiles and its graphs (a page without a graph gets the first rows of its first table) -> Promise of a doc
+    var d = docInfo('short'), blocks = [], items = tileItems();
+    if (items.length) blocks.push({ type: 'tiles', items: items });
+    return chartCards().then(function (cards) {
+      var rows = [], pend = null;
+      cards.forEach(function (c) { // a wide graph has a row of its own, narrow ones go two by two
+        if (c.wide) { if (pend) { rows.push([pend]); pend = null; } rows.push([c]); } else if (pend) { rows.push([pend, c]); pend = null; } else pend = c;
+      });
+      if (pend) rows.push([pend]);
+      rows.forEach(function (r) { blocks.push({ type: 'chartrow', cards: r }); });
+      if (!cards.length) {
+        var first = summaryCards()[0], tb = first && cardBlocks(first).filter(function (b) { return b.type === 'table'; })[0];
+        if (tb) { tb.rows = tb.rows.slice(0, 10); tb.foot = []; tb.title = tb.title + ' · the first 10'; blocks.push(tb); }
+      }
+      d.blocks = blocks;
+      return d;
+    });
+  }
+  function buildWhole(mode, progress) { // mode: 'short' = tiles and graphs of every page, 'all' = tiles, summary tables and lists, 'figures' = tiles and summary tables -> Promise of a doc
+    var withLists = mode === 'all', blocks = [], names = [], here = location.pathname;
+    return sequence(WHOLE, function (s, i) {
+      var idx = WHOLE.indexOf(s);
+      progress('Preparing ' + (idx + 1) + '/' + WHOLE.length + ' · ' + s[0] + '…');
+      var local = s[1] === '/summary' && here === '/summary';   // the Summary you are looking at keeps its own filters
+      var get = local ? Promise.resolve({ win: window, frame: null }) : framePage(s[1]);
+      return get.then(function (h) {
+        var api = h.win.__dashPdf;
+        return (mode === 'short' && s[1] !== '/summary' ? api.short() : api.summary()).then(function (sd) {
+          blocks.push({ type: 'pagehead', title: s[0], sub: sd.filters.join('  ·  '), accent: sd.pc, accent2: sd.pc2 });
+          sd.blocks.forEach(function (b) { blocks.push(b); });
+          names.push(s[0]);
+          if (!withLists || s[1] === '/summary') return;
+          return api.details().then(function (dd) { dd.blocks.forEach(function (b) { blocks.push(b); }); });
+        }).then(function () { if (h.frame) h.frame.remove(); }, function (e) { if (h.frame) h.frame.remove(); throw e; });
+      }).catch(function (e) { // a page that could not be read is named in the file, the others still come
+        blocks.push({ type: 'pagehead', title: s[0], sub: '', accent: null });
+        blocks.push({ type: 'section', title: 'This page could not be read: ' + (e && e.message ? e.message : 'unknown error'), accent: null });
+      });
+    }).then(function () {
+      var d = docInfo(mode === 'short' ? 'all pages' : withLists ? 'all pages · lists' : 'all pages · figures');
+      d.page = 'Whole dashboard';
+      d.desc = 'The Summary first, then every page of the menu in its order: ' + names.join(', ') + '. ' + (mode === 'short' ? 'Every page shows its main figures (the tiles) and its graphs; the long tables and lists are not in this file (the Download menu of a page has Summary and Details)' : withLists ? 'Every page shows its tiles, its summary tables and its lists' : 'Every page shows its tiles and its summary tables') + ', with the default filters of that page (the filters are written in the bar of the page).';
+      d.filters = ['Every page with its own default filters'];
+      d.blocks = blocks;
+      return d;
+    });
+  }
+  window.__dashPdf = { summary: buildSummary, details: buildDetails, short: buildShort };   // read by the whole-dashboard download of another page (through a hidden frame)
+
   function downloadSetup() {
     var tools = document.querySelector('.top .tools');
     if (!tools || embedded || document.getElementById('dlBtn')) return;
@@ -1148,6 +1323,7 @@
       + '<div class="dlmenu" id="dlMenu" role="menu" hidden>'
       + '<button type="button" role="menuitem" data-dl="summary"><b>Summary</b><span>' + (isSummary ? 'The figures of every page' : 'The tiles and every summary table') + ' · PDF</span></button>'
       + (isSummary ? '' : '<button type="button" role="menuitem" data-dl="details"><b>Details</b><span>Every row of the list under the filters set now · PDF</span></button>')
+      + '<button type="button" role="menuitem" data-dl="short"><b>Whole dashboard</b><span>The Summary and the main figures and graphs of every page, in short · PDF (1–2 minutes)</span></button>'
       + '</div>';
     var refresh = document.getElementById('refresh');
     tools.insertBefore(wrap, refresh ? refresh.nextSibling : tools.firstChild);
@@ -1163,11 +1339,12 @@
       close();
       btn.disabled = true;
       btn.textContent = 'Preparing…';
-      var failed = false;
-      (kind === 'summary' ? buildSummary() : buildDetails()).then(function (doc) {
+      var failed = false, whole = kind === 'short' || kind === 'all' || kind === 'figures';
+      (whole ? buildWhole(kind, function (t) { btn.textContent = t; }) : kind === 'summary' ? buildSummary() : buildDetails()).then(function (doc) {
         if (!doc.blocks.length) { btn.textContent = 'Nothing to download'; failed = true; return; }
+        if (whole) btn.textContent = 'Writing the PDF…';
         return buildPdf(doc).then(function (blob) {
-          saveBlob((isSummary ? 'summary' : slugName + '_' + kind) + '_' + stampNow().file + '.pdf', blob);
+          saveBlob((whole ? (kind === 'figures' ? 'dashboard-figures' : kind === 'all' ? 'dashboard-lists' : 'dashboard') : isSummary ? 'summary' : slugName + '_' + kind) + '_' + stampNow().file + '.pdf', blob);
           btn.textContent = 'Download';
         });
       }).catch(function () { failed = true; btn.textContent = 'Download failed'; }).then(function () {

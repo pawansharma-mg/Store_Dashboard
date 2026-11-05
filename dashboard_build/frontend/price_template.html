@@ -101,12 +101,12 @@ tr.sel td{background:rgba(28,173,228,.12)!important}
 .pill.cur{color:var(--s1);background:rgba(42,120,214,.15)}
 /* charts: drawn here as SVG, the colours follow Normal / Dark */
 .pvc{width:100%;height:auto;display:block}
-.pvc text{fill:var(--ink2);font-size:11px;font-family:inherit}
+.pvc text{fill:var(--ink2);font-size:12px;font-family:inherit}
 .pvc .gl{stroke:var(--grid);stroke-width:1}
 .pvc .bl{fill:var(--crit)}.pvc .bg{fill:var(--good)}
 .pvc [data-mat]{cursor:pointer}
 .pvc [data-mat]:hover .bl,.pvc [data-mat]:hover .bg{opacity:.8}
-.pvc .vt{fill:var(--ink);font-weight:600}
+.pvc .vt{fill:var(--ink);font-weight:800;font-size:12.5px}
 .leg{display:flex;gap:16px;flex-wrap:wrap;font-size:.76rem;color:var(--ink2);margin:0 0 6px}
 .leg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
 /* group tabs, loss / profit pills, key points, jump links, trend lines, loading skeleton */
@@ -161,9 +161,9 @@ tr.tlrow>td{padding:4px 6px 14px!important;background:transparent!important}
 </header>
 <nav class="nav"><a href="/summary">Summary</a><a href="/issue">Store Issue</a><a href="/asset">Capital Issue</a><a href="/stock">Store Stock</a><a href="/">Pending PR</a><a href="/po">Pending Purchase Orders</a><a href="/po-approval">PO Approval Pending</a><a href="/invoice">Pending Invoice Entry</a><a href="/purchase">Purchase</a><a href="/price" class="on">Price Variance</a><a href="/ageing">Payment Ageing</a></nav></div>
 <div class="wrap">
-  <section class="gtabs" id="gtabs" aria-label="RM, Store, Silver Gold Medal"><div class="tile sk"></div><div class="tile sk"></div><div class="tile sk"></div><div class="tile sk"></div></section>
+  <section class="gtabs" id="gtabs" aria-label="Material groups"><div class="tile sk"></div><div class="tile sk"></div><div class="tile sk"></div><div class="tile sk"></div></section>
   <p class="hint" id="exNote" style="margin:8px 2px 4px"></p>
-  <details class="notebox" style="margin:0 0 14px"><summary>What are RM, Silver · Gold · Medal and Store?</summary><p class="note" style="margin-top:8px"><b>RM</b> = raw materials: every material whose number starts with 11 (the 11 series: copper, zinc, nickel, scrap, ingots), wherever it is delivered, and what the RM purchase itself buys (purchasing group 020, VP Purchase, on a purchase order ZDRM, ZIRM or ZTRD) even when the number is not 11: Copper Wire Rod and Copper Ingot (numbered 12…, plant 1010), Lead Scrap Radio and two brass strips. <b>Store</b> = everything else: consumables, spares, tools, store raw materials, the medals, gifts, trophies and other trading goods, and the other purchases of the plants. Silver and gold bought by the gram (coins, bullion, articles, LSA trays, wire) are not in the price variance at all. The first two digits of a material number are its type: 11… = RM, 12… = trading goods, 13… spares, 14… consumables, 16… tools and 18… store raw materials, letters (FG-…, B30-…) = finished or semi-finished goods. A line goes to the first group that fits, in this order: RM, Store. The same filters apply to every tab. Click a tab again to go back to All.</p></details>
+  <details class="notebox" style="margin:0 0 14px"><summary>What is left out: RM, silver and gold by the gram?</summary><p class="note" style="margin-top:8px"><b>RM is not on this page</b> (user, 4-Nov-2026). <b>RM</b> = raw materials: every material whose number starts with 11 (the 11 series: copper, zinc, nickel, scrap, ingots), wherever it is delivered, and what the RM purchase itself buys (purchasing group 020, VP Purchase, on a purchase order ZDRM, ZIRM or ZTRD) even when the number is not 11: Copper Wire Rod and Copper Ingot (numbered 12…, plant 1010), Lead Scrap Radio and two brass strips. <b>Everything else is on this page</b> (Store): consumables, spares, tools, store raw materials, the medals, gifts, trophies and other trading goods, and the other purchases of the plants. Silver and gold bought by the gram (coins, bullion, articles, LSA trays, wire) are not in the price variance at all. The first two digits of a material number are its type: 11… = RM, 12… = trading goods, 13… spares, 14… consumables, 16… tools and 18… store raw materials, letters (FG-…, B30-…) = finished or semi-finished goods. A line that is RM is left out; every other line is compared. The same filters apply to every tab. Click a tab again to go back to All.</p></details>
   <section class="bar" aria-label="Filters">
     <label class="fld"><span>Plant</span><select id="plantSel"></select></label>
     <label class="fld"><span>Material type</span><select id="mtSel"></select></label>
@@ -187,13 +187,13 @@ tr.tlrow>td{padding:4px 6px 14px!important;background:transparent!important}
       <h2><span class="sec-badge">1</span>Profit and loss by month</h2>
       <p class="hint">What the purchases of each month cost more (loss) or less (profit) than at the reference rate of the same material.</p>
       <div class="leg"><span><i style="background:var(--crit)"></i>Loss: paid more than the reference rate</span><span><i style="background:var(--good)"></i>Profit: paid less</span></div>
-      <div id="chartPL"></div>
+      <div id="chartPL" data-chart></div>
     </article>
     <article class="card">
       <h2><span class="sec-badge">2</span>Price rises and falls by month</h2>
       <p class="hint">How many materials changed their rate from one PO date to the next in that month (by the change filter above).</p>
       <div class="leg"><span><i style="background:var(--crit)"></i>Rate rose</span><span><i style="background:var(--good)"></i>Rate fell</span></div>
-      <div id="chartMV"></div>
+      <div id="chartMV" data-chart></div>
     </article>
   </section>
 
@@ -216,13 +216,13 @@ tr.tlrow>td{padding:4px 6px 14px!important;background:transparent!important}
     <article class="card">
       <h2><span class="sec-badge">5</span>Biggest losses · 10 materials</h2>
       <p class="hint">The materials where the purchases cost the most more than at the reference rate. Click a bar for the details.</p>
-      <div id="chartLoss"></div>
+      <div id="chartLoss" data-chart></div>
       <div id="panLoss"></div>
     </article>
     <article class="card">
       <h2><span class="sec-badge">6</span>Biggest profits · 10 materials</h2>
       <p class="hint">The materials where the purchases cost the most less than at the reference rate.</p>
-      <div id="chartProfit"></div>
+      <div id="chartProfit" data-chart></div>
       <div id="panProfit"></div>
     </article>
   </section>
@@ -230,7 +230,7 @@ tr.tlrow>td{padding:4px 6px 14px!important;background:transparent!important}
   <section class="card" style="margin-top:12px" id="sec-grp" data-foldable>
     <h2><span class="sec-badge">7</span>Profit and loss by material group</h2>
     <p class="hint">Net = loss − profit. A red bar is a net loss, a green bar a net profit. The biggest 12 groups are drawn, the table has every group.</p>
-    <div id="chartGrp"></div>
+    <div id="chartGrp" data-chart></div>
     <div class="tbox" id="byGrp"></div>
   </section>
 
@@ -268,8 +268,8 @@ function fmtINR(v){const a=Math.abs(v),s=v<-0.5?'-':'';if(a>=1e7)return s+'₹'+
 const fmtRate=v=>'₹'+v.toLocaleString('en-IN',{minimumFractionDigits:0,maximumFractionDigits:2});
 const sgn=v=>(v>0?'+':v<0?'-':'')+fmtRate(Math.abs(v));
 const sgnPct=p=>(p>0?'+':p<0?'-':'')+(Math.abs(p)>=1000?fmtN(Math.abs(p)):Math.abs(p).toFixed(1))+'%';
-const fmtDay=d=>new Date(d*864e5).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric',timeZone:'UTC'});
-const fmtDayS=d=>new Date(d*864e5).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit',timeZone:'UTC'});
+const fmtDay=d=>new Date(d*864e5).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric',timeZone:'UTC'}).replace('Sept','Sep');
+const fmtDayS=d=>new Date(d*864e5).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit',timeZone:'UTC'}).replace('Sept','Sep');
 const mName=k=>MON[k%12]+' '+Math.floor(k/12);
 const mShort=k=>MON[k%12]+" '"+String(Math.floor(k/12)).slice(2);
 const mIdx=d=>{const t=new Date(d*864e5);return t.getUTCFullYear()*12+t.getUTCMonth();};
@@ -288,9 +288,10 @@ function calc(){
   if(!D)return;
   const base={plant:S.plant,mtype:S.mtype,from:S.from,to:S.to,basis:S.basis,min:S.min};
   // RM, Store, Packing and Others are worked out apart (the side by side table); the page shows the one chosen, or all together
-  CMP={RM:PRICEVAR.compute(D,{...base,grp:'RM'}),STORE:PRICEVAR.compute(D,{...base,grp:'STORE'}),PACKING:PRICEVAR.compute(D,{...base,grp:'PACKING'}),OTHER:PRICEVAR.compute(D,{...base,grp:'OTHER'})};
+  // (RM is not part of this page since 4-Nov-2026: pricevar.js leaves its lines out)
+  CMP={STORE:PRICEVAR.compute(D,{...base,grp:'STORE'}),PACKING:PRICEVAR.compute(D,{...base,grp:'PACKING'}),OTHER:PRICEVAR.compute(D,{...base,grp:'OTHER'})};
   CMP.ALL=PRICEVAR.compute(D,{...base,grp:''});
-  CALC=CMP[S.grp||'ALL'];
+  CALC=CMP[S.grp||'ALL']||CMP.ALL;
   CALC.byKey=new Map(CALC.mats.map(r=>[r.key,r]));
 }
 const GRP_TXT={'':'All materials',RM:'RM (raw material)',STORE:'Store',PACKING:'Silver · Gold · Medal',OTHER:'Others'};
@@ -314,16 +315,18 @@ function niceMax(v){if(!(v>0))return 1;const p=Math.pow(10,Math.floor(Math.log10
 // grouped columns: items [{label,a,b,tip}], a red, b green
 function groupedBars(items,fmt,wd){
   if(!items.length)return '<div class="empty">Nothing to draw for the filters.</div>';
-  const W=wd||600,H=240,L=62,R=10,T=14,B=32,pw=W-L-R,ph=H-T-B,n=items.length;
+  const W=wd||600,H=272,L=62,R=10,T=70,B=32,pw=W-L-R,ph=H-T-B,n=items.length;  // T leaves room for the value written upright above every bar
   const mx=niceMax(Math.max(...items.map(i=>Math.max(i.a,i.b))));
   const Y=v=>T+ph-v/mx*ph,gw=pw/n,bw=Math.min(28,gw*.36);
   let g='';
   for(let k=0;k<=4;k++){const v=mx*k/4,y=Y(v);g+=`<line class="gl" x1="${L}" x2="${W-R}" y1="${y}" y2="${y}"/><text x="${L-6}" y="${y+3.5}" text-anchor="end">${esc(fmt(v))}</text>`;}
   items.forEach((it,i)=>{
     const cx=L+gw*(i+.5),ya=Y(it.a),yb=Y(it.b);
+    const vt=(x,y,v)=>v>0?`<text class="vt" transform="translate(${x+4} ${y-5}) rotate(-90)" text-anchor="start">${esc(fmt(v))}</text>`:'';
     g+=`<g><title>${esc(it.tip)}</title>`+
       `<rect class="bl" x="${cx-bw-1}" y="${ya}" width="${bw}" height="${Math.max(0,T+ph-ya)}" rx="2"/>`+
       `<rect class="bg" x="${cx+1}" y="${yb}" width="${bw}" height="${Math.max(0,T+ph-yb)}" rx="2"/>`+
+      vt(cx-bw/2-1,ya,it.a)+vt(cx+bw/2+1,yb,it.b)+
       `<text x="${cx}" y="${H-12}" text-anchor="middle">${esc(it.label)}</text></g>`;
   });
   return `<svg class="pvc" viewBox="0 0 ${W} ${H}" role="img" aria-label="Chart">${g}</svg>`;
@@ -336,7 +339,7 @@ function hbars(items,fmt,wd,lw){
   items.forEach((it,i)=>{
     const y=4+i*rowH,w=Math.max(2,it.value/mx*bw);
     g+=`<g ${it.key?`data-mat="${esc(it.key)}" data-ctx="${esc(it.ctx||'')}"`:''}><title>${esc(it.tip||it.label)}</title>`+
-      `<text x="${LW-8}" y="${y+16}" text-anchor="end">${esc(it.label.length>Math.floor((LW-12)/6.2)?it.label.slice(0,Math.floor((LW-12)/6.2)-1)+'…':it.label)}</text>`+
+      `<text x="${LW-8}" y="${y+16}" text-anchor="end">${esc(it.label.length>Math.floor((LW-12)/7.2)?it.label.slice(0,Math.floor((LW-12)/7.2)-1)+'…':it.label)}</text>`+
       `<rect class="${it.cls||'bl'}" x="${LW}" y="${y+4}" width="${w}" height="${rowH-9}" rx="3"/>`+
       `<text class="vt" x="${LW+w+6}" y="${y+16}">${esc(fmt(it.value))}</text></g>`;
   });
@@ -562,11 +565,11 @@ function render(){
     // the group tabs: every group with its own numbers; Others only when it holds a material (or is the chosen group)
     const showOther=CMP.OTHER.mats.length>0||S.grp==='OTHER';
     const showPack=CMP.PACKING.mats.length>0||S.grp==='PACKING';  // the silver / gold / medal group is switched off: its tab shows only when it holds a material
-    const defs=[['','All materials',CMP.ALL],['RM',GRP_BTN.RM,CMP.RM],['STORE',GRP_BTN.STORE,CMP.STORE],...(showPack?[['PACKING',GRP_BTN.PACKING,CMP.PACKING]]:[]),...(showOther?[['OTHER',GRP_BTN.OTHER,CMP.OTHER]]:[])];
+    const defs=[['','All materials',CMP.ALL],...(showPack||showOther?[['STORE',GRP_BTN.STORE,CMP.STORE]]:[]),...(showPack?[['PACKING',GRP_BTN.PACKING,CMP.PACKING]]:[]),...(showOther?[['OTHER',GRP_BTN.OTHER,CMP.OTHER]]:[])];
     $('gtabs').innerHTML=defs.map(([g,label,cm])=>{const ms=pick(cm.mats),u=pick(cm.ups).length,d=pick(cm.downs).length,tt=PRICEVAR.totals(ms);
       return `<button type="button" class="tile tilebtn gt" data-grp="${g}" aria-pressed="${S.grp===g}" title="${esc(GRP_TIP[g])}"><div class="gtn">${esc(label)}</div><div class="gtv">${fmtN(ms.length)} materials · <span class="up">▲ ${fmtN(u)}</span> <span class="dn">▼ ${fmtN(d)}</span></div><div class="gtp">${lp(tt.net)}</div><div class="gts sm">loss ${fmtINR(tt.loss)} · profit ${fmtINR(tt.profit)}</div></button>`;}).join('');
   }
-  $('exNote').textContent=[CMP.RM.excluded?`${fmtN(CMP.RM.excluded)} PO lines delivered to the storage locations PS01 to PS06, NPD1 and DROS (dross), of any plant (production and job-work stores, not purchases for stock)`:'',CMP.RM.excludedGram?`${fmtN(CMP.RM.excludedGram)} PO lines of silver and gold materials measured in grams (coins, bullion, articles, wire)`:''].filter(Boolean).map((t,i)=>(i?'':'Left out of everything on this page: ')+t).join('; ')+(CMP.RM.excluded||CMP.RM.excludedGram?'.':'');
+  $('exNote').textContent=[CMP.ALL.excluded?`${fmtN(CMP.ALL.excluded)} PO lines delivered to the storage locations PS01 to PS06, NPD1 and DROS (dross), of any plant (production and job-work stores, not purchases for stock)`:'',CMP.ALL.excludedGram?`${fmtN(CMP.ALL.excludedGram)} PO lines of silver and gold materials measured in grams (coins, bullion, articles, wire)`:''].filter(Boolean).map((t,i)=>(i?'':'Left out of everything on this page: ')+t).join('; ')+(CMP.ALL.excluded||CMP.ALL.excludedGram?'.':'');
   renderTile(mats,ups,downs);
 
   // the graphs by month
@@ -661,7 +664,7 @@ function setData(d){
 function fillMt(){
   if(!D)return;
   const gOf=PRICEVAR.classifier(D);
-  const mt=[...new Set(D.rows.filter(a=>S.grp===''||gOf(a)===S.grp).map(a=>D.mtypes[a[11]]))].filter(Boolean).sort();
+  const mt=[...new Set(D.rows.filter(a=>gOf(a)!=='RM'&&(S.grp===''||gOf(a)===S.grp)).map(a=>D.mtypes[a[11]]))].filter(Boolean).sort();
   $('mtSel').innerHTML='<option value="">All material types'+(S.grp?' of '+{RM:'RM',STORE:'Store',PACKING:'Silver · Gold · Medal',OTHER:'Others'}[S.grp]:'')+'</option>'+mt.map(t=>`<option value="${esc(t)}">${esc(mtName(t))}</option>`).join('');
   if(S.mtype&&!mt.includes(S.mtype))S.mtype='';
   $('mtSel').value=S.mtype;
@@ -671,7 +674,7 @@ let LINK=(()=>{try{const q=new URLSearchParams(location.search);return q.has('ti
 function applyLink(){
   if(!LINK)return;const q=LINK;LINK=null;
   if(q.has('plant')){S.plant=q.get('plant')||'';if(![...$('plantSel').options].some(o=>o.value===S.plant))S.plant='';$('plantSel').value=S.plant;}
-  if(q.has('grp')&&['RM','STORE'].includes(q.get('grp'))){S.grp=q.get('grp');fillMt();}
+  if(q.has('grp')&&['STORE'].includes(q.get('grp'))){S.grp=q.get('grp');fillMt();}
   if(q.has('mtype')){S.mtype=q.get('mtype')||'';if(![...$('mtSel').options].some(o=>o.value===S.mtype))S.mtype='';$('mtSel').value=S.mtype;}
   const k=q.get('tile');if(k&&TILE_INFO[k]){S.tile=k;S.reveal='tileCard';}
   calc();

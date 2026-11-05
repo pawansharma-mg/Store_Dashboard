@@ -6,6 +6,59 @@ from datetime import date
 # Plants left out of every page (user, 29-Oct-2026: "1040 plant ki details hata do sab jagah se"): the rows of these plants are dropped when a view is read from SAP
 # (Sap._refresh in serve_dashboard.py; the asset transactions in asset_compact), so no page, total, filter or download has them. Put a plant back by deleting it here.
 EXCLUDE_PLANTS = ('1040',)
+# Storage locations left out of every page (user, 4-Nov-2026: "pure dashboard se ML93 location remove kro, usme RM ke material rehte hain"; ML93 = Port Ware House of plant 1010, the copper cathode / wire rod imports): the rows of these
+# locations are dropped when a view is read from SAP and the location is not taken from stock_locations.csv
+EXCLUDE_LOCATIONS = ('ML93',)
+
+# Items the dashboard does not take at all (user, 5-Nov-2026: "RM ka items lena hi nahi hai pure dashboard me, aur VP Purchase jaise STO internal wale lena hi nahi"): they are dropped when a view is
+# read from SAP, so no page, tile, graph or PDF has them.
+# - RM (raw material): a material of the 11 series, or material type ZRMA (every view that has a material);
+# - the raw-material purchase orders (type ZDRM, ZIRM) and what the RM purchasing group 020 (VP Purchase) buys on a trading PO (ZTRD): the whole PO item;
+# - every internal stock transfer: the POs of type ZSTO (Stock Transfer PO) and UB (Stock Transport Order), whatever the purchasing group (VP Purchase 020, Craft Purchase 030) or the
+#   Mittal company they go to (Mittal Coin Pvt Ltd, Mittal Appliances Limited) - 5-Nov-2026: first only the ZSTO of VP Purchase, then all of them ("jo bhi hai wo remove kro").
+# The PO numbers that are left out as a whole are sent with the PO data ("removedPos"), so the receipts (Purchase) and the pending invoices of those POs are left out too.
+RM_PO_TYPES = ('ZDRM', 'ZIRM')
+STO_PO_TYPES = ('ZSTO', 'UB')
+RM_PURCHASING_GROUP = '020'
+
+
+def rm_material(material, material_type=''):
+    return (material or '').lstrip('0').startswith('11') or material_type == 'ZRMA'
+
+
+def row_is_rm(r):
+    """a row of any view with a material (Material or, for the stock, Product)"""
+    return rm_material(r.get('Material') or r.get('Product'), r.get('MaterialType') or r.get('ProductType'))
+
+
+def po_item_left_out(r):
+    """a PO item that is left out as a whole (not by its material): the raw-material POs, the RM purchase on a trading PO, all the internal stock transfers (ZSTO, UB)"""
+    t, pg = r.get('PurchaseOrderType') or '', r.get('PurchasingGroup') or ''
+    return t in RM_PO_TYPES or t in STO_PO_TYPES or (pg == RM_PURCHASING_GROUP and t == 'ZTRD')
+
+
+def po_split(rows):
+    """(PO items that stay, set of PO numbers left out as a whole); an RM item of another PO is dropped alone"""
+    kept, gone = [], set()
+    for r in rows:
+        if po_item_left_out(r):
+            gone.add(r.get('PurchaseOrder') or '')
+        elif not row_is_rm(r):
+            kept.append(r)
+    return kept, gone
+
+
+def po_rm_suppliers(rows):
+    """{supplier number: how many of its PO items are RM purchases that are not taken} - the items po_split drops. The Payment Ageing page and the Summary need it to find the RM
+    parties, because the RM purchase orders themselves are not sent any more. Internal stock transfers (ZSTO, UB) are not RM and are not counted."""
+    out = {}
+    for r in rows:
+        if (r.get('PurchaseOrderType') or '') in STO_PO_TYPES:
+            continue
+        if po_item_left_out(r) or row_is_rm(r):
+            sid = (r.get('Supplier') or '').lstrip('0') or '(blank)'
+            out[sid] = out.get(sid, 0) + 1
+    return out
 
 FIELDS = [
     'PurchaseRequisition', 'PurchaseRequisitionItem', 'Plant', 'StorageLocation', 'PurchasingGroup',
@@ -886,6 +939,37 @@ def _good_day(s):
     return d if d is not None and 10957 <= d <= 47481 else None  # 1 Jan 2000 .. 31 Dec 2099
 
 
+# Purchase orders waiting for approval: the open tasks of SAP's PO release workflow (user, 5-Nov-2026: "ye CDS se data lo"), view YY1_PO_PENDING_APPROVAL_CDS.
+# One row per task: the PO number (SAPBusinessObjectNodeKey1), the person the task waits with (WorkflowTaskRecipient, a user id like CB9980000039), when the task reached
+# that person and when the release workflow of the PO started. It replaces the saved approver list (po_approvers.csv) and the "likely approver" rules.
+APPROVAL_FIELDS = [
+    'WorkflowTaskInternalID', 'WorkflowTaskExternalStatus', 'WorkflowTaskStepType', 'WorkflowTaskRecipient', 'WorkflowTaskIsForwarded',
+    'WrkflwTskCreationUTCDateTime', 'WrkflwTskCreationUTCDateTim_1', 'SAPObjectNodeRepresentation', 'SAPBusinessObjectNodeKey1',
+]
+
+
+def _ist_day(s):
+    """A SAP time stamp (milliseconds, UTC) as a day number of Indian time (the day the dashboard users see)."""
+    m = re.match(r'/Date\((-?\d+)', s or '')
+    return (int(m.group(1)) + 19800000) // 86400000 if m else None
+
+
+def approval_compact(rows, asof_day):
+    """Open approval tasks of purchase orders. Rows: [po, recipient, taskDay, workflowDay, forwarded]; recipient is an index into `recipients` (SAP user ids, the page writes
+    the names from the user list), taskDay = the day the task reached the approver, workflowDay = the day the release workflow of the PO started (Indian time)."""
+    recips = {}
+    out = []
+    for r in rows:
+        po = (r.get('SAPBusinessObjectNodeKey1') or '').strip()
+        if not po or (r.get('SAPObjectNodeRepresentation') or 'PurchaseOrder') != 'PurchaseOrder':
+            continue
+        rc = (r.get('WorkflowTaskRecipient') or '').strip()
+        if rc not in recips:
+            recips[rc] = len(recips)
+        out.append([po, recips[rc], _ist_day(r.get('WrkflwTskCreationUTCDateTime')), _ist_day(r.get('WrkflwTskCreationUTCDateTim_1')), 1 if r.get('WorkflowTaskIsForwarded') else 0])
+    return {'asofDay': asof_day, 'rows': out, 'recipients': list(recips)}
+
+
 def ageing_compact(rows, asof_day):
     """Open vendor items (no clearing date). Rows: [postingDay, dueDay, docDate, doc, item, fiscalYear, docType, supplier, amount, foreignAmount, currency,
     terms, block, method, company, businessPlace, createdBy, specialGL, reference, text].
@@ -1035,6 +1119,8 @@ def move_fold(state, rows, listed=None):
         if day is None:
             continue
         mat = (r.get('Material') or '').lstrip('0')
+        if rm_material(mat):
+            continue
         sign = 1 if dc == 'S' else -1
         lines[(r.get('MaterialDocumentYear') or '', r.get('MaterialDocument') or '', r.get('MaterialDocumentItem') or '')] = (
             day, plant, sloc, mat, sign * _f(r.get('QuantityInBaseUnit')), sign * _f(r.get('TotalGoodsMvtAmtInCCCrcy')), mvt)
@@ -1054,8 +1140,12 @@ def moves_compact(state, asof_day, listed):
     prod_ix, prods = {}, []
     agg = {}
     for (day, plant, sloc, mat, q, a, mvt) in state['lines'].values():
+        if rm_material(mat):
+            continue  # lines read before the RM rule (saved history)
         li = loc_ix.get((plant, sloc))
         if li is None:
+            if listed:
+                continue  # a location that is not in the list (any more, e.g. ML93 left out on 4-Nov-2026): its saved lines are not shown
             li = loc_ix[(plant, sloc)] = len(locs)
             locs.append([plant, sloc, '', 'Store'])
         pi = prod_ix.get(mat)

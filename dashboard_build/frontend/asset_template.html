@@ -101,6 +101,21 @@ tr.sel td{background:rgba(28,173,228,.14)!important}
 .pill{display:inline-block;padding:1px 8px;border-radius:999px;font-size:.72rem;font-weight:600;white-space:nowrap}
 .pill.acq{color:var(--good);background:rgba(12,163,12,.14)}
 .pill.oth{color:var(--muted);background:rgba(128,128,128,.16)}
+.lnk[aria-expanded="true"]::before{content:"▾ "}
+tr.tlrow>td{padding:4px 6px 14px!important;background:transparent!important}
+.mp{border:1px solid var(--brand);border-left-width:4px;border-radius:10px;background:rgba(28,173,228,.06);padding:10px 12px;margin:8px 0;white-space:normal;font-weight:400;text-align:left}
+.mph{display:flex;flex-wrap:wrap;align-items:center;gap:8px}.mph b{font-size:.95rem}.mph .sm{font-size:.72rem;color:var(--muted)}
+.mpb{margin-left:auto;display:flex;gap:6px}
+.mp .btn{height:28px;font-size:.78rem}
+.mp .tbox{max-height:380px;background:var(--surface);border-radius:8px;margin-top:8px}
+.mp .pager{margin-top:6px}
+.mp td.sm,.mp .sm{font-size:.72rem;color:var(--muted);font-weight:400}
+/* the month card is full width and its opened panel is as wide as the card (it does not stretch the month table) */
+#monCard{grid-column:1/-1}
+.grid{grid-auto-flow:row dense}
+#byMonth{container-type:inline-size}
+#byMonth:has(.mp){max-height:none}
+#byMonth .mp{position:sticky;left:0;width:calc(100cqw - 12px);box-sizing:border-box}
 </style>
 <link rel="stylesheet" href="/ui.css">
 <script src="/live.js"></script>
@@ -151,9 +166,9 @@ tr.sel td{background:rgba(28,173,228,.14)!important}
       <p class="hint">How old the transactions are, counted from the posting date to today, with the amount. Click a row to filter everything to that age.</p>
       <div class="tbox" id="byAge"></div>
     </article>
-    <article class="card" data-keep-open>
+    <article class="card" id="monCard" data-keep-open>
       <h2><span class="sec-badge">2</span>Month-wise</h2>
-      <p class="hint">By posting date. Click a month to see it day by day.</p>
+      <p class="hint">By posting date. Click a month (or its bar) to see its items right here; the Day-wise card shows that month day by day.</p>
       <div class="tbox" id="byMonth"></div>
     </article>
     <article class="card" data-keep-open>
@@ -202,7 +217,7 @@ const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'
 const fmtN=n=>Math.round(n).toLocaleString('en-IN');
 function fmtINR(v){const a=Math.abs(v);if(a>=1e7)return '₹'+(v/1e7).toFixed(2)+' Cr';if(a>=1e5)return '₹'+(v/1e5).toFixed(2)+' L';return '₹'+Math.round(v).toLocaleString('en-IN');}
 const fullINR=v=>'₹ '+v.toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
-const fmtDay=d=>new Date(d*864e5).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric',timeZone:'UTC'});
+const fmtDay=d=>new Date(d*864e5).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric',timeZone:'UTC'}).replace('Sept','Sep');
 const mIdx=d=>{const t=new Date(d*864e5);return t.getUTCFullYear()*12+t.getUTCMonth();};
 const mName=k=>MON[k%12]+' '+Math.floor(k/12);
 const dayOf=v=>v?Math.floor(Date.parse(v)/864e5):null;
@@ -216,7 +231,7 @@ const TT={'100':'External acquisition','105':'Credit memo to an acquisition','11
 const ttName=c=>TT[c]?c+' · '+TT[c]:'Type '+c;
 
 let D=null,R=[],CUR=null,renderToken=0,tileToken=0,SUPN=new Map();
-const S={tile:null,tileAll:false,all:false,co:'',tt:'acq',cls:'',sup:null,asset:null,age:null,from:null,to:null,q:'',mon:null};
+const S={tile:null,tileAll:false,all:false,co:'',tt:'acq',cls:'',sup:null,asset:null,age:null,from:null,to:null,q:'',mon:null,openMon:new Set(),monAll:{}};
 const supName=id=>SUPN.get(id)||'';
 const supLabel=id=>id===''?'(no supplier)':supName(id)?supName(id)+' ('+id+')':'Supplier '+id;
 const supCell=id=>id===''?'–':`<span title="${esc('Supplier '+id)}">${esc(supName(id)||('Supplier '+id))}</span>`;
@@ -242,11 +257,11 @@ const byAmt=m=>[...m.entries()].sort((a,b)=>b[1].amt-a[1].amt||b[1].n-a[1].n);
 const none='<div class="empty">Nothing matches the filters.</div>';
 const amtTd=v=>`<td class="num nw ${v<-0.5?'neg':''}" title="${esc(fullINR(v))}">${fmtINR(v)}</td>`;
 const nums=x=>`<td class="num">${fmtN(x.n)}</td><td class="num">${fmtN(x.assets.size)}</td>${amtTd(x.amt)}`;
-function aggTable(list,head,cell,sel){
+function aggTable(list,head,cell,sel,under){
   if(!list.length)return none;
   const tot=agg();for(const [,x] of list)merge(tot,x);
   return `<table><thead><tr><th>${head}</th><th class="num">Transactions</th><th class="num">Assets</th><th class="num">Amount</th></tr></thead><tbody>`+
-    list.map(([k,x])=>`<tr${k===sel?' class="sel"':''}><td>${cell(k)}</td>${nums(x)}</tr>`).join('')+
+    list.map(([k,x])=>`<tr${k===sel?' class="sel"':''}><td>${cell(k)}</td>${nums(x)}</tr>`+(under?under(k):'')).join('')+
     `</tbody><tfoot><tr><td>Total (${fmtN(list.length)})</td>${nums(tot)}</tr></tfoot></table>`;
 }
 
@@ -323,6 +338,21 @@ function quickState(){
   return '';
 }
 
+function monHead(k,line,extra){
+  return `<div class="mp"><div class="mph"><b>${esc(mName(k))}</b><span class="sm">${line}</span><span class="mpb"><button type="button" class="btn alt" data-monfilter="${k}" title="Filter the whole page and the list to this month">Filter the whole page</button><button type="button" class="btn alt" data-monclose="${k}">Close</button></span></div>`;
+}
+function monMore(k,n,all){
+  return n>25?`<div class="pager"><span>${all?(n>600?'The first 600 of '+fmtN(n)+' shown':'All '+fmtN(n)+' shown'):'Showing the first 25 of '+fmtN(n)}</span><div><button class="btn" type="button" data-monall="${k}">${all?'Show first 25':'See all '+fmtN(n)}</button></div></div>`:'';
+}
+function monPanel(k){
+  const rows=R.filter(r=>r.day!==null&&pass(r,['date'])&&mIdx(r.day)===k).sort((a,b)=>Math.abs(b.amt)-Math.abs(a.amt)||(b.day||0)-(a.day||0)||b.je.localeCompare(a.je)||a.asset.localeCompare(b.asset));
+  const all=!!S.monAll[k],shown=all?rows.slice(0,600):rows.slice(0,25);
+  let h=monHead(k,`${fmtN(rows.length)} transactions · ${fmtN(new Set(rows.map(r=>r.ak)).size)} assets · ${fmtINR(sumAmt(rows))} · the highest amount first`);
+  if(!rows.length)return h+'<p class="hint">No transactions match the filters.</p></div>';
+  h+=`<div class="tbox"><table>${LHEAD}<tbody>${shown.map((r,i)=>lineRow(r,i)).join('')}</tbody></table></div>`+monMore(k,rows.length,all);
+  return h+'</div>';
+}
+
 function render(){
   if(!D)return;
   const rows=R.filter(r=>pass(r));
@@ -373,7 +403,7 @@ function render(){
   const mon=new Map(),day=new Map();
   if(S.mon===null)S.mon=mIdx(D.asofDay);
   for(const r of R){if(r.day===null||!pass(r,['date']))continue;const k=mIdx(r.day);add(mon,k,r);if(k===S.mon)add(day,r.day,r);}
-  $('byMonth').innerHTML=aggTable([...mon.entries()].sort((a,b)=>b[0]-a[0]),'Month',k=>`<button type="button" class="lnk" data-mon="${k}">${mName(k)}</button>`,S.mon);
+  $('byMonth').innerHTML=aggTable([...mon.entries()].sort((a,b)=>b[0]-a[0]),'Month',k=>`<button type="button" class="lnk" data-mon="${k}" aria-expanded="${S.openMon.has(k)}" title="Click to see the items of this month right here">${mName(k)}</button>`,S.mon,k=>S.openMon.has(k)?`<tr class="tlrow subrow"><td colspan="4">${monPanel(k)}</td></tr>`:'');
   $('dayTitle').textContent='Day-wise · '+mName(S.mon);
   $('byDay').innerHTML=aggTable([...day.entries()].sort((a,b)=>a[0]-b[0]),'Posting date',k=>`<button type="button" class="lnk" data-day="${k}">${fmtDay(k)}</button>`);
   // the transactions, newest first
@@ -401,7 +431,10 @@ document.addEventListener('click',e=>{
   else if(t.dataset.cls!==undefined){S.cls=S.cls===t.dataset.cls?'':t.dataset.cls;syncSel();}
   else if(t.dataset.sup!==undefined){S.sup=S.sup===t.dataset.sup?null:t.dataset.sup;syncSel();}
   else if(t.dataset.age!==undefined){const v=+t.dataset.age;S.age=S.age===v?null:v;}
-  else if(t.dataset.mon!==undefined){S.mon=+t.dataset.mon;}
+  else if(t.dataset.mon!==undefined){const k=+t.dataset.mon;S.mon=k;if(S.openMon.has(k))S.openMon.delete(k);else S.openMon.add(k);}
+  else if(t.dataset.monclose!==undefined){S.openMon.delete(+t.dataset.monclose);}
+  else if(t.dataset.monall!==undefined){const k=+t.dataset.monall;S.monAll[k]=!S.monAll[k];}
+  else if(t.dataset.monfilter!==undefined){const k=+t.dataset.monfilter,y=Math.floor(k/12),m=k%12;S.from=Date.UTC(y,m,1)/864e5;S.to=Date.UTC(y,m+1,0)/864e5;S.mon=k;S.openMon.delete(k);syncDates();}
   else if(t.dataset.day!==undefined){const d=+t.dataset.day;S.from=S.to=d;syncDates();}
   else if(t.dataset.qk){const k=t.dataset.qk;
     if(k==='today')S.from=S.to=D.asofDay;else if(k==='yest')S.from=S.to=D.asofDay-1;else if(k==='month')setMonthDates();else S.from=S.to=null;
