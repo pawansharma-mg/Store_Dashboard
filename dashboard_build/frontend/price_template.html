@@ -454,7 +454,7 @@ function pdfPanel(r){ // the opened material: the figures, the sentence, the gra
       foot:[[{t:`Total · ${r.days.length} PO dates`,s:2},{t:fmtINR(r.days.reduce((s,d)=>s+d.value,0)),s:1},{t:'',s:2},{t:plainLp(T.net),s:1}]]}
   };
 }
-function pdfMat(r,i,kind){ // one row of the list; the material is opened under it only when it is open on the screen
+function pdfMat(r,i,kind,panels){ // one row of the list; the material is opened under it only when it is open on the screen (and panels is not false)
   const mv=r.moves.slice(-3).reverse(),pl=[];
   if(r.split)pl.push({t:'item-wise rate',k:'sup'});
   if(r.supDiff)pl.push({t:'supplier changed',k:'sup'});
@@ -464,13 +464,14 @@ function pdfMat(r,i,kind){ // one row of the list; the material is opened under 
     moves:mv.map(m=>({up:m.pct>0,d:`${fmtDayS(m.day)}: ${fmtRate(m.from)}`,b:fmtRate(m.to)})),
     more:r.moves.length>3?`+${r.moves.length-3} earlier`:r.moves.length?'':'no change of that size',
     spark:pdfSpark(r),lastRate:fmtRate(r.last.rate),lastDay:fmtDayS(r.last.day),was:`was ${fmtRate(r.ref.rate)} · ${fmtDayS(r.ref.day)}`,
-    chg:sgn(r.chg),pct:sgnPct(r.pct),up:r.pct>=0,lp:{t:plainLp(r.impact),k:lpKind(r.impact)},panel:S.open.has(kind+'|'+r.key)?pdfPanel(r):null};
+    chg:sgn(r.chg),pct:sgnPct(r.pct),up:r.pct>=0,lp:{t:plainLp(r.impact),k:lpKind(r.impact)},panel:panels!==false&&S.open.has(kind+'|'+r.key)?pdfPanel(r):null};
 }
-window.PDF_DETAILS=function(card){
+// limit = how many materials from the top of the list (the short whole-dashboard PDF asks for 20, nothing opened); without it the whole list
+window.PDF_DETAILS=function(card,limit){
   const kind=card.querySelector('#upBox')?'up':card.querySelector('#dnBox')?'down':'';
   if(!kind||!LISTS[kind]||!LISTS[kind].length)return null;
-  const list=LISTS[kind],T=PRICEVAR.totals(list);
-  return [{type:'matlist',head:['#','Material and its last price moves','Rate trend','Change · loss / profit'],rows:list.map((r,i)=>pdfMat(r,i,kind)),foot:{t:`Total (${fmtN(list.length)} materials)`,lp:{t:plainLp(T.net),k:lpKind(T.net)}}}];
+  const all=LISTS[kind],list=limit?all.slice(0,limit):all,T=PRICEVAR.totals(list),part=list.length<all.length;
+  return [{type:'matlist',head:['#','Material and its last price moves','Rate trend','Change · loss / profit'],rows:list.map((r,i)=>pdfMat(r,i,kind,limit?false:undefined)),foot:{t:part?`Total of these ${fmtN(list.length)} of ${fmtN(all.length)} materials`:`Total (${fmtN(list.length)} materials)`,lp:{t:plainLp(T.net),k:lpKind(T.net)}}}];
 };
 // the panels of the materials of a bar chart that are open
 function panelsFor(kind,list){let h='';for(const r of list){const c=kind+'|'+r.key;if(S.open.has(c))h+=matPanel(r,c);}return h;}

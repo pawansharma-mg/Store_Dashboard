@@ -1273,6 +1273,14 @@
       });
       if (pend) rows.push([pend]);
       rows.forEach(function (r) { blocks.push({ type: 'chartrow', cards: r }); });
+      if (typeof window.PDF_DETAILS === 'function') { // Price Variance: the lists Price going UP / DOWN as on the screen, the first 20 materials of each with the graph of every material (user, 5-Nov-2026)
+        [].forEach.call(document.querySelectorAll('.wrap .card'), function (card) {
+          var extra = window.PDF_DETAILS(card, 20);
+          if (!extra || !extra.length) return;
+          var badge = card.querySelector('.sec-badge'), cc = cssRgb(getComputedStyle(card).getPropertyValue('--cc'), null);
+          extra.forEach(function (b, i) { b.accent = cc; b.badge = i === 0 && badge ? badge.textContent.trim() : ''; b.title = i === 0 ? cardTitle(card) + ' · the first 20 materials' : ''; blocks.push(b); });
+        });
+      }
       if (!cards.length) {
         var first = summaryCards()[0], tb = first && cardBlocks(first).filter(function (b) { return b.type === 'table'; })[0];
         if (tb) { tb.rows = tb.rows.slice(0, 10); tb.foot = []; tb.title = tb.title + ' · the first 10'; blocks.push(tb); }
