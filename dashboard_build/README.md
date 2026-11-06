@@ -140,6 +140,8 @@ Project level:
 | `..\GCP_DEPLOY.md` | Step by step Cloud Run deployment |
 | `..\Start_Live_Dashboard.bat` | Local launcher (starts `backend\serve_dashboard.py`) |
 
+**Auto-push to GitHub (this PC only)**: a Claude Code *Stop* hook (`.claude/hooks/auto_push.py`, switched on in `.claude/settings.local.json`; both are local files and not part of the repository) runs after every turn: it commits what changed (only what `.gitignore` allows: the dashboard code, the READMEs, `GCP_DEPLOY.md`, the launcher) with the message "Auto update <date>: N files" and pushes it with a normal `git push store_dashboard main` (never a force push, never a merge). It refuses to commit when an added line looks like a password / key or when a `.py` / `.js` file does not compile, and it tells why; if the push fails (login expired, GitHub ahead) it keeps the commit and tries again after the next turn. The log is `.claude/hooks/auto_push.log`. To stop it, remove the `Stop` entry from `.claude/settings.local.json`.
+
 ## Checking the dashboard
 
 With the dashboard running, `python backend/check_data.py` (stdlib only) answers: does every page and API work, and what is still missing in the lookup tables:
