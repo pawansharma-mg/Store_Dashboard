@@ -157,7 +157,7 @@
 
   // ---------------------------------------------------------------- an icon on every tile
   var ICON_RULES = [
-    [/going up|rises?\b/i, 'up'], [/going down|falls?\b/i, 'down'], [/\bloss\b/i, 'alert'], [/\bprofit\b/i, 'coin'], [/top 5|expensive/i, 'trophy'], [/invoice/i, 'box'], [/not used/i, 'moon'], [/blocked/i, 'lock'], [/quality/i, 'shield'], [/lines|items/i, 'box'], [/location/i, 'pin'], [/supplier/i, 'truck'],
+    [/going up|rises?\b/i, 'up'], [/going down|falls?\b/i, 'down'], [/\bloss\b/i, 'alert'], [/\bprofit\b/i, 'coin'], [/top 5|expensive/i, 'trophy'], [/invoice/i, 'box'], [/not used/i, 'moon'], [/blocked/i, 'lock'], [/quality/i, 'shield'], [/lines|items/i, 'box'], [/location/i, 'pin'], [/supplier|vendor/i, 'truck'],
     [/cost center/i, 'target'], [/quantity to check/i, 'alert'], [/approval/i, 'check'], [/day|oldest|waiting|overdue|older|passed/i, 'clock'],
     [/^acquisitions\b/i, 'box'], [/^(MAL|MCPL)\b/, 'coin'],
     [/value|amount|deliver|₹/i, 'coin'], [/material|purchase order|\bprs?\b|\bpos\b/i, 'box']
@@ -226,7 +226,8 @@
     '/purchase': [{ id: 'byAge', col: /net value/i }, { id: 'byLead', col: /net value/i }, { id: 'byMonth', col: /net value/i, rev: true }, { id: 'byDay', col: /net value/i }],
     '/asset': [{ id: 'byAge', col: /^amount$/i }, { id: 'byMonth', col: /^amount$/i, rev: true }, { id: 'byDay', col: /^amount$/i }],
     '/ageing': [{ id: 'byAgeG', col: /^amount$/i }, { id: 'byAgeT', col: /^amount$/i }],
-    '/stock': [{ id: 'byIdle', col: /stock value/i }]
+    '/stock': [{ id: 'byIdle', col: /stock value/i }],
+    '/vendor': [{ id: 'byMonth', col: /^purchase value$/i, rev: true }]
   };
   function readTable(box, colTest, rev) {
     var t = box.querySelector('table');
@@ -328,7 +329,7 @@
   }
 
   // ---------------------------------------------------------------- download a table as CSV (opens in Excel)
-  var PAGE_SLUG = { '/': 'pending-pr', '/issue': 'store-issue', '/po': 'purchase-orders', '/po-approval': 'po-approval', '/purchase': 'purchase', '/invoice': 'pending-invoice-entry', '/ageing': 'payment-ageing', '/price': 'price-variance', '/stock': 'store-stock', '/asset': 'capital-issue' }[location.pathname];
+  var PAGE_SLUG = { '/': 'pending-pr', '/issue': 'store-issue', '/po': 'purchase-orders', '/po-approval': 'po-approval', '/purchase': 'purchase', '/invoice': 'pending-invoice-entry', '/ageing': 'payment-ageing', '/price': 'price-variance', '/stock': 'store-stock', '/asset': 'capital-issue', '/vendor': 'vendor-business' }[location.pathname];
   function slug(t) { return t.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'table'; }
   function cardTitle(card) {
     var h = card.querySelector('h2');
@@ -1187,7 +1188,7 @@
   // (user, 5-Nov-2026: "Download ho to pura dashboard hi download ho, Summary ke sath, PDF me"): the Summary first, then every page of the menu with its tiles, its summary tables
   // and (the full version) its lists. Every page is loaded in a hidden frame with its own default filters, and the frame's own ui.js writes its blocks (window.__dashPdf).
   var WHOLE = [['Summary', '/summary'], ['Store Issue', '/issue'], ['Capital Issue', '/asset'], ['Store Stock', '/stock'], ['Pending PR', '/'], ['Pending Purchase Orders', '/po'],
-    ['PO Approval Pending', '/po-approval'], ['Pending Invoice Entry', '/invoice'], ['Purchase', '/purchase'], ['Price Variance', '/price'], ['Payment Ageing', '/ageing']];
+    ['PO Approval Pending', '/po-approval'], ['Pending Invoice Entry', '/invoice'], ['Purchase', '/purchase'], ['Price Variance', '/price'], ['Payment Ageing', '/ageing'], ['Vendor Business', '/vendor']];
   function framePage(path) { // -> Promise of {win, frame} once the page has its data (the live line says "updated hh:mm")
     return new Promise(function (resolve, reject) {
       var f = document.createElement('iframe'), t0 = Date.now(), done = false;

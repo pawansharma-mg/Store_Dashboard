@@ -47,6 +47,7 @@ INVOICE_TPL = os.path.join(FRONTEND, 'invoice_template.html')
 AGEING_TPL = os.path.join(FRONTEND, 'ageing_template.html')
 ASSET_TPL = os.path.join(FRONTEND, 'asset_template.html')
 PRICE_TPL = os.path.join(FRONTEND, 'price_template.html')
+VENDOR_TPL = os.path.join(FRONTEND, 'vendor_template.html')
 PO_APPROVAL_TPL = os.path.join(FRONTEND, 'po_approval_template.html')
 LOGO = os.path.join(FRONTEND, 'logo.png')
 # the look and the small helpers shared by every page (frontend/ui.css, frontend/ui.js)
@@ -699,7 +700,7 @@ class ApprovalSap(Sap):
         return self.cache[1:]
 
 
-PAGES = {'/': TPL, '/index.html': TPL, '/issue': ISSUE_TPL, '/po': PO_TPL, '/po-approval': PO_APPROVAL_TPL, '/stock': STOCK_TPL, '/summary': SUMMARY_TPL, '/purchase': PURCHASE_TPL, '/invoice': INVOICE_TPL, '/price': PRICE_TPL, '/ageing': AGEING_TPL, '/asset': ASSET_TPL}
+PAGES = {'/': TPL, '/index.html': TPL, '/issue': ISSUE_TPL, '/po': PO_TPL, '/po-approval': PO_APPROVAL_TPL, '/stock': STOCK_TPL, '/summary': SUMMARY_TPL, '/purchase': PURCHASE_TPL, '/invoice': INVOICE_TPL, '/price': PRICE_TPL, '/ageing': AGEING_TPL, '/asset': ASSET_TPL, '/vendor': VENDOR_TPL}
 # User ID -> full name, put into the page like the data (no '<' in names, so it is safe inside a script tag).
 USERS_JSON = json.dumps(USER_NAMES, ensure_ascii=False, separators=(',', ':'))
 PGS_JSON = json.dumps(PG_NAMES, ensure_ascii=False, separators=(',', ':'))

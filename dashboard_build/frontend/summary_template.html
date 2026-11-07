@@ -157,7 +157,7 @@ html{scroll-behavior:smooth}
     <div class="seg" id="themeSeg" role="group" aria-label="Colour mode"><button type="button" data-th="light" title="Normal (light) mode">Normal</button><button type="button" data-th="dark" title="Dark mode">Dark</button></div>
   </div>
 </header>
-<nav class="nav"><a href="/summary" class="on">Summary</a><a href="/issue">Store Issue</a><a href="/asset">Capital Issue</a><a href="/stock">Store Stock</a><a href="/">Pending PR</a><a href="/po">Pending Purchase Orders</a><a href="/po-approval">PO Approval Pending</a><a href="/invoice">Pending Invoice Entry</a><a href="/purchase">Purchase</a><a href="/price">Price Variance</a><a href="/ageing">Payment Ageing</a></nav></div>
+<nav class="nav"><a href="/summary" class="on">Summary</a><a href="/issue">Store Issue</a><a href="/asset">Capital Issue</a><a href="/stock">Store Stock</a><a href="/">Pending PR</a><a href="/po">Pending Purchase Orders</a><a href="/po-approval">PO Approval Pending</a><a href="/invoice">Pending Invoice Entry</a><a href="/purchase">Purchase</a><a href="/price">Price Variance</a><a href="/ageing">Payment Ageing</a><a href="/vendor">Vendor Business</a></nav></div>
 <div class="wrap">
   <section class="bar" aria-label="Filters">
     <label class="fld"><span>Plant</span><select id="plantSel"><option value="">All plants</option></select></label>
@@ -466,7 +466,7 @@ function load(force,auto){
 }
 
 /* ---------- the other pages, one under the other (menu order): Store Issue, Store Stock, Pending PR, ... ---------- */
-const STACK=[['issue','Store Issue','/issue'],['asset','Capital Issue','/asset'],['stock','Store Stock','/stock'],['pr','Pending PR','/'],['po','Pending Purchase Orders','/po'],['approval','PO Approval Pending','/po-approval'],['invoice','Pending Invoice Entry','/invoice'],['purchase','Purchase','/purchase'],['price','Price Variance','/price'],['ageing','Payment Ageing','/ageing']];
+const STACK=[['issue','Store Issue','/issue'],['asset','Capital Issue','/asset'],['stock','Store Stock','/stock'],['pr','Pending PR','/'],['po','Pending Purchase Orders','/po'],['approval','PO Approval Pending','/po-approval'],['invoice','Pending Invoice Entry','/invoice'],['purchase','Purchase','/purchase'],['price','Price Variance','/price'],['ageing','Payment Ageing','/ageing'],['vendor','Vendor Business','/vendor']];
 // inside the stack a page has no header, menu, footer or back-to-top button of its own, and its long lists have a fixed height (a page that is as tall as its content must not use vh)
 const EMBED_CSS='.stick,.footer,.totop{display:none!important}.tscroll{max-height:640px!important}html,body{background:transparent!important}';
 const SECS={};
@@ -521,7 +521,7 @@ function stackInit(){
     el.querySelector('.pgbar .in').addEventListener('click',e=>{if(e.target.closest('a'))return;setPg(id,el.classList.contains('folded'));});
   }
   // the menu of the Summary jumps to the page in the stack
-  const map={'/issue':'issue','/stock':'stock','/':'pr','/po':'po','/po-approval':'approval','/invoice':'invoice','/purchase':'purchase','/price':'price','/ageing':'ageing','/asset':'asset','/summary':'top'};
+  const map={'/issue':'issue','/stock':'stock','/':'pr','/po':'po','/po-approval':'approval','/invoice':'invoice','/purchase':'purchase','/price':'price','/ageing':'ageing','/vendor':'vendor','/asset':'asset','/summary':'top'};
   const tabs=[...document.querySelectorAll('.nav a')];
   for(const a of tabs){const id=map[a.getAttribute('href')];if(!id)continue;a.dataset.sec=id;a.addEventListener('click',e=>{e.preventDefault();goSec(id);});}
   // the tab of the page that is in view is lit

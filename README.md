@@ -1,6 +1,6 @@
 # Store Dashboard (Mittal Group)
 
-A live, multi-page dashboard for the store and purchase teams, built on SAP S/4HANA Cloud OData CDS views. A small Python server (standard library only, Python 3.12) reads the SAP views, keeps them in memory and serves eleven pages of plain HTML / CSS / JavaScript. There is no database and no build step. Every page refreshes itself every 30 seconds while it is open, and everything is read-only.
+A live, multi-page dashboard for the store and purchase teams, built on SAP S/4HANA Cloud OData CDS views. A small Python server (standard library only, Python 3.12) reads the SAP views, keeps them in memory and serves twelve pages of plain HTML / CSS / JavaScript. There is no database and no build step. Every page refreshes itself every 30 seconds while it is open, and everything is read-only.
 
 ## Pages
 
@@ -17,6 +17,7 @@ A live, multi-page dashboard for the store and purchase teams, built on SAP S/4H
 | Purchase | Goods receipts (101) and reversals (102) against POs, delivery time PO to receipt |
 | Price Variance | Materials whose purchase rate went up or down, with the rate trend and the loss / profit |
 | Payment Ageing | Party-wise balance of the open vendor items: what we have to give and what we have to get, aged |
+| Vendor Business | Which vendor we do the most business with: value and % share, what we buy from each, classes A / B / C, and how much each vendor raised its rates |
 
 Every tile opens its details, every list opens the highest value first, and every page has a **Download** menu (PDF): Summary, Details, and **Whole dashboard** (one short file with the Summary and the tiles and graphs of every page).
 
