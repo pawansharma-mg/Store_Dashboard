@@ -130,6 +130,7 @@ tr.tlrow>td{padding:4px 6px 14px!important;background:transparent!important}
 .stat b{display:block;font-size:1rem;font-variant-numeric:tabular-nums}
 .stat span{font-size:.72rem;color:var(--muted)}
 .sumline{font-size:12.5px;color:var(--ink2);margin:8px 0}
+.split{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:10px}
 .pt{font-size:11.5px}.pt th,.pt td{padding:4px 6px}
 </style>
 <link rel="stylesheet" href="/ui.css">
@@ -226,7 +227,7 @@ tr.tlrow>td{padding:4px 6px 14px!important;background:transparent!important}
       <div class="tbox" id="byPg" style="max-height:none;margin-top:14px"></div>
     </article>
   </section>
-  <details class="notebox"><summary>Notes about these figures</summary><p class="note"><b>Business</b> = the net value of the purchase order items (value ordered, in rupees: a PO in another currency is converted at the exchange rate of the PO; an item without an exchange rate in SAP counts as 0), not what has been received or invoiced. <b>Share</b> = the value of the vendor divided by the value of everything shown (the material type, plant and dates chosen above). <b>Vendor</b>: supplier numbers with the same GSTIN are one vendor. <b>What is in</b>: by default only the Store material types (ZCON consumables, ZHMI PRD tools, ZSPR spare parts, ZSRM store raw materials, ZVRP packaging); choose All material types to include the others (semi-finished goods, trading goods such as silver coins, lines without a material: assets, services, building work). Raw material (RM) and every internal stock transfer (ZSTO, UB) are not in the dashboard data. The group companies (Mittal Coin, Mittal Appliances) are not taken unless you choose to show them. <b>Classes</b>: the vendors in the order of purchase value; A = those that make the first 80% of the business (a vendor belongs to A when the vendors before it make less than 80%), B = up to 95%, C = the rest. <b>Rate raised</b>: for every vendor and material (same unit) bought on two or more PO dates, the vendor's own first rate of the period against its latest rate, one rate per PO date (lines of the same date averaged by quantity; a near-free line is left out), as on the Price Variance page. <b>Extra paid</b> = (rate of a later PO date − first rate) × the quantity of that date, added up over the dates with a higher rate. <b>Net rate change</b> of a vendor = (extra paid − saved) ÷ the value of the later purchases at the first rate: the value-weighted change of the materials that could be compared; it says nothing about materials bought on one date only. Doubtful changes (more than +300% or below −75%, or another item under the same number) are left out of the totals and shown with a pill. Lines delivered to the storage locations PS01 to PS06, NPD1 and DROS and silver or gold bought by the gram are in the business figures but not in the rate comparison, as on the Price Variance page. Only POs created from 1 Jan 2026 are in the data. The data is read from SAP again every 30 seconds while this page is open.</p></details>
+  <details class="notebox"><summary>Notes about these figures</summary><p class="note"><b>Business</b> = the net value of the purchase order items (value ordered, in rupees: a PO in another currency is converted at the exchange rate of the PO; an item without an exchange rate in SAP counts as 0), not what has been received or invoiced. <b>Share</b> = the value of the vendor divided by the value of everything shown (the material type, plant and dates chosen above). <b>Vendor</b>: supplier numbers with the same GSTIN are one vendor. <b>What is in</b>: by default only the Store material types (ZCON consumables, ZHMI PRD tools, ZSPR spare parts, ZSRM store raw materials, ZVRP packaging); choose All material types to include the others (semi-finished goods, trading goods such as silver coins, lines without a material: assets, services, building work). Raw material (RM) and every internal stock transfer (ZSTO, UB) are not in the dashboard data. The group companies (Mittal Coin, Mittal Appliances) are not taken unless you choose to show them; a supplier number that has the GSTIN of a group company counts as that group company (Signet Industries Ltd. has the GSTIN of Mittal Appliances Limited). <b>Classes</b>: the vendors in the order of purchase value; A = those that make the first 80% of the business (a vendor belongs to A when the vendors before it make less than 80%), B = up to 95%, C = the rest. <b>Still to be delivered</b> = the value of the ordered quantity not yet received (net value × quantity still to deliver ÷ order quantity, the rule of the Pending Purchase Orders page). <b>To pay (Dena hai)</b> = the open items of the vendor in Payment Ageing (all its supplier numbers, both companies, every year, not only the POs chosen above); payments and debit items that are not cleared are set against the oldest invoices first; <b>past due</b> = the part after the due date. The city comes from Payment Ageing, the state from the first two digits of the GSTIN. <b>Brand</b> = a brand named in the PO text. <b>Rate raised</b>: for every vendor and material (same unit) bought on two or more PO dates, the vendor's own first rate of the period against its latest rate, one rate per PO date (lines of the same date averaged by quantity; a near-free line is left out), as on the Price Variance page. <b>Extra paid</b> = (rate of a later PO date − first rate) × the quantity of that date, added up over the dates with a higher rate. <b>Net rate change</b> of a vendor = (extra paid − saved) ÷ the value of the later purchases at the first rate: the value-weighted change of the materials that could be compared; it says nothing about materials bought on one date only. Doubtful changes (more than +300% or below −75%, or another item under the same number) are left out of the totals and shown with a pill. Lines delivered to the storage locations PS01 to PS06, NPD1 and DROS and silver or gold bought by the gram are in the business figures but not in the rate comparison, as on the Price Variance page. Only POs created from 1 Jan 2026 are in the data. The data is read from SAP again every 30 seconds while this page is open.</p></details>
 </div>
 <footer class="footer">Mittal Group · Vendor Business · Source: SAP S/4HANA Cloud, YY1_PO_ITEM_SUPPLIER_CDS</footer>
 
@@ -261,12 +262,65 @@ const dayOf=v=>v?Math.floor(Date.parse(v)/864e5):null;
 const iso=d=>new Date(d*864e5).toISOString().slice(0,10);
 const norm=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');   // the same as pricevar.js, so a material series has the same key
 const GCRE=/^mittal (coin|appliance)/i;
+// the state of a vendor is the first two digits of its GSTIN
+const STATES={'01':'Jammu & Kashmir','02':'Himachal Pradesh','03':'Punjab','04':'Chandigarh','05':'Uttarakhand','06':'Haryana','07':'Delhi','08':'Rajasthan','09':'Uttar Pradesh','10':'Bihar','11':'Sikkim','12':'Arunachal Pradesh','13':'Nagaland','14':'Manipur','15':'Mizoram','16':'Tripura','17':'Meghalaya','18':'Assam','19':'West Bengal','20':'Jharkhand','21':'Odisha','22':'Chhattisgarh','23':'Madhya Pradesh','24':'Gujarat','26':'Dadra & Nagar Haveli and Daman & Diu','27':'Maharashtra','29':'Karnataka','30':'Goa','31':'Lakshadweep','32':'Kerala','33':'Tamil Nadu','34':'Puducherry','35':'Andaman & Nicobar','36':'Telangana','37':'Andhra Pradesh','38':'Ladakh','97':'Other territory'};
+const stateOf=g=>g&&g.length>=2?(STATES[g.slice(0,2)]||''):'';
+// a brand named in the PO text (a PO text often names none: then the brand cell stays empty)
+const BRANDS=['TIMKEN','NTN','NSK','FAG','SKF','KOYO','NACHI','SCHAEFFLER','SCHNEEBERGER','IKO','THK','HIWIN','FENNER','MEGADYNE','GATES','BANDO','CONTITECH','CONTI','MITSUBOSHI','OPTIBELT','GOODYEAR','KENNAMETAL','SANDVIK','ISCAR','TAEGUTEC','SHELL','CASTROL','SERVO','MOBIL','GULF','MOLYGRAPH','STAROL','APAR','BALMEROL','VALVOLINE','ELGI','ATLAS COPCO','INGERSOLL','KAESER','SIEMENS','ABB','SCHNEIDER','LENZE','LEGRAND','L&T','HAVELLS','POLYCAB','FINOLEX','KEI','LAPP','FLUKE','STANLEY','BOSCH','MAKITA','DEWALT','3M','SAINT-GOBAIN','SAINT GOBAIN','GRINDWELL','NORTON','MERSEN','CUMI','KANTHAL','SPALECK','SERFILC','PARKER','FESTO','SMC','CAMOZZI','JANATICS','HYDAC','VICKERS','REXROTH','DANFOSS','YUKEN','ESAB','ADOR','LINCOLN','HONEYWELL','LOCTITE','HENKEL','FOSROC','KIRLOSKAR','GRUNDFOS','KSB','WILO','CUMMINS','MITUTOYO','INSIZE','FANUC','YASKAWA','MITSUBISHI','OMRON','HITACHI','TOSHIBA','EMERSON','YOKOGAWA','WIKA','THERMAX','LINDE','KARAM','UDYOGI','MALLCOM','HILLSON','PHILIPS','CROMPTON','OSRAM','EXIDE','AMARON','DORMER','TRL','ORIENT','VESUVIUS','KUBO','SIGNET','MIPALLOY','ALEX','ROCKWELL','ALLEN BRADLEY','TURCK','BALLUFF','KEYENCE','PANASONIC','PHOENIX','WEIDMULLER','TELEMECANIQUE','FUCHS','KLUBER','MOLYKOTE','AEROL'];
+const BRX=new RegExp('(?<![A-Za-z0-9])('+BRANDS.slice().sort((a,b)=>b.length-a.length).map(x=>x.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|')+')(?![A-Za-z0-9])','i');
+const MAKEX=/(?:MAKE|MAKER|BRAND)\s*[:\-\.]*\s*([A-Za-z][A-Za-z0-9&\. \-]{2,22}?)(?=$|[,\)\(]|\s{2,}|\s\d)/i;
+const brandOf=t=>{t=t||'';let m=BRX.exec(t);if(m)return m[1].length<=4?m[1].toUpperCase():m[1].charAt(0).toUpperCase()+m[1].slice(1).toLowerCase();m=MAKEX.exec(t);return m?m[1].trim():'';};
 const panId=c=>'vp-'+c.replace(/[^A-Za-z0-9]/g,'_');
 const ageP=(d,what)=>d===null||d===undefined?'':AGE.pill(D.asofDay-d,what+' '+AGE.words(D.asofDay-d)+' ago');
 
 let D=null,L=[],GC=[],SK=[],C=null;
+// ---------------------------------------------------------------- payment position of a vendor: the open vendor items of Payment Ageing (/api/ageing), worked out the same way as on that page
+let AGE_D=null,AGP=new Map(),GIDS=new Map();
+const AEDGES=[0,30,60,90,180,365],AGL=['Not yet due','1–30 d','31–60 d','61–90 d','91–180 d','181–365 d','Over 1 yr'];
+const abkt=n=>{for(let i=0;i<AEDGES.length;i++)if(n<=AEDGES[i])return i;return AEDGES.length;};
+function ageOne(p,asof){
+  p.gb=new Array(7).fill(0);p.pastDue=0;p.maxOver=null;
+  if(p.net<=0.5)return;
+  // payments and debit items that are not cleared are set against the oldest invoices first
+  const cr=p.items.filter(r=>r.pay>0).sort((a,b)=>(a.due===null?a.post:a.due)-(b.due===null?b.post:b.due)),dr=p.items.filter(r=>r.pay<0);
+  let rem=dr.reduce((s,r)=>s-r.pay,0);
+  for(const c of cr){
+    const use=Math.min(rem,c.pay);rem-=use;const left=c.pay-use;if(left<=0.005)continue;
+    const od=asof-(c.due===null?c.post:c.due);p.gb[abkt(od)]+=left;
+    if(od>0)p.pastDue+=left;
+    if(p.maxOver===null||od>p.maxOver)p.maxOver=od;
+  }
+}
+function setAgeing(j){
+  AGE_D=j;const m=new Map();
+  for(const a of j.rows){
+    const s=j.suppliers[a[7]];let p=m.get(s[0]);
+    if(!p)m.set(s[0],p={id:s[0],city:s[2]||'',net:0,items:[]});
+    p.net-=a[8];p.items.push({post:a[0],due:a[1],pay:-a[8]});
+  }
+  for(const p of m.values())ageOne(p,j.asofDay);
+  AGP=m;
+}
+// fills v.pay of every vendor of C (all the supplier numbers of the vendor, wherever its POs are)
+function applyAgeing(){
+  if(!C)return;
+  let give=0,pd=0;
+  for(const v of C.VL){
+    const ids=GIDS.get(v.vk)||[],gb=new Array(7).fill(0);
+    let g=0,t=0,d=0,mo=null,city='',n=0;
+    for(const id of ids){
+      const p=AGP.get(id);if(!p)continue;
+      n++;if(!city&&p.city)city=p.city;
+      if(p.net>0.5){g+=p.net;d+=p.pastDue;if(p.maxOver!==null&&(mo===null||p.maxOver>mo))mo=p.maxOver;p.gb.forEach((x,i)=>{gb[i]+=x;});}
+      else if(p.net<-0.5)t-=p.net;
+    }
+    v.pay={ok:!!AGE_D,give:g,get:t,pastDue:d,maxOver:mo,gb,parties:n};
+    v.city=city;give+=g;pd+=d;
+  }
+  C.give=give;C.pastDue=pd;
+}
 // scope: STORE = the Store material types (default), '' = every material type, '__none__' = lines without a material, or one material type. grp: group companies hidden / shown.
-const S={scope:'STORE',plant:'',grp:'hide',from:null,to:null,per:'all',q:'',cls:'',tile:null,open:new Set(),mopen:new Set(),all:{v:false,m:false,r:false},reveal:null};
+const S={scope:'STORE',plant:'',grp:'hide',from:null,to:null,per:'all',q:'',cls:'',tile:null,open:new Set(),mopen:new Set(),popen:new Set(),poAll:new Set(),all:{v:false,m:false,r:false},reveal:null};
 
 // ---------------------------------------------------------------- the lines (every PO item once, with the vendor it belongs to)
 function prepare(d){
@@ -274,13 +328,17 @@ function prepare(d){
   PRICEVAR.compute(d,{plant:'\u0000'});   // finds the generic material numbers of this data (d._gen) without comparing anything
   const gen=d._gen||new Set();
   SK=d.suppliers.map(s=>s[2]?'g:'+s[2]:'id:'+s[0]);
-  GC=d.suppliers.map(s=>GCRE.test((s[1]||'').trim()));
+  // a supplier number with the GSTIN of a group company is that group company too (Signet Industries Ltd. and Pooja Sanitary Ware have the GSTIN of Mittal Appliances Limited)
+  const gv=new Set();d.suppliers.forEach((s,i)=>{if(GCRE.test((s[1]||'').trim()))gv.add(SK[i]);});
+  GC=d.suppliers.map((s,i)=>gv.has(SK[i]));
+  GIDS=new Map();d.suppliers.forEach((s,i)=>{let l=GIDS.get(SK[i]);if(!l)GIDS.set(SK[i],l=[]);l.push(s[0]);});
   L=d.rows.map(a=>{
     const code=d.mats[a[8]]||'',unit=d.units[a[13]],text=d.texts[a[9]]||'',cur=d.curs[a[14]];
+    const val=a[17]*(cur==='INR'?1:(a[24]||0));
     let mk;
     if(!code)mk='~|'+unit+'|'+norm(text).slice(0,80);
     else{mk=code+'|'+unit;if(gen.has(mk))mk+='|'+norm(text).slice(0,80);}   // a generic material number: one material per item text (as in pricevar.js)
-    return {a,day:a[0]!==null&&a[0]!==undefined?a[0]:a[1],vk:SK[a[5]],si:a[5],po:a[2],plant:d.plants[a[6]],code,text,unit,mk,mt:d.mtypes[a[11]],mg:d.groups[a[10]],type:d.types[a[4]],pg:d.pgs[a[19]],qty:a[15],val:a[17]*(cur==='INR'?1:(a[24]||0))};
+    return {a,day:a[0]!==null&&a[0]!==undefined?a[0]:a[1],vk:SK[a[5]],si:a[5],po:a[2],plant:d.plants[a[6]],code,text,unit,mk,mt:d.mtypes[a[11]],mg:d.groups[a[10]],type:d.types[a[4]],pg:d.pgs[a[19]],qty:a[15],val,item:a[3],gr:a[22],still:a[23],rel:!!(a[18]&1),pv:a[23]>0&&a[15]>0?val*Math.min(a[23],a[15])/a[15]:0,dv:a[22]!==null&&a[22]!==undefined&&a[15]>0?Math.max(0,Math.min(val,val*a[22]/a[15])):0};
   });
 }
 
@@ -311,10 +369,12 @@ function calc(){
   for(const l of sel){
     total+=l.val;POS.add(l.po);
     let v=V.get(l.vk);
-    if(!v)V.set(l.vk,v={vk:l.vk,value:0,pos:new Set(),items:0,mats:new Map(),mon:new Map(),first:null,last:null,sv:new Map(),pgs:new Map(),lines:[],gc:false});
+    if(!v)V.set(l.vk,v={vk:l.vk,value:0,pos:new Set(),items:0,mats:new Map(),mon:new Map(),first:null,last:null,sv:new Map(),pgs:new Map(),lines:[],gc:false,pend:0,dlv:0,openItems:0,plants:new Map(),types:new Map(),mts:new Map()});
     v.value+=l.val;v.pos.add(l.po);v.items++;v.lines.push(l);v.sv.set(l.si,(v.sv.get(l.si)||0)+l.val);
     if(GC[l.si])v.gc=true;
     v.pgs.set(l.pg,(v.pgs.get(l.pg)||0)+l.val);
+    v.pend+=l.pv;v.dlv+=l.dv;if(l.still>0)v.openItems++;
+    v.plants.set(l.plant,(v.plants.get(l.plant)||0)+l.val);v.types.set(l.type,(v.types.get(l.type)||0)+l.val);v.mts.set(l.mt,(v.mts.get(l.mt)||0)+l.val);
     if(l.day!==null){if(v.first===null||l.day<v.first)v.first=l.day;if(v.last===null||l.day>v.last)v.last=l.day;
       const mi=mIdx(l.day);let x=v.mon.get(mi);if(!x)v.mon.set(mi,x={value:0,pos:new Set()});x.value+=l.val;x.pos.add(l.po);
       let y=MO.get(mi);if(!y)MO.set(mi,y={value:0,pos:new Set(),vend:new Set()});y.value+=l.val;y.pos.add(l.po);y.vend.add(l.vk);}
@@ -347,9 +407,10 @@ function calc(){
   rises.sort((a,b)=>b.r.loss-a.r.loss);
   const vmap=new Map(VL.map(v=>[v.vk,v]));
   let loss=0,impact=0,base=0;for(const v of VL){loss+=v.rate.loss;impact+=v.rate.impact;base+=v.rate.base;}
-  C={sel,VL,ML,total,POS,MO,TY,PGM,rises,vmap,loss,impact,base,classes:['A','B','C'].map(k=>{const l=VL.filter(v=>v.cls===k);return {k,n:l.length,value:l.reduce((s,v)=>s+v.value,0)};})};
+  C={sel,VL,ML,total,POS,MO,TY,PGM,rises,vmap,loss,impact,base,pend:VL.reduce((x,v)=>x+v.pend,0),pendItems:VL.reduce((x,v)=>x+v.openItems,0),give:0,pastDue:0,classes:['A','B','C'].map(k=>{const l=VL.filter(v=>v.cls===k);return {k,n:l.length,value:l.reduce((s,v)=>s+v.value,0)};})};
+  applyAgeing();
 }
-const vHay=v=>v.hay||(v.hay=(v.name+' '+v.codes+' '+v.gstin+' '+v.ml.map(m=>m.text+' '+m.code).join(' ')).toLowerCase());
+const vHay=v=>v.hay||(v.hay=(v.name+' '+v.codes+' '+v.gstin+' '+(v.city||'')+' '+stateOf(v.gstin)+' '+v.ml.map(m=>m.text+' '+m.code).join(' ')).toLowerCase());
 const mHay=m=>m.hay||(m.hay=(m.text+' '+m.code+' '+m.vl.map(e=>{const v=C.vmap.get(e[0]);return v?v.name:'';}).join(' ')).toLowerCase());
 const okV=v=>(!S.cls||v.cls===S.cls)&&(!S.q||vHay(v).includes(S.q));
 const okM=m=>!S.q||mHay(m).includes(S.q);
@@ -371,36 +432,83 @@ function hbars(items,wd,lw,rw){
 
 // ---------------------------------------------------------------- one vendor
 const rateCell=v=>v.rate.pct===null?'<span class="sm">–</span>':`<span class="${v.rate.pct>0.05?'up':v.rate.pct<-0.05?'dn':''}" title="${esc(fmtN(v.rate.n)+' materials compared: '+fmtN(v.rate.up)+' went up, '+fmtN(v.rate.down)+' went down')}">${sgnPct(v.rate.pct)}</span>`;
+const brandPill=t=>{const b=brandOf(t);return b?` · <span class="pill sup" title="Brand named in the PO text">${esc(b)}</span>`:'';};
+const stOf=l=>l.still>0?(l.gr>0?'Partly delivered':'Not delivered yet'):(l.gr===null||l.gr===undefined?'No delivery data':l.gr>0?'Delivered':'No goods receipt (service)');
+function miniTable(map,total,nameFn,head){
+  const rows=[...map.entries()].sort((a,b)=>b[1]-a[1]),shown=rows.slice(0,8);
+  return `<div><table class="pt"><thead><tr><th>${head}</th><th class="num">Value</th><th class="num">%</th></tr></thead><tbody>${shown.map(([k,x])=>`<tr><td>${esc(nameFn(k))}</td><td class="num nw">${fmtINR(x)}</td><td class="num">${pc(total>0?x/total*100:0)}</td></tr>`).join('')}${rows.length>8?`<tr><td colspan="3" class="sm">+${rows.length-8} more</td></tr>`:''}</tbody></table></div>`;
+}
+function deliveryHtml(v){
+  const open=v.lines.filter(l=>l.still>0).sort((a,b)=>b.pv-a.pv||(a.day||0)-(b.day||0)),shown=open.slice(0,15);
+  const done=v.lines.filter(l=>l.still<=0&&l.gr>0).length,part=open.filter(l=>l.gr>0).length;
+  let h=`<h3 class="subh">Delivery status</h3><div class="tbox"><table class="pt"><thead><tr><th class="num">Ordered</th><th class="num">Delivered</th><th class="num">Still to be delivered</th><th class="num">Items delivered</th><th class="num">Items partly delivered</th><th class="num">Items not delivered yet</th></tr></thead><tbody><tr><td class="num nw"><b>${fmtINR(v.value)}</b></td><td class="num nw">${fmtINR(v.dlv)} <span class="sm">${pc(v.value>0?v.dlv/v.value*100:0)}</span></td><td class="num nw ${v.pend>0?'up':''}"><b>${fmtINR(v.pend)}</b> <span class="sm">${pc(v.value>0?v.pend/v.value*100:0)}</span></td><td class="num">${fmtN(done)}</td><td class="num">${fmtN(part)}</td><td class="num">${fmtN(open.length-part)}</td></tr></tbody></table></div>`;
+  if(open.length){
+    h+=`<p class="hint">Items still to be delivered, the biggest pending value first${open.length>shown.length?' (the first 15 of '+fmtN(open.length)+')':''}. Waiting = days since the PO was created.</p><div class="tbox"><table class="pt"><thead><tr><th>PO / item</th><th>Material</th><th class="num">Ordered</th><th class="num">Still to deliver</th><th class="num">Pending value</th><th class="num">Waiting</th></tr></thead><tbody>`+
+      shown.map(l=>`<tr><td class="nw">${esc(l.po)} / ${l.item}</td><td>${esc(l.text||l.code||'–')}${brandPill(l.text)}<div class="sm">${esc(l.code||'–')}</div></td><td class="num nw">${q3(l.qty)} ${esc(l.unit)}</td><td class="num nw">${q3(l.still)} ${esc(l.unit)}</td><td class="num nw"><b>${fmtINR(l.pv)}</b></td><td class="num nw">${l.day===null?'–':AGE.pill(D.asofDay-l.day,'Waiting since the PO was created ('+AGE.words(D.asofDay-l.day)+')')}</td></tr>`).join('')+
+      `</tbody><tfoot><tr><td colspan="4">Total pending (${fmtN(open.length)} items)</td><td class="num nw">${fmtINR(v.pend)}</td><td></td></tr></tfoot></table></div>`;
+  }
+  return h;
+}
+function payHtml(v){
+  const p=v.pay;
+  let h='<h3 class="subh">Payment position (open vendor items of Payment Ageing)</h3>';
+  if(!p||!p.ok)return h+'<p class="hint">The payment data is still loading…</p>';
+  if(!p.parties)return h+'<p class="hint">This vendor has no open item: nothing to pay and nothing to get.</p>';
+  h+=`<p class="hint">${p.give>0.5?`We have to pay <b>${fmtINR(p.give)}</b> (Dena hai)${p.pastDue>0?`, of which <b class="up">${fmtINR(p.pastDue)}</b> is past its due date (the oldest unpaid invoice is ${fmtN(p.maxOver)} days past due)`:', nothing is past its due date'}. `:''}${p.get>0.5?`We paid <b>${fmtINR(p.get)}</b> more than we owe (advance or payment not matched yet: Lena hai). `:''}${p.give<=0.5&&p.get<=0.5?'The open items cancel out: nothing to pay. ':''}These are all the open items of the vendor, not only of the POs chosen above.</p>`;
+  if(p.give>0.5)h+=`<div class="tbox"><table class="pt"><thead><tr>${AGL.map(x=>`<th class="num">${x}</th>`).join('')}<th class="num">Total</th></tr></thead><tbody><tr>${p.gb.map(x=>`<td class="num nw"${x>0.5?'':' style="color:var(--muted)"'}>${x>0.5?fmtINR(x):'–'}</td>`).join('')}<td class="num nw"><b>${fmtINR(p.give)}</b></td></tr></tbody></table></div>`;
+  return h;
+}
+function poHtml(v,ctx){
+  const pom=new Map();
+  for(const l of v.lines){let x=pom.get(l.po);if(!x)pom.set(l.po,x={po:l.po,day:l.day,type:l.type,items:0,val:0,pv:0,dv:0,rel:false,lines:[]});x.items++;x.val+=l.val;x.pv+=l.pv;x.dv+=l.dv;if(l.rel)x.rel=true;x.lines.push(l);}
+  const pl=[...pom.values()].sort((a,b)=>(b.day||0)-(a.day||0)||b.val-a.val),all=S.poAll.has(ctx),lim=all?pl:pl.slice(0,40);
+  let h=`<h3 class="subh">Purchase orders${pl.length>lim.length?' (the newest '+lim.length+' of '+fmtN(pl.length)+')':' ('+fmtN(pl.length)+')'} · click a PO to see its items</h3><div class="tbox"><table class="pt"><thead><tr><th>PO</th><th>Created</th><th>PO type</th><th class="num">Items</th><th class="num">Purchase value</th><th class="num">Delivered</th><th class="num">Still to be delivered</th><th>Release</th></tr></thead><tbody>`;
+  for(const x of lim){
+    const key=ctx+'|'+x.po,open=S.popen.has(key);
+    h+=`<tr class="${open?'sel':''}"><td class="nw"><button type="button" class="lnk" data-pctx="${esc(key)}" aria-expanded="${open}" title="Click to see the items of this PO">${open?'▾':'▸'} ${esc(x.po)}</button></td><td class="nw">${fmtDay(x.day)}</td><td>${esc(x.type||'')}</td><td class="num">${x.items}</td><td class="num nw">${fmtINR(x.val)}</td><td class="num nw">${fmtINR(x.dv)} <span class="sm">${pc(x.val>0?x.dv/x.val*100:0)}</span></td><td class="num nw ${x.pv>0?'up':''}">${x.pv>0?fmtINR(x.pv):'–'}</td><td class="nw">${x.rel?'In approval':'Released'}</td></tr>`;
+    if(open){
+      h+=`<tr class="tlrow subrow"><td colspan="8"><div class="tbox"><table class="pt"><thead><tr><th>Item</th><th>Material</th><th class="num">Quantity</th><th class="num">Rate (per unit)</th><th class="num">Value</th><th class="num">Delivered</th><th class="num">Still to deliver</th><th>Status</th></tr></thead><tbody>`+
+        x.lines.slice().sort((a,b)=>a.item-b.item).map(l=>`<tr><td class="nw">${l.item}</td><td>${esc(l.text||l.code||'–')}${brandPill(l.text)}<div class="sm">${esc(l.code||'–')} · ${esc(l.plant||'')}</div></td><td class="num nw">${q3(l.qty)} ${esc(l.unit)}</td><td class="num nw">${l.qty>0&&l.val>0?fmtRate(l.val/l.qty):'–'}</td><td class="num nw"><b>${fmtINR(l.val)}</b></td><td class="num nw">${l.gr===null||l.gr===undefined?'–':q3(l.gr)+' '+esc(l.unit)}</td><td class="num nw">${l.still>0?q3(l.still)+' '+esc(l.unit):'–'}</td><td class="nw">${stOf(l)}</td></tr>`).join('')+
+        `</tbody></table></div></td></tr>`;
+    }
+  }
+  h+=`</tbody><tfoot><tr><td colspan="3">Total (${fmtN(pl.length)} POs)</td><td class="num">${fmtN(v.items)}</td><td class="num nw">${fmtINR(v.value)}</td><td class="num nw">${fmtINR(v.dlv)}</td><td class="num nw">${fmtINR(v.pend)}</td><td></td></tr></tfoot></table></div>`;
+  if(pl.length>40)h+=`<div class="pager"><span></span><button type="button" class="btn alt" data-poall="${esc(ctx)}">${all?'Show the newest 40':'Show all '+fmtN(pl.length)+' POs'}</button></div>`;
+  return h;
+}
 function vendorPanel(v,ctx){
   const rm=new Map(v.rate.all.map(r=>[r.key,r]));
-  const ml=v.ml,shown=ml.slice(0,100);
+  const ml=v.ml,shown=ml.slice(0,100),p=v.pay||{ok:false};
   const pgl=[...v.pgs.entries()].sort((a,b)=>b[1]-a[1]).slice(0,3).map(e=>pgName(e[0])+' ('+pc(e[1]/v.value*100)+')').join(', ');
+  const place=[v.city,stateOf(v.gstin)].filter(Boolean).join(', ');
   const st=[[fmtINR(v.value),'Purchase value'],[pc(v.share),'Share of the business'],[`#${v.rank} of ${fmtN(C.VL.length)} · <span class="ct ${v.cls}">${v.cls}</span>`,'Rank · class'],[fmtN(v.pos.size)+' · '+fmtN(v.items),'POs · PO items'],[fmtN(ml.length),'Materials bought'],
-    [v.first===null?'–':fmtDayS(v.first)+' – '+fmtDayS(v.last),'First – last PO'],[rateCell(v),'Net rate change'],[`<span class="${v.rate.loss>0?'up':''}">${fmtINR(v.rate.loss)}</span>`,'Extra paid on rising rates']];
+    [v.first===null?'–':fmtDayS(v.first)+' – '+fmtDayS(v.last),'First – last PO'],[rateCell(v),'Net rate change'],[`<span class="${v.rate.loss>0?'up':''}">${fmtINR(v.rate.loss)}</span>`,'Extra paid on rising rates'],
+    [fmtINR(v.dlv)+' <span class="sm">'+pc(v.value>0?v.dlv/v.value*100:0)+'</span>','Delivered'],[`<span class="${v.pend>0?'up':''}">${fmtINR(v.pend)}</span>`,'Still to be delivered'],
+    [p.ok?fmtINR(p.give):'…','To pay (Dena hai)'],[p.ok&&p.pastDue>0?`<span class="up">${fmtINR(p.pastDue)}</span>`:(p.ok?'–':'…'),'Past due'],[place?esc(place):'–','City · state']];
   const mrows=shown.map(m=>{
     const r=rm.get(m.mk),avg=m.qty>0?m.value/m.qty:null;
     let rt='<span class="sm">one PO date</span>',chg='',ex='';
     if(r){const cls=r.pct>0?'up':r.pct<0?'dn':'';rt=`${fmtRate(r.ref.rate)} <span class="sm">${fmtDayS(r.ref.day)}</span> → <b>${fmtRate(r.last.rate)}</b> <span class="sm">${fmtDayS(r.last.day)}</span>`+(r.doubt?'<span class="pill chk" title="Doubtful change: left out of the totals">doubtful</span>':'');chg=`<span class="${cls}">${sgnPct(r.pct)}</span>`;ex=r.loss>0&&!r.doubt?`<span class="up">${fmtINR(r.loss)}</span>`:'–';}
-    return `<tr><td>${esc(m.text||m.code||'–')}<div class="sm">${esc(m.code||'–')} · ${esc(m.unit)} · ${fmtN(m.pos.size)} PO${m.pos.size===1?'':'s'}${m.mt?' · '+esc(m.mt):''}</div></td><td class="num nw">${q3(m.qty)} ${esc(m.unit)}</td><td class="num nw"><b>${fmtINR(m.value)}</b></td><td class="num nw">${pc(m.value/v.value*100)}</td><td class="num nw">${avg===null?'–':fmtRate(avg)}</td><td class="nw">${rt}</td><td class="num nw">${chg}</td><td class="num nw">${ex}</td></tr>`;}).join('');
+    return `<tr><td>${esc(m.text||m.code||'–')}${brandPill(m.text)}<div class="sm">${esc(m.code||'–')} · per ${esc(m.unit)} · ${fmtN(m.pos.size)} PO${m.pos.size===1?'':'s'}${m.mt?' · '+esc(m.mt):''}</div></td><td class="num nw">${q3(m.qty)} ${esc(m.unit)}</td><td class="num nw"><b>${fmtINR(m.value)}</b></td><td class="num nw">${pc(m.value/v.value*100)}</td><td class="num nw">${avg===null?'–':fmtRate(avg)}</td><td class="nw">${rt}</td><td class="num nw">${chg}</td><td class="num nw">${ex}</td></tr>`;}).join('');
   const mon=[...v.mon.entries()].sort((a,b)=>b[0]-a[0]);
-  const po=new Map();for(const l of v.lines){let x=po.get(l.po);if(!x)po.set(l.po,x={po:l.po,day:l.day,type:l.type,items:0,val:0});x.items++;x.val+=l.val;}
-  const pl=[...po.values()].sort((a,b)=>(b.day||0)-(a.day||0)||b.val-a.val);
-  return `<div class="mp" id="${panId(ctx)}"><div class="mph"><b>${esc(v.name)}</b><span class="sm">${esc('Supplier '+v.codes+(v.gstin?' · GSTIN '+v.gstin:'')+' · '+pgl)}</span><button type="button" class="btn alt" data-closectx="${esc(ctx)}">Close</button></div>`+
+  return `<div class="mp" id="${panId(ctx)}"><div class="mph"><b>${esc(v.name)}</b><span class="sm">${esc('Supplier '+v.codes+(v.gstin?' · GSTIN '+v.gstin:'')+(place?' · '+place:'')+' · '+pgl)}</span><button type="button" class="btn alt" data-closectx="${esc(ctx)}">Close</button></div>`+
     `<div class="stats">${st.map(s=>`<div class="stat"><b>${s[0]}</b><span>${esc(s[1])}</span></div>`).join('')}</div>`+
     `<div class="sumline">${pc(v.share)} of the business: <b>${fmtINR(v.value)}</b> in ${fmtN(v.pos.size)} PO${v.pos.size===1?'':'s'}. ${ml.length?`The biggest material, <b>${esc((ml[0].text||ml[0].code||'').slice(0,60))}</b>, is ${pc(ml[0].value/v.value*100)} of this vendor's business.`:''} ${v.rate.pct===null?'No material was bought on two or more PO dates, so there is no rate to compare.':`Of ${fmtN(v.rate.n)} materials compared ${fmtN(v.rate.up)} went up and ${fmtN(v.rate.down)} went down: net <b>${sgnPct(v.rate.pct)}</b>, extra paid on the rises ${fmtINR(v.rate.loss)}.`}</div>`+
-    `<h3 class="subh">What we buy from this vendor${ml.length>shown.length?' (the first 100 of '+fmtN(ml.length)+', the biggest first)':''}</h3><div class="tbox"><table class="pt"><thead><tr><th>Material</th><th class="num">Quantity</th><th class="num">Purchase value</th><th class="num">% of vendor</th><th class="num">Average rate</th><th>First rate → latest rate</th><th class="num">Rate change</th><th class="num">Extra paid</th></tr></thead><tbody>${mrows}</tbody><tfoot><tr><td>Total (${fmtN(ml.length)} materials)</td><td></td><td class="num nw">${fmtINR(v.value)}</td><td class="num">100%</td><td colspan="3"></td><td class="num nw">${fmtINR(v.rate.loss)}</td></tr></tfoot></table></div>`+
+    deliveryHtml(v)+payHtml(v)+
+    `<h3 class="subh">Where it goes: plant, department, material type</h3><div class="split">${miniTable(v.plants,v.value,k=>k||'(no plant)','Plant')}${miniTable(v.pgs,v.value,pgName,'Department (purchasing group)')}${miniTable(v.types,v.value,k=>k||'(no PO type)','PO type')}${miniTable(v.mts,v.value,mtName,'Material type')}</div>`+
+    `<h3 class="subh">What we buy from this vendor (rate = value ÷ quantity, per 1 unit)${ml.length>shown.length?' · the first 100 of '+fmtN(ml.length)+', the biggest first':''}</h3><div class="tbox"><table class="pt"><thead><tr><th>Material · brand</th><th class="num">Quantity</th><th class="num">Purchase value</th><th class="num">% of vendor</th><th class="num">Average rate</th><th>First rate → latest rate</th><th class="num">Rate change</th><th class="num">Extra paid</th></tr></thead><tbody>${mrows}</tbody><tfoot><tr><td>Total (${fmtN(ml.length)} materials)</td><td></td><td class="num nw">${fmtINR(v.value)}</td><td class="num">100%</td><td colspan="3"></td><td class="num nw">${fmtINR(v.rate.loss)}</td></tr></tfoot></table></div>`+
     `<h3 class="subh">Month by month</h3><div class="tbox"><table class="pt"><thead><tr><th>Month</th><th class="num">POs</th><th class="num">Purchase value</th><th class="num">% of vendor</th></tr></thead><tbody>${mon.map(([k,x])=>`<tr><td>${mName(k)}</td><td class="num">${fmtN(x.pos.size)}</td><td class="num nw">${fmtINR(x.value)}</td><td class="num">${pc(x.value/v.value*100)}</td></tr>`).join('')}</tbody></table></div>`+
-    `<h3 class="subh">Purchase orders${pl.length>30?' (the newest 30 of '+fmtN(pl.length)+')':''}</h3><div class="tbox"><table class="pt"><thead><tr><th>PO</th><th>Created</th><th>PO type</th><th class="num">Items</th><th class="num">Purchase value</th></tr></thead><tbody>${pl.slice(0,30).map(x=>`<tr><td class="nw">${esc(x.po)}</td><td class="nw">${fmtDay(x.day)}</td><td>${esc(x.type||'')}</td><td class="num">${x.items}</td><td class="num nw">${fmtINR(x.val)}</td></tr>`).join('')}</tbody><tfoot><tr><td colspan="3">Total (${fmtN(pl.length)} POs)</td><td class="num">${fmtN(v.items)}</td><td class="num nw">${fmtINR(v.value)}</td></tr></tfoot></table></div></div>`;
+    poHtml(v,ctx)+`</div>`;
 }
 const panelsFor=(kind,list)=>list.map(v=>S.open.has(kind+'|'+v.vk)?vendorPanel(v,kind+'|'+v.vk):'').join('');
 function vendorTable(list,place,full){
   if(!list.length)return '<div class="empty">No vendor matches the filters.</div>';
   full=full||list;
   const tv=full.reduce((s,v)=>s+v.value,0),ts=full.reduce((s,v)=>s+v.share,0);
-  return `<table><thead><tr><th class="num">#</th><th>Vendor</th><th>What we mainly buy</th><th class="num">Purchase value</th><th class="num" title="Share of everything shown; under it the share of this vendor and all the bigger ones">% of business</th><th>Class</th><th class="num">POs</th><th class="num" title="The newest PO of this vendor">Last PO</th><th class="num" title="The value-weighted change of the rates of the materials bought on two or more PO dates, the first rate of the period against the latest">Rate change (net)</th><th class="num" title="What was paid extra on the dates with a higher rate">Extra paid</th></tr></thead><tbody>`+
-    list.map(v=>{const ctx=place+'|'+v.vk,open=S.open.has(ctx),t2=v.ml.slice(0,2).map(m=>esc((m.text||m.code||'').slice(0,38))).join('; ');
-      return `<tr class="${open?'sel':''}"><td class="num">${v.rank}</td><td class="mn"><button type="button" class="lnk" data-vctx="${esc(ctx)}" aria-expanded="${open}" title="Click to open what we buy from this vendor, its rates and its purchase orders right here">${open?'▾':'▸'} ${esc(v.name)}</button>${v.gc?'<span class="pill sup">group company</span>':''}<div class="mid">${esc(v.codes)}${v.gstin?' · '+esc(v.gstin):''} · ${esc(pgName(v.pg))}</div></td><td>${t2}${v.ml.length>2?`<div class="sm">+${fmtN(v.ml.length-2)} more</div>`:''}</td><td class="num nw" title="${esc(rup(v.value))}"><b>${fmtINR(v.value)}</b></td><td class="num nw">${pc(v.share)}<div class="sm">${pc(v.cum)} cumulative</div></td><td><span class="ct ${v.cls}">${v.cls}</span></td><td class="num">${fmtN(v.pos.size)}</td><td class="num nw">${v.last===null?'–':fmtDayS(v.last)+' '+ageP(v.last,'Last PO of this vendor')}</td><td class="num nw">${rateCell(v)}</td><td class="num nw">${v.rate.loss>0?`<span class="up">${fmtINR(v.rate.loss)}</span>`:'–'}</td></tr>`+(open?`<tr class="tlrow subrow"><td></td><td colspan="9">${vendorPanel(v,ctx)}</td></tr>`:'');}).join('')+
-    `</tbody><tfoot><tr><td></td><td>Total (${fmtN(full.length)} vendors)</td><td></td><td class="num nw">${fmtINR(tv)}</td><td class="num nw">${pc(ts)}</td><td></td><td></td><td></td><td></td><td class="num nw">${fmtINR(full.reduce((s,v)=>s+v.rate.loss,0))}</td></tr></tfoot></table>`;
+  return `<table><thead><tr><th class="num">#</th><th>Vendor</th><th>What we mainly buy</th><th class="num">Purchase value</th><th class="num" title="Share of everything shown; under it the share of this vendor and all the bigger ones">% of business</th><th>Class</th><th class="num">POs</th><th class="num" title="The newest PO of this vendor">Last PO</th><th class="num" title="Value of the goods ordered and not delivered yet">Still to be delivered</th><th class="num" title="What we have to pay this vendor (open items of Payment Ageing); under it the part past its due date">To pay (Dena)</th><th class="num" title="The value-weighted change of the rates of the materials bought on two or more PO dates, the first rate of the period against the latest">Rate change (net)</th><th class="num" title="What was paid extra on the dates with a higher rate">Extra paid</th></tr></thead><tbody>`+
+    list.map(v=>{const ctx=place+'|'+v.vk,open=S.open.has(ctx),t2=v.ml.slice(0,2).map(m=>esc((m.text||m.code||'').slice(0,38))).join('; '),loc=[v.city,stateOf(v.gstin)].filter(Boolean).join(', '),p=v.pay||{ok:false};
+      return `<tr class="${open?'sel':''}"><td class="num">${v.rank}</td><td class="mn"><button type="button" class="lnk" data-vctx="${esc(ctx)}" aria-expanded="${open}" title="Click to open what we buy from this vendor, its deliveries, payments, rates and purchase orders right here">${open?'▾':'▸'} ${esc(v.name)}</button>${v.gc?'<span class="pill sup">group company</span>':''}<div class="mid">${esc(v.codes)}${v.gstin?' · '+esc(v.gstin):''}${loc?' · '+esc(loc):''} · ${esc(pgName(v.pg))}</div></td><td>${t2}${v.ml.length>2?`<div class="sm">+${fmtN(v.ml.length-2)} more</div>`:''}</td><td class="num nw" title="${esc(rup(v.value))}"><b>${fmtINR(v.value)}</b></td><td class="num nw">${pc(v.share)}<div class="sm">${pc(v.cum)} cumulative</div></td><td><span class="ct ${v.cls}">${v.cls}</span></td><td class="num">${fmtN(v.pos.size)}</td><td class="num nw">${v.last===null?'–':fmtDayS(v.last)+' '+ageP(v.last,'Last PO of this vendor')}</td><td class="num nw ${v.pend>0?'up':''}" title="${esc(rup(v.pend))}">${v.pend>0?fmtINR(v.pend):'–'}${v.openItems?`<div class="sm">${fmtN(v.openItems)} items</div>`:''}</td><td class="num nw" title="${esc(rup(p.give||0))}">${!p.ok?'…':p.give>0.5?'<b>'+fmtINR(p.give)+'</b>':'–'}${p.ok&&p.pastDue>0?`<div class="sm up">${fmtINR(p.pastDue)} past due</div>`:''}</td><td class="num nw">${rateCell(v)}</td><td class="num nw">${v.rate.loss>0?`<span class="up">${fmtINR(v.rate.loss)}</span>`:'–'}</td></tr>`+(open?`<tr class="tlrow subrow"><td></td><td colspan="11">${vendorPanel(v,ctx)}</td></tr>`:'');}).join('')+
+    `</tbody><tfoot><tr><td></td><td>Total (${fmtN(full.length)} vendors)</td><td></td><td class="num nw">${fmtINR(tv)}</td><td class="num nw">${pc(ts)}</td><td></td><td></td><td></td><td class="num nw">${fmtINR(full.reduce((s,v)=>s+v.pend,0))}</td><td class="num nw">${fmtINR(full.reduce((s,v)=>s+(v.pay?v.pay.give:0),0))}</td><td></td><td class="num nw">${fmtINR(full.reduce((s,v)=>s+v.rate.loss,0))}</td></tr></tfoot></table>`;
 }
 
 // ---------------------------------------------------------------- materials, rate rises, the small tables
@@ -449,6 +557,8 @@ const TILE_INFO={
   top5:['How concentrated the business is','The share of the business that the biggest 1, 5, 10, 20, 50 and 100 vendors make.'],
   classA:['Class A vendors','The vendors that make the first 80% of the business, the biggest first (the first 100 are listed).'],
   mats:['The 20 materials we buy the most','By purchase value. Click a material to see every vendor of it.'],
+  pend:['Still to be delivered, by vendor','The vendors with goods ordered and not delivered yet, the biggest pending value first (the first 25). Click a vendor to see the items and how long they wait.'],
+  pay:['To pay, by vendor (Dena hai)','What we have to pay these vendors: all the open items of the vendor in Payment Ageing (not only the POs of the filters), the biggest amount first (the first 25). Past due = after the due date of the invoice.'],
   rate:['Rate rises · the biggest extra paid','Vendor and material where the rate was raised from the first PO of the period to the latest, by the extra amount paid (the first 25).']
 };
 function renderTile(){
@@ -463,6 +573,8 @@ function renderTile(){
   else if(k==='classA'){const l=C.VL.filter(v=>v.cls==='A');h=vendorTable(l.slice(0,100),'tile',l);}
   else if(k==='mats')h=matTable(C.ML.slice(0,20),'tile',C.ML.slice(0,20));
   else if(k==='rate')h=riseTable(C.rises.slice(0,25),'tile',C.rises);
+  else if(k==='pend'){const l=C.VL.filter(v=>v.pend>0.5).sort((a,b)=>b.pend-a.pend);h=vendorTable(l.slice(0,25),'tile',l);}
+  else if(k==='pay'){const l=C.VL.filter(v=>v.pay&&v.pay.give>0.5).sort((a,b)=>b.pay.give-a.pay.give);h=vendorTable(l.slice(0,25),'tile',l);}
   $('tileBox').innerHTML=h;
 }
 const reveal=id=>{const el=$(id);if(el&&!el.hidden)el.scrollIntoView({behavior:'smooth',block:'start'});};
@@ -478,6 +590,8 @@ function render(){
     ['top5',pc(t5),'Top 5 vendors make this share',VL.length>=5?fmtINR(VL.slice(0,5).reduce((s,v)=>s+v.value,0)):''],
     ['classA',fmtN(cA.n),'Class A vendors · the first 80%',pc(VL.length?cA.n/VL.length*100:0)+' of the vendors make 80% of the business'],
     ['mats',fmtN(C.ML.length),'Materials bought',C.ML[0]?'biggest: '+(C.ML[0].text||C.ML[0].code||'').slice(0,34)+' · '+pc(C.ML[0].share):''],
+    ['pend',fmtINR(C.pend),'Still to be delivered by these vendors',`${fmtN(C.VL.filter(v=>v.pend>0.5).length)} vendors · ${fmtN(C.pendItems)} PO items not delivered yet`],
+    ['pay',AGE_D?fmtINR(C.give):'…','To pay to these vendors (Dena hai)',AGE_D?`${fmtINR(C.pastDue)} past due · from Payment Ageing`:'loading Payment Ageing…'],
     ['rate',fmtINR(C.loss),'Extra paid when the rate rose',C.base>0?`net ${C.impact>=0?'+':'-'}${fmtINR(Math.abs(C.impact))} · ${sgnPct(C.impact/C.base*100)} on ${fmtINR(C.base)} compared`:'no material with two PO dates']];
   $('kpis').innerHTML=tiles.map(t=>`<button type="button" class="tile tilebtn" data-tile="${t[0]}" aria-expanded="${S.tile===t[0]}"><div class="tv">${esc(t[1])}</div><div class="tl">${esc(t[2])}</div><div class="tn">${esc(t[3])}</div>${S.tile===t[0]?'<div class="ts">click to hide</div>':''}</button>`).join('');
   const scopeTxt=S.scope==='STORE'?'Store material types (ZCON, ZHMI, ZSPR, ZSRM, ZVRP)':S.scope===''?'all material types':S.scope==='__none__'?'lines without a material (assets, services)':mtName(S.scope);
@@ -500,7 +614,7 @@ function render(){
   // the lists
   const vs=VL.filter(okV),ms=C.ML.filter(okM),rs=C.rises.filter(e=>okV(e.v)&&(!S.q||(e.r.text+' '+e.r.mat).toLowerCase().includes(S.q)||vHay(e.v).includes(S.q)));
   const note=S.cls||S.q?` ${fmtN(vs.length)} of ${fmtN(VL.length)} vendors${S.cls?' of class '+S.cls:''}${S.q?' match the search':''}.`:'';
-  $('vHint').textContent=`${fmtN(VL.length)} vendors, the biggest purchase value first. Share = % of everything counted (${fmtINR(C.total)}).${note} Click a vendor to see what we buy from it, the rate of each material and its purchase orders.`;
+  $('vHint').textContent=`${fmtN(VL.length)} vendors, the biggest purchase value first. Share = % of everything counted (${fmtINR(C.total)}).${note} Click a vendor to see what we buy from it, the rate of each material, what is still to be delivered, what we have to pay it and its purchase orders (with their items).`;
   $('mHint').textContent=`${fmtN(C.ML.length)} materials, the biggest purchase value first. Click a material to see every vendor of it.${S.q?' '+fmtN(ms.length)+' match the search.':''}`;
   $('rHint').textContent=`${fmtN(C.rises.length)} vendor and material pairs where the rate was raised (at least 1%) from the vendor's first PO of the period to its latest, the biggest extra amount first. Extra paid = what the later POs cost more than at the first rate. Together ${fmtINR(C.rises.reduce((s,e)=>s+e.r.loss,0))}. (The tile Extra paid counts every date with a higher rate, also for materials whose rate came down again later: ${fmtINR(C.loss)}.)`+(S.q?' '+fmtN(rs.length)+' match the search.':'');
   for(const [key,box,info,btn,list,fn,place,noun] of [['v','vBox','vInfo','vAll',vs,vendorTable,'list','vendors'],['m','mBox','mInfo','mAll',ms,matTable,'mat','materials'],['r','rBox','rInfo','rAll',rs,riseTable,'rise','rises']]){
@@ -526,6 +640,10 @@ document.addEventListener('click',e=>{
   if(cm){S.mopen.delete(cm.dataset.closemat);render();return;}
   const vc=e.target.closest('[data-vctx]');
   if(vc){const c=vc.dataset.vctx;toggle(S.open,c);render();if(S.open.has(c)){const el=document.getElementById(panId(c));if(el)el.scrollIntoView({behavior:'smooth',block:'nearest'});}return;}
+  const pa=e.target.closest('[data-poall]');
+  if(pa){toggle(S.poAll,pa.dataset.poall);render();return;}
+  const pt=e.target.closest('[data-pctx]');
+  if(pt){toggle(S.popen,pt.dataset.pctx);render();return;}
   const mc=e.target.closest('[data-mctx]');
   if(mc){toggle(S.mopen,mc.dataset.mctx);render();return;}
   const t=e.target.closest('button');if(!t)return;
@@ -552,7 +670,7 @@ function setPeriod(p){
   $('dFrom').value=S.from===null?'':iso(S.from);$('dTo').value=S.to===null?'':iso(S.to);
   calc();render();
 }
-$('mtSel').addEventListener('change',e=>{S.scope=e.target.value;S.open.clear();S.mopen.clear();calc();render();});
+$('mtSel').addEventListener('change',e=>{S.scope=e.target.value;S.open.clear();S.mopen.clear();S.popen.clear();calc();render();});
 $('plantSel').addEventListener('change',e=>{S.plant=e.target.value;calc();render();});
 $('grpSel').addEventListener('change',e=>{S.grp=e.target.value;calc();render();});
 $('dFrom').addEventListener('change',e=>{S.from=dayOf(e.target.value);S.per='';calc();render();});
@@ -596,13 +714,17 @@ const liveTxt=stamp=>'Live from SAP · updated '+hhmm(stamp)+' · '+fmtN(C?C.VL.
 async function load(force,auto){
   if(loading)return;loading=true;
   if(!auto||!D)setLive('busy',D?'Refreshing from SAP…':'Loading purchase order data from SAP (first load can take a minute)…');
+  // the payment position of the vendors (Payment Ageing) comes beside the PO data and fills in when it is there
+  const agP=LIVE.get('/api/ageing',force).then(g=>g.same||!g.res.ok?null:g.j).catch(()=>null);
+  const agDone=()=>agP.then(a=>{if(a&&D){setAgeing(a);applyAgeing();render();}});
   try{
     const g=await LIVE.get('/api/po',force),res=g.res,j=g.j;
-    if(g.same){STAMP=g.stamp||STAMP;setLive('ok',liveTxt(STAMP));return;}
+    if(g.same){STAMP=g.stamp||STAMP;setLive('ok',liveTxt(STAMP));agDone();return;}
     if(!res.ok)throw new Error(j.error||('HTTP '+res.status));
     setData(j);applyLink();render();
     if(S.reveal){const id=S.reveal;S.reveal=null;setTimeout(()=>reveal(id),150);}
     STAMP=j.fetchedAt;setLive('ok',liveTxt(STAMP));
+    agDone();
   }catch(e){
     const msg=e.message==='Failed to fetch'?'The dashboard server is not running. Start it again with Start_Live_Dashboard.bat.':e.message;
     setLive('err',msg);
