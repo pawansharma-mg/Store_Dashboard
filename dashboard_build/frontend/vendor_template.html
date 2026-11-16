@@ -497,7 +497,10 @@ function retName(x){
   let b='',bn=0;for(const [n,c] of x.nm)if(c>bn){b=n;bn=c;}
   return b||('Supplier '+[...x.ids].join(', '));
 }
-const retRows=()=>[...RTV.values()].filter(x=>x.has&&!(S.grp==='hide'&&GCV.has(x.vk)));
+// a vendor of the quality lists has a receipt and a PO value in the dates chosen (a rejection of material received before them, or of a vendor with no PO value there, would show a misleading 0% score)
+const okQ=x=>x.recV>0.5&&pv(x)>0.5;
+const retRows=()=>[...RTV.values()].filter(x=>x.has&&okQ(x)&&!(S.grp==='hide'&&GCV.has(x.vk)));
+function retHidden(){let n=0,v=0;for(const x of RTV.values())if(x.has&&!okQ(x)&&!(S.grp==='hide'&&GCV.has(x.vk))){n++;v+=Math.max(0,x.ret);}return {n,v};}
 const retHay=x=>x.hay||(x.hay=(retName(x)+' '+[...x.ids].join(' ')+' '+x.lines.map(l=>l.matName+' '+l.mat+' '+l.po+' '+l.doc).join(' ')).toLowerCase());
 function retList(){const l=retRows().filter(x=>!S.q||retHay(x).includes(S.q));l.sort((a,b)=>b.tot-a.tot||retName(a).localeCompare(retName(b)));return l;}
 function retTotals(){let ret=0,deb=0,rec=0,nr=0,nd=0,acc=0,accRec=0;const l=retRows();for(const x of l){ret+=x.ret;deb+=x.deb;rec+=x.recV;if(x.ret>0.5)nr++;if(x.deb>0.5)nd++;if(x.acc!==null){acc+=x.acc;accRec+=x.recV;}}return {ret,deb,rec,nr,nd,n:l.length,score:accRec>0.5?acc/accRec*100:null};}
@@ -631,7 +634,7 @@ function buildMats(){
 }
 const vName=vk=>{const x=RTV.get(vk);if(x)return retName(x);const v=C&&C.vmap.get(vk);return v?v.name:vk.replace(/^(id|g):/,'');};
 const mqHay=e=>e.hay||(e.hay=((e.name||'')+' '+e.mat+' '+[...e.vend.keys()].map(vName).join(' ')).toLowerCase());
-function mqList(){const l=MQ.filter(e=>e.has&&(!S.q||mqHay(e).includes(S.q)));l.sort((a,b)=>b.tv-a.tv||b.dv-a.dv||(a.name||'').localeCompare(b.name||''));return l;}
+function mqList(){const l=MQ.filter(e=>e.has&&e.rq>0.0005&&(!S.q||mqHay(e).includes(S.q)));l.sort((a,b)=>b.tv-a.tv||b.dv-a.dv||(a.name||'').localeCompare(b.name||''));return l;}
 function mqPanel(e,ctx){
   const vl=[...e.vend.values()].filter(v=>Math.abs(v.rq)>0.0005||Math.abs(v.tq)>0.0005||Math.abs(v.dq)>0.0005).sort((a,b)=>b.tv-a.tv||b.rv-a.rv),sc=e.score,un=esc(e.unit);
   const st=[[e.rq>0.0005?q3(e.rq)+' '+un:'–','Received (101 − 102)'+(Math.abs(e.rv)>0.5?' · '+fmtINR(e.rv):'')],
@@ -692,79 +695,16 @@ function renderQuality(){
   $('mqBox').innerHTML=mqTable(S.all.mq?ml:ml.slice(0,PAGE),'mqt',ml);
   $('mqInfo').textContent=!ml.length?'':(S.all.mq||ml.length<=PAGE)?`All ${fmtN(ml.length)} shown`:`Showing the first ${PAGE} of ${fmtN(ml.length)} materials`;
   $('mqAll').hidden=ml.length<=PAGE;$('mqAll').textContent=S.all.mq?'Show first '+PAGE:'See all '+fmtN(ml.length);
+  const mh=loaded?MQ.filter(e=>e.has&&e.rq<=0.0005).length:0;
   const rvT=ml.reduce((s,e)=>s+Math.max(0,e.rv),0),tvT=ml.reduce((s,e)=>s+Math.max(0,e.tv),0);
-  $('mqHint').textContent=!loaded?'Loading the returns and the receipts from SAP…':ml.length?`${fmtN(ml.length)} materials had a rejection (161) or a debit note ${perTxt()} (Store locations, all the vendors): of the ${fmtINR(rvT)} of these materials received, ${fmtINR(tvT)} was rejected. For every material: how much came (101 − 102), how much of it was rejected (161 − 162), what was accepted and the score, in the quantity of the material; the chart draws the 15 with the biggest rejected value. Click a material to see its vendors, what each sent and what each had rejected: that tells which vendor makes the quality problem.${S.q?' Search: '+fmtN(ml.length)+' match.':''}`:'No material was rejected in the dates chosen.';
+  $('mqHint').textContent=!loaded?'Loading the returns and the receipts from SAP…':ml.length?`${fmtN(ml.length)} materials had a rejection (161) or a debit note ${perTxt()} (Store locations, all the vendors): of the ${fmtINR(rvT)} of these materials received, ${fmtINR(tvT)} was rejected. For every material: how much came (101 − 102), how much of it was rejected (161 − 162), what was accepted and the score, in the quantity of the material; the chart draws the 15 with the biggest rejected value. Click a material to see its vendors, what each sent and what each had rejected: that tells which vendor makes the quality problem.${mh?` ${fmtN(mh)} more materials with a rejection are not listed: none of them was received in these dates.`:''}${S.q?' Search: '+fmtN(ml.length)+' match.':''}`:'No material was rejected in the dates chosen.';
 }
 
 // ---------------------------------------------------------------- one vendor
 const rateCell=v=>v.rate.pct===null?'<span class="sm">–</span>':`<span class="${v.rate.pct>0.05?'up':v.rate.pct<-0.05?'dn':''}" title="${esc(fmtN(v.rate.n)+' materials compared: '+fmtN(v.rate.up)+' went up, '+fmtN(v.rate.down)+' went down')}">${sgnPct(v.rate.pct)}</span>`;
-const brandPill=t=>{const b=brandOf(t);return b?` · <span class="pill sup" title="Brand named in the PO text">${esc(b)}</span>`:'';};
-const stOf=l=>l.still>0?(l.gr>0?'Partly delivered':'Not delivered yet'):(l.gr===null||l.gr===undefined?'No delivery data':l.gr>0?'Delivered':'No goods receipt (service)');
-function miniTable(map,total,nameFn,head){
-  const rows=[...map.entries()].sort((a,b)=>b[1]-a[1]),shown=rows.slice(0,8);
-  return `<div><table class="pt"><thead><tr><th>${head}</th><th class="num">Value</th><th class="num">%</th></tr></thead><tbody>${shown.map(([k,x])=>`<tr><td>${esc(nameFn(k))}</td><td class="num nw">${fmtINR(x)}</td><td class="num">${pc(total>0?x/total*100:0)}</td></tr>`).join('')}${rows.length>8?`<tr><td colspan="3" class="sm">+${rows.length-8} more</td></tr>`:''}</tbody></table></div>`;
-}
-function deliveryHtml(v){
-  const open=v.lines.filter(l=>l.still>0).sort((a,b)=>b.pv-a.pv||(a.day||0)-(b.day||0)),shown=open.slice(0,15);
-  const done=v.lines.filter(l=>l.still<=0&&l.gr>0).length,part=open.filter(l=>l.gr>0).length;
-  let h=`<h3 class="subh">Delivery status</h3><div class="tbox"><table class="pt"><thead><tr><th class="num">Ordered</th><th class="num">Delivered</th><th class="num">Still to be delivered</th><th class="num">Items delivered</th><th class="num">Items partly delivered</th><th class="num">Items not delivered yet</th></tr></thead><tbody><tr><td class="num nw"><b>${fmtINR(v.value)}</b></td><td class="num nw">${fmtINR(v.dlv)} <span class="sm">${pc(v.value>0?v.dlv/v.value*100:0)}</span></td><td class="num nw ${v.pend>0?'up':''}"><b>${fmtINR(v.pend)}</b> <span class="sm">${pc(v.value>0?v.pend/v.value*100:0)}</span></td><td class="num">${fmtN(done)}</td><td class="num">${fmtN(part)}</td><td class="num">${fmtN(open.length-part)}</td></tr></tbody></table></div>`;
-  if(open.length){
-    h+=`<p class="hint">Items still to be delivered, the biggest pending value first${open.length>shown.length?' (the first 15 of '+fmtN(open.length)+')':''}. Waiting = days since the PO was created.</p><div class="tbox"><table class="pt"><thead><tr><th>PO / item</th><th>Material</th><th class="num">Ordered</th><th class="num">Still to deliver</th><th class="num">Pending value</th><th class="num">Waiting</th></tr></thead><tbody>`+
-      shown.map(l=>`<tr><td class="nw">${esc(l.po)} / ${l.item}</td><td>${esc(l.text||l.code||'–')}${brandPill(l.text)}<div class="sm">${esc(l.code||'–')}</div></td><td class="num nw">${q3(l.qty)} ${esc(l.unit)}</td><td class="num nw">${q3(l.still)} ${esc(l.unit)}</td><td class="num nw"><b>${fmtINR(l.pv)}</b></td><td class="num nw">${l.day===null?'–':AGE.pill(D.asofDay-l.day,'Waiting since the PO was created ('+AGE.words(D.asofDay-l.day)+')')}</td></tr>`).join('')+
-      `</tbody><tfoot><tr><td colspan="4">Total pending (${fmtN(open.length)} items)</td><td class="num nw">${fmtINR(v.pend)}</td><td></td></tr></tfoot></table></div>`;
-  }
-  return h;
-}
-function payHtml(v){
-  const p=v.pay;
-  let h='<h3 class="subh">Payment position (open vendor items of Payment Ageing)</h3>';
-  if(!p||!p.ok)return h+'<p class="hint">The payment data is still loading…</p>';
-  if(!p.parties)return h+'<p class="hint">This vendor has no open item: nothing to pay and nothing to get.</p>';
-  h+=`<p class="hint">${p.give>0.5?`We have to pay <b>${fmtINR(p.give)}</b> (Dena hai)${p.pastDue>0?`, of which <b class="up">${fmtINR(p.pastDue)}</b> is past its due date (the oldest unpaid invoice is ${fmtN(p.maxOver)} days past due)`:', nothing is past its due date'}. `:''}${p.get>0.5?`We paid <b>${fmtINR(p.get)}</b> more than we owe (advance or payment not matched yet: Lena hai). `:''}${p.give<=0.5&&p.get<=0.5?'The open items cancel out: nothing to pay. ':''}These are all the open items of the vendor, not only of the POs chosen above.</p>`;
-  if(p.give>0.5)h+=`<div class="tbox"><table class="pt"><thead><tr>${AGL.map(x=>`<th class="num">${x}</th>`).join('')}<th class="num">Total</th></tr></thead><tbody><tr>${p.gb.map(x=>`<td class="num nw"${x>0.5?'':' style="color:var(--muted)"'}>${x>0.5?fmtINR(x):'–'}</td>`).join('')}<td class="num nw"><b>${fmtINR(p.give)}</b></td></tr></tbody></table></div>`;
-  return h;
-}
-function poHtml(v,ctx){
-  const pom=new Map();
-  for(const l of v.lines){let x=pom.get(l.po);if(!x)pom.set(l.po,x={po:l.po,day:l.day,type:l.type,items:0,val:0,pv:0,dv:0,rel:false,lines:[]});x.items++;x.val+=l.val;x.pv+=l.pv;x.dv+=l.dv;if(l.rel)x.rel=true;x.lines.push(l);}
-  const pl=[...pom.values()].sort((a,b)=>(b.day||0)-(a.day||0)||b.val-a.val),all=S.poAll.has(ctx),lim=all?pl:pl.slice(0,40);
-  let h=`<h3 class="subh">Purchase orders${pl.length>lim.length?' (the newest '+lim.length+' of '+fmtN(pl.length)+')':' ('+fmtN(pl.length)+')'} · click a PO to see its items</h3><div class="tbox"><table class="pt"><thead><tr><th>PO</th><th>Created</th><th>PO type</th><th class="num">Items</th><th class="num">Purchase value</th><th class="num">Delivered</th><th class="num">Still to be delivered</th><th>Release</th></tr></thead><tbody>`;
-  for(const x of lim){
-    const key=ctx+'|'+x.po,open=S.popen.has(key);
-    h+=`<tr class="${open?'sel':''}"><td class="nw"><button type="button" class="lnk" data-pctx="${esc(key)}" aria-expanded="${open}" title="Click to see the items of this PO">${open?'▾':'▸'} ${esc(x.po)}</button></td><td class="nw">${fmtDay(x.day)}</td><td>${esc(x.type||'')}</td><td class="num">${x.items}</td><td class="num nw">${fmtINR(x.val)}</td><td class="num nw">${fmtINR(x.dv)} <span class="sm">${pc(x.val>0?x.dv/x.val*100:0)}</span></td><td class="num nw ${x.pv>0?'up':''}">${x.pv>0?fmtINR(x.pv):'–'}</td><td class="nw">${x.rel?'In approval':'Released'}</td></tr>`;
-    if(open){
-      h+=`<tr class="tlrow subrow"><td colspan="8"><div class="tbox"><table class="pt"><thead><tr><th>Item</th><th>Material</th><th class="num">Quantity</th><th class="num">Rate (per unit)</th><th class="num">Value</th><th class="num">Delivered</th><th class="num">Still to deliver</th><th>Status</th></tr></thead><tbody>`+
-        x.lines.slice().sort((a,b)=>a.item-b.item).map(l=>`<tr><td class="nw">${l.item}</td><td>${esc(l.text||l.code||'–')}${brandPill(l.text)}<div class="sm">${esc(l.code||'–')} · ${esc(l.plant||'')}</div></td><td class="num nw">${q3(l.qty)} ${esc(l.unit)}</td><td class="num nw">${l.qty>0&&l.val>0?fmtRate(l.val/l.qty):'–'}</td><td class="num nw"><b>${fmtINR(l.val)}</b></td><td class="num nw">${l.gr===null||l.gr===undefined?'–':q3(l.gr)+' '+esc(l.unit)}</td><td class="num nw">${l.still>0?q3(l.still)+' '+esc(l.unit):'–'}</td><td class="nw">${stOf(l)}</td></tr>`).join('')+
-        `</tbody></table></div></td></tr>`;
-    }
-  }
-  h+=`</tbody><tfoot><tr><td colspan="3">Total (${fmtN(pl.length)} POs)</td><td class="num">${fmtN(v.items)}</td><td class="num nw">${fmtINR(v.value)}</td><td class="num nw">${fmtINR(v.dlv)}</td><td class="num nw">${fmtINR(v.pend)}</td><td></td></tr></tfoot></table></div>`;
-  if(pl.length>40)h+=`<div class="pager"><span></span><button type="button" class="btn alt" data-poall="${esc(ctx)}">${all?'Show the newest 40':'Show all '+fmtN(pl.length)+' POs'}</button></div>`;
-  return h;
-}
 function vendorPanel(v,ctx){
-  const rm=new Map(v.rate.all.map(r=>[r.key,r]));
-  const ml=v.ml,shown=ml.slice(0,100),p=v.pay||{ok:false};
-  const pgl=[...v.pgs.entries()].sort((a,b)=>b[1]-a[1]).slice(0,3).map(e=>pgName(e[0])+' ('+pc(e[1]/v.value*100)+')').join(', ');
   const place=[v.city,stateOf(v.gstin)].filter(Boolean).join(', ');
-  const st=[[fmtINR(v.value),'Purchase value'],[pc(v.share),'Share of the business'],[`#${v.rank} of ${fmtN(C.VL.length)} · <span class="ct ${v.cls}">${v.cls}</span>`,'Rank · class'],[fmtN(v.pos.size)+' · '+fmtN(v.items),'POs · PO items'],[fmtN(ml.length),'Materials bought'],
-    [v.first===null?'–':fmtDayS(v.first)+' – '+fmtDayS(v.last),'First – last PO'],[rateCell(v),'Net rate change'],[`<span class="${v.rate.loss>0?'up':''}">${fmtINR(v.rate.loss)}</span>`,'Extra paid on rising rates'],
-    [fmtINR(v.dlv)+' <span class="sm">'+pc(v.value>0?v.dlv/v.value*100:0)+'</span>','Delivered'],[`<span class="${v.pend>0?'up':''}">${fmtINR(v.pend)}</span>`,'Still to be delivered'],
-    [p.ok?fmtINR(p.give):'…','To pay (Dena hai)'],[p.ok&&p.pastDue>0?`<span class="up">${fmtINR(p.pastDue)}</span>`:(p.ok?'–':'…'),'Past due'],[place?esc(place):'–','City · state']];
-  const mrows=shown.map(m=>{
-    const r=rm.get(m.mk),avg=m.qty>0?m.value/m.qty:null;
-    let rt='<span class="sm">one PO date</span>',chg='',ex='';
-    if(r){const cls=r.pct>0?'up':r.pct<0?'dn':'';rt=`${fmtRate(r.ref.rate)} <span class="sm">${fmtDayS(r.ref.day)}</span> → <b>${fmtRate(r.last.rate)}</b> <span class="sm">${fmtDayS(r.last.day)}</span>`+(r.doubt?'<span class="pill chk" title="Doubtful change: left out of the totals">doubtful</span>':'');chg=`<span class="${cls}">${sgnPct(r.pct)}</span>`;ex=r.loss>0&&!r.doubt?`<span class="up">${fmtINR(r.loss)}</span>`:'–';}
-    return `<tr><td>${esc(m.text||m.code||'–')}${brandPill(m.text)}<div class="sm">${esc(m.code||'–')} · per ${esc(m.unit)} · ${fmtN(m.pos.size)} PO${m.pos.size===1?'':'s'}${m.mt?' · '+esc(m.mt):''}</div></td><td class="num nw">${q3(m.qty)} ${esc(m.unit)}</td><td class="num nw"><b>${fmtINR(m.value)}</b></td><td class="num nw">${pc(m.value/v.value*100)}</td><td class="num nw">${avg===null?'–':fmtRate(avg)}</td><td class="nw">${rt}</td><td class="num nw">${chg}</td><td class="num nw">${ex}</td></tr>`;}).join('');
-  const mon=[...v.mon.entries()].sort((a,b)=>b[0]-a[0]);
-  return `<div class="mp" id="${panId(ctx)}"><div class="mph"><b>${esc(v.name)}</b><span class="sm">${esc('Supplier '+v.codes+(v.gstin?' · GSTIN '+v.gstin:'')+(place?' · '+place:'')+' · '+pgl)}</span><button type="button" class="btn alt" data-closectx="${esc(ctx)}">Close</button></div>`+
-    `<div class="stats">${st.map(s=>`<div class="stat"><b>${s[0]}</b><span>${esc(s[1])}</span></div>`).join('')}</div>`+
-    `<div class="sumline">${pc(v.share)} of the business: <b>${fmtINR(v.value)}</b> in ${fmtN(v.pos.size)} PO${v.pos.size===1?'':'s'}. ${ml.length?`The biggest material, <b>${esc((ml[0].text||ml[0].code||'').slice(0,60))}</b>, is ${pc(ml[0].value/v.value*100)} of this vendor's business.`:''} ${v.rate.pct===null?'No material was bought on two or more PO dates, so there is no rate to compare.':`Of ${fmtN(v.rate.n)} materials compared ${fmtN(v.rate.up)} went up and ${fmtN(v.rate.down)} went down: net <b>${sgnPct(v.rate.pct)}</b>, extra paid on the rises ${fmtINR(v.rate.loss)}.`}</div>`+
-    qualityHtml(v)+deliveryHtml(v)+payHtml(v)+
-    `<h3 class="subh">Where it goes: plant, department, material type</h3><div class="split">${miniTable(v.plants,v.value,k=>k||'(no plant)','Plant')}${miniTable(v.pgs,v.value,pgName,'Department (purchasing group)')}${miniTable(v.types,v.value,k=>k||'(no PO type)','PO type')}${miniTable(v.mts,v.value,mtName,'Material type')}</div>`+
-    `<h3 class="subh">What we buy from this vendor (rate = value ÷ quantity, per 1 unit)${ml.length>shown.length?' · the first 100 of '+fmtN(ml.length)+', the biggest first':''}</h3><div class="tbox"><table class="pt"><thead><tr><th>Material · brand</th><th class="num">Quantity</th><th class="num">Purchase value</th><th class="num">% of vendor</th><th class="num">Average rate</th><th>First rate → latest rate</th><th class="num">Rate change</th><th class="num">Extra paid</th></tr></thead><tbody>${mrows}</tbody><tfoot><tr><td>Total (${fmtN(ml.length)} materials)</td><td></td><td class="num nw">${fmtINR(v.value)}</td><td class="num">100%</td><td colspan="3"></td><td class="num nw">${fmtINR(v.rate.loss)}</td></tr></tfoot></table></div>`+
-    `<h3 class="subh">Month by month</h3><div class="tbox"><table class="pt"><thead><tr><th>Month</th><th class="num">POs</th><th class="num">Purchase value</th><th class="num">% of vendor</th></tr></thead><tbody>${mon.map(([k,x])=>`<tr><td>${mName(k)}</td><td class="num">${fmtN(x.pos.size)}</td><td class="num nw">${fmtINR(x.value)}</td><td class="num">${pc(x.value/v.value*100)}</td></tr>`).join('')}</tbody></table></div>`+
-    poHtml(v,ctx)+`</div>`;
+  return `<div class="mp" id="${panId(ctx)}"><div class="mph"><b>${esc(v.name)}</b><span class="sm">${esc('Supplier '+v.codes+(v.gstin?' · GSTIN '+v.gstin:'')+(place?' · '+place:''))}</span><button type="button" class="btn alt" data-closectx="${esc(ctx)}">Close</button></div>`+qualityHtml(v)+`</div>`;
 }
 const panelsFor=(kind,list)=>list.map(v=>S.open.has(kind+'|'+v.vk)?vendorPanel(v,kind+'|'+v.vk):'').join('');
 function vendorTable(list,place,full){
@@ -855,17 +795,10 @@ function render(){
   const VL=C.VL,top=VL[0],t5=VL.slice(0,5).reduce((s,v)=>s+v.share,0),cA=C.classes[0];
   const RT0=RTD?retTotals():null;
   const tiles=[
-    ['total',fmtINR(C.total),'Total purchase value',`${fmtN(VL.length)} vendors · ${fmtN(C.POS.size)} POs · ${fmtN(C.sel.length)} PO items`],
     ['vendors',fmtN(VL.length),'Vendors we buy from',`${fmtN(C.classes[0].n)} A · ${fmtN(C.classes[1].n)} B · ${fmtN(C.classes[2].n)} C`],
     ['top',top?pc(top.share):'–','Biggest vendor'+(top?' · '+top.name:''),top?fmtINR(top.value)+' · '+fmtN(top.pos.size)+' PO'+(top.pos.size===1?'':'s'):''],
-    ['top5',pc(t5),'Top 5 vendors make this share',VL.length>=5?fmtINR(VL.slice(0,5).reduce((s,v)=>s+v.value,0)):''],
-    ['classA',fmtN(cA.n),'Class A vendors · the first 80%',pc(VL.length?cA.n/VL.length*100:0)+' of the vendors make 80% of the business'],
-    ['mats',fmtN(C.ML.length),'Materials bought',C.ML[0]?'biggest: '+(C.ML[0].text||C.ML[0].code||'').slice(0,34)+' · '+pc(C.ML[0].share):''],
-    ['pend',fmtINR(C.pend),'Still to be delivered by these vendors',`${fmtN(C.VL.filter(v=>v.pend>0.5).length)} vendors · ${fmtN(C.pendItems)} PO items not delivered yet`],
-    ['pay',AGE_D?fmtINR(C.give):'…','To pay to these vendors (Dena hai)',AGE_D?`${fmtINR(C.pastDue)} past due · from Payment Ageing`:'loading Payment Ageing…'],
     ['ret',RTD?fmtINR(RT0.ret):'…','Material rejected, returned to the vendors (161)',RTD?`${pl(RT0.nr,'vendor')} · score ${RT0.score===null?'–':RT0.score.toFixed(1)+'%'} on ${fmtINR(RT0.rec)} received`:'loading the returns…'],
-    ['deb',RTD?fmtINR(RT0.deb):'…','Debit notes made (122)',RTD?`${pl(RT0.nd,'vendor')} · Store locations ${perTxt()}`:'loading the returns…'],
-    ['rate',fmtINR(C.loss),'Extra paid when the rate rose',C.base>0?`net ${C.impact>=0?'+':'-'}${fmtINR(Math.abs(C.impact))} · ${sgnPct(C.impact/C.base*100)} on ${fmtINR(C.base)} compared`:'no material with two PO dates']];
+    ['deb',RTD?fmtINR(RT0.deb):'…','Debit notes made (122)',RTD?`${pl(RT0.nd,'vendor')} · Store locations ${perTxt()}`:'loading the returns…']];
   $('kpis').innerHTML=tiles.map(t=>`<button type="button" class="tile tilebtn" data-tile="${t[0]}" aria-expanded="${S.tile===t[0]}"><div class="tv">${esc(t[1])}</div><div class="tl">${esc(t[2])}</div><div class="tn">${esc(t[3])}</div>${S.tile===t[0]?'<div class="ts">click to hide</div>':''}</button>`).join('');
   const scopeTxt=S.scope==='STORE'?'Store material types (ZCON, ZHMI, ZSPR, ZSRM, ZVRP)':S.scope===''?'all material types':S.scope==='__none__'?'lines without a material (assets, services)':mtName(S.scope);
   $('scopeNote').textContent=`Counted: ${scopeTxt}${S.plant?' · plant '+S.plant:''} · group companies ${S.grp==='hide'?'not taken':'shown'} · ${S.from!==null||S.to!==null?'POs created, and receipts, returns and debit notes posted, '+(S.from!==null?'from '+fmtDay(S.from):'')+(S.to!==null?' to '+fmtDay(S.to):''):'every PO created since 1 Jan'} · RM and internal stock transfers are not in the data.`;
@@ -897,11 +830,11 @@ function render(){
     $(btn).hidden=list.length<=PAGE;$(btn).textContent=S.all[key]?'Show first '+PAGE:'See all '+fmtN(list.length);
   }
   // returns and debit notes (the vendors with a return or a debit note, the biggest first)
-  const RL=RTD?retList():[];
+  const RL=RTD?retList():[],RH=RTD?retHidden():{n:0,v:0};
   $('retBox').innerHTML=retTable(S.all.ret?RL:RL.slice(0,PAGE),'ret',RL);
   $('retInfo').textContent=!RL.length?'':(S.all.ret||RL.length<=PAGE)?`All ${fmtN(RL.length)} shown`:`Showing the first ${PAGE} of ${fmtN(RL.length)} vendors`;
   $('retAll').hidden=RL.length<=PAGE;$('retAll').textContent=S.all.ret?'Show first '+PAGE:'See all '+fmtN(RL.length);
-  $('retHint').textContent=!RT0?'Loading the returns and the receipts from SAP…':RT0.n?`${fmtN(RT0.n)} vendors had material rejected (returned, movement 161) or a debit note ${perTxt()} (Store locations): they sent ${fmtINR(RT0.rec)}, ${fmtINR(RT0.ret)} was rejected, so ${fmtINR(RT0.rec-RT0.ret)} was accepted (101 − 161), score ${RT0.score===null?'–':RT0.score.toFixed(1)+'%'}; debit notes (movement 122) ${fmtINR(RT0.deb)}. The biggest rejection first. These figures follow the dates chosen above (posting date), not the material type or plant filters. Click a vendor to see what it sent, what was rejected material by material, its score and every line. The chart draws the 15 vendors with the biggest rejection: bought, received, rejected and the score.${S.q?' '+fmtN(RL.length)+' match the search.':''}`:'No return or debit note in the Store locations '+perTxt()+'.';
+  $('retHint').textContent=!RT0?'Loading the returns and the receipts from SAP…':RT0.n?`${fmtN(RT0.n)} vendors had material rejected (returned, movement 161) or a debit note ${perTxt()} (Store locations): they sent ${fmtINR(RT0.rec)}, ${fmtINR(RT0.ret)} was rejected, so ${fmtINR(RT0.rec-RT0.ret)} was accepted (101 − 161), score ${RT0.score===null?'–':RT0.score.toFixed(1)+'%'}; debit notes (movement 122) ${fmtINR(RT0.deb)}. The biggest rejection first. These figures follow the dates chosen above (posting date), not the material type or plant filters. Click a vendor to see what it sent, what was rejected material by material, its score and every line. The chart draws the 15 vendors with the biggest rejection: bought, received, rejected and the score.${RH.n?` ${fmtN(RH.n)} more vendors with a rejection (${fmtINR(RH.v)}) are not listed: they have no receipt or no PO value in these dates.`:''}${S.q?' '+fmtN(RL.length)+' match the search.':''}`:'No return or debit note in the Store locations '+perTxt()+'.';
   renderQuality();
   // month by month (newest first; ui.js draws the columns from this table)
   const mo=[...C.MO.entries()].sort((a,b)=>b[0]-a[0]);
