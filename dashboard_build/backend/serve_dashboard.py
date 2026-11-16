@@ -33,6 +33,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pr_data import (EXCLUDE_LOCATIONS, EXCLUDE_PLANTS, po_split, po_rm_suppliers, row_is_rm, rm_material, AGEING_FIELDS, AGEING_FILTER, APPROVAL_FIELDS, ASSET_FIELDS, ASSET_FILTER, CONSUME_FIELDS, CONSUME_MVTS, FIELDS, INVOICE_FIELDS, INVOICE_FILTER, ISSUE_DATE_FILTER, ISSUE_FIELDS, ISSUE_FILTER, PURCHASE_FIELDS, PURCHASE_FILTER, PO_DATE_FILTER, PO_FIELDS, PO_STATUS_FIELDS, STOCK_FIELDS, STOCK_ORDER,
                      MG_NAMES, PG_NAMES, USER_NAMES,
                      ageing_compact, approval_compact, asset_compact, consume_fold, move_fold, moves_compact, MOVE_FIELDS, MOVE_FROM, invoice_compact, issue_compact, po_compact, purchase_compact, stock_compact, to_compact)
+from pr_data import RETURN_FILTER, RETURN_MVTS
 
 HERE = os.path.dirname(os.path.abspath(__file__))  # backend/
 FRONTEND = os.path.join(os.path.dirname(HERE), 'frontend')  # the pages and the logo
@@ -558,6 +559,11 @@ def purchase_view(rows, asof_day):
     return purchase_compact(rows, asof_day, load_stock_locations())
 
 
+def returns_view(rows, asof_day):
+    """material sent back to the vendors (161 / 162, 122 / 123) in the same store locations as the purchases (Vendor Business page)"""
+    return purchase_compact(rows, asof_day, load_stock_locations(), RETURN_MVTS)
+
+
 def stock_view(rows, asof_day, *extra):
     return stock_compact(rows, asof_day, load_stock_locations(), extra[0].state if extra else None)
 
@@ -824,6 +830,9 @@ def main():
     pq = {'$select': ','.join(PURCHASE_FIELDS), '$orderby': _ORDER}
     purchase = Sap(ISSUE_BASE, 'YY1_Store_Reservation', [{**pq, '$filter': PURCHASE_FILTER + " and PurchaseOrder ne ''"}, {**pq, '$filter': PURCHASE_FILTER}],
                    purchase_view, user, password, args.ttl, min_refresh=MIN_REFRESH)
+    # Returns to the vendor (161 / 162 return of material, 122 / 123 debit note): about a hundred lines since 1 Jan 2026, for the Vendor Business page.
+    returns = Sap(ISSUE_BASE, 'YY1_Store_Reservation', [{**pq, '$filter': RETURN_FILTER + " and PurchaseOrder ne ''"}, {**pq, '$filter': RETURN_FILTER}],
+                  returns_view, user, password, args.ttl, min_refresh=MIN_REFRESH)
     # Pending invoice entries (inbound deliveries without a goods receipt): a few hundred rows that change during the day.
     invoice = Sap(INVOICE_BASE, 'YY1_STORE_INVOICE_VL06', INVOICE_QUERY, invoice_compact, user, password, args.ttl, min_refresh=MIN_REFRESH)
     # Payment ageing: about 25,000 open vendor items.
@@ -838,7 +847,7 @@ def main():
     stockmoves = MoveSap(ISSUE_BASE, 'YY1_Store_Reservation', MOVE_QUERY, None, user, password, args.ttl, min_refresh=MIN_REFRESH)
     old_po = OldPoSap(PO_BASE, 'YY1_PO_ITEM_SUPPLIER', PO_QUERY, None, user, password, args.ttl, min_refresh=MIN_REFRESH)
     old_po.sources = (invoice, po)
-    apis = {'/api/po-old': old_po, '/api/pr': sap, '/api/issue': issue, '/api/po': po, '/api/stock': stock, '/api/purchase': purchase, '/api/invoice': invoice, '/api/ageing': ageing, '/api/po-approval': approval, '/api/asset': asset, '/api/stockmoves': stockmoves}
+    apis = {'/api/po-old': old_po, '/api/pr': sap, '/api/issue': issue, '/api/po': po, '/api/stock': stock, '/api/purchase': purchase, '/api/returns': returns, '/api/invoice': invoice, '/api/ageing': ageing, '/api/po-approval': approval, '/api/asset': asset, '/api/stockmoves': stockmoves}
     del password
     restored = []
     for path, view in apis.items():
@@ -877,7 +886,7 @@ def main():
                     forget_login()
                     log('SAP rejected the saved password; it was removed. Close this window, start the dashboard again and type the current password.')
             with ThreadPoolExecutor(max_workers=3) as ex:
-                list(ex.map(one, (stock, po, issue, ageing, purchase, sap, invoice, asset, approval, stockmoves)))
+                list(ex.map(one, (stock, po, issue, ageing, purchase, returns, sap, invoice, asset, approval, stockmoves)))
             one(old_po)  # after the invoice and PO views: it needs their data
             log('every view is ready (a view that was restored from the disk is being read from SAP again in the background)')
         threading.Thread(target=warm, daemon=True).start()

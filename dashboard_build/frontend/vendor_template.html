@@ -164,7 +164,7 @@ tr.tlrow>td{padding:4px 6px 14px!important;background:transparent!important}
   <div class="chips" id="chips"></div>
   <section class="kpis" id="kpis"><div class="tile sk"></div><div class="tile sk"></div><div class="tile sk"></div><div class="tile sk"></div><div class="tile sk"></div><div class="tile sk"></div><div class="tile sk"></div></section>
 
-  <nav class="jump" aria-label="Go to a section"><a href="#sec-top">Biggest vendors</a><a href="#sec-share">Share of the business</a><a href="#sec-vendors">Vendor list</a><a href="#sec-mats">What we buy</a><a href="#sec-rise">Rate rises</a><a href="#sec-month">Month by month</a></nav>
+  <nav class="jump" aria-label="Go to a section"><a href="#sec-top">Biggest vendors</a><a href="#sec-share">Share of the business</a><a href="#sec-vendors">Vendor list</a><a href="#sec-returns">Returns and debit notes</a><a href="#sec-mats">What we buy</a><a href="#sec-rise">Rate rises</a><a href="#sec-month">Month by month</a></nav>
 
   <section class="card topcard" id="tileCard" hidden>
     <h2><span id="tileTitle"></span><button type="button" class="btn alt opn" id="tileHide" title="Close this card">Hide</button></h2>
@@ -200,15 +200,22 @@ tr.tlrow>td{padding:4px 6px 14px!important;background:transparent!important}
     <div class="pager"><span id="vInfo"></span><div><button class="btn" id="vAll" type="button" data-all="v" data-seeall="1">See all</button></div></div>
   </section>
 
+  <section class="card" style="margin-top:12px" id="sec-returns" data-foldable data-keep-open data-detail>
+    <h2><span class="sec-badge">5</span>Returns and debit notes · what the vendors sent and what we sent back</h2>
+    <p class="hint" id="retHint"></p>
+    <div class="tbox plist" id="retBox"></div>
+    <div class="pager"><span id="retInfo"></span><div><button class="btn" id="retAll" type="button" data-all="ret" data-seeall="1">See all</button></div></div>
+  </section>
+
   <section class="card" style="margin-top:12px" id="sec-mats" data-foldable data-keep-open data-detail>
-    <h2><span class="sec-badge">5</span>Materials · what we buy, and from whom</h2>
+    <h2><span class="sec-badge">6</span>Materials · what we buy, and from whom</h2>
     <p class="hint" id="mHint"></p>
     <div class="tbox plist" id="mBox"></div>
     <div class="pager"><span id="mInfo"></span><div><button class="btn" id="mAll" type="button" data-all="m" data-seeall="1">See all</button></div></div>
   </section>
 
   <section class="card" style="margin-top:12px" id="sec-rise" data-foldable data-keep-open data-detail>
-    <h2><span class="sec-badge">6</span>Rate rises by vendor · how much the rate was raised</h2>
+    <h2><span class="sec-badge">7</span>Rate rises by vendor · how much the rate was raised</h2>
     <p class="hint" id="rHint"></p>
     <div class="tbox plist" id="rBox"></div>
     <div class="pager"><span id="rInfo"></span><div><button class="btn" id="rAll" type="button" data-all="r" data-seeall="1">See all</button></div></div>
@@ -216,18 +223,18 @@ tr.tlrow>td{padding:4px 6px 14px!important;background:transparent!important}
 
   <section class="grid" id="sec-month">
     <article class="card" data-keep-open>
-      <h2><span class="sec-badge">7</span>Month by month</h2>
+      <h2><span class="sec-badge">8</span>Month by month</h2>
       <p class="hint">Click a month to filter the whole page to the POs created in it.</p>
       <div class="tbox" id="byMonth" style="max-height:none"></div>
     </article>
     <article class="card" data-keep-open>
-      <h2><span class="sec-badge">8</span>By material type and by department</h2>
+      <h2><span class="sec-badge">9</span>By material type and by department</h2>
       <p class="hint">The department is the purchasing group of the PO. Click a material type to look at that type only.</p>
       <div class="tbox" id="byType" style="max-height:none"></div>
       <div class="tbox" id="byPg" style="max-height:none;margin-top:14px"></div>
     </article>
   </section>
-  <details class="notebox"><summary>Notes about these figures</summary><p class="note"><b>Business</b> = the net value of the purchase order items (value ordered, in rupees: a PO in another currency is converted at the exchange rate of the PO; an item without an exchange rate in SAP counts as 0), not what has been received or invoiced. <b>Share</b> = the value of the vendor divided by the value of everything shown (the material type, plant and dates chosen above). <b>Vendor</b>: supplier numbers with the same GSTIN are one vendor. <b>What is in</b>: by default only the Store material types (ZCON consumables, ZHMI PRD tools, ZSPR spare parts, ZSRM store raw materials, ZVRP packaging); choose All material types to include the others (semi-finished goods, trading goods such as silver coins, lines without a material: assets, services, building work). Raw material (RM) and every internal stock transfer (ZSTO, UB) are not in the dashboard data. The group companies (Mittal Coin, Mittal Appliances) are not taken unless you choose to show them; a supplier number that has the GSTIN of a group company counts as that group company (Signet Industries Ltd. has the GSTIN of Mittal Appliances Limited). <b>Classes</b>: the vendors in the order of purchase value; A = those that make the first 80% of the business (a vendor belongs to A when the vendors before it make less than 80%), B = up to 95%, C = the rest. <b>Still to be delivered</b> = the value of the ordered quantity not yet received (net value × quantity still to deliver ÷ order quantity, the rule of the Pending Purchase Orders page). <b>To pay (Dena hai)</b> = the open items of the vendor in Payment Ageing (all its supplier numbers, both companies, every year, not only the POs chosen above); payments and debit items that are not cleared are set against the oldest invoices first; <b>past due</b> = the part after the due date. The city comes from Payment Ageing, the state from the first two digits of the GSTIN. <b>Brand</b> = a brand named in the PO text. <b>Rate raised</b>: for every vendor and material (same unit) bought on two or more PO dates, the vendor's own first rate of the period against its latest rate, one rate per PO date (lines of the same date averaged by quantity; a near-free line is left out), as on the Price Variance page. <b>Extra paid</b> = (rate of a later PO date − first rate) × the quantity of that date, added up over the dates with a higher rate. <b>Net rate change</b> of a vendor = (extra paid − saved) ÷ the value of the later purchases at the first rate: the value-weighted change of the materials that could be compared; it says nothing about materials bought on one date only. Doubtful changes (more than +300% or below −75%, or another item under the same number) are left out of the totals and shown with a pill. Lines delivered to the storage locations PS01 to PS06, NPD1 and DROS and silver or gold bought by the gram are in the business figures but not in the rate comparison, as on the Price Variance page. Only POs created from 1 Jan 2026 are in the data. The data is read from SAP again every 30 seconds while this page is open.</p></details>
+  <details class="notebox"><summary>Notes about these figures</summary><p class="note"><b>Business</b> = the net value of the purchase order items (value ordered, in rupees: a PO in another currency is converted at the exchange rate of the PO; an item without an exchange rate in SAP counts as 0), not what has been received or invoiced. <b>Share</b> = the value of the vendor divided by the value of everything shown (the material type, plant and dates chosen above). <b>Vendor</b>: supplier numbers with the same GSTIN are one vendor. <b>What is in</b>: by default only the Store material types (ZCON consumables, ZHMI PRD tools, ZSPR spare parts, ZSRM store raw materials, ZVRP packaging); choose All material types to include the others (semi-finished goods, trading goods such as silver coins, lines without a material: assets, services, building work). Raw material (RM) and every internal stock transfer (ZSTO, UB) are not in the dashboard data. The group companies (Mittal Coin, Mittal Appliances) are not taken unless you choose to show them; a supplier number that has the GSTIN of a group company counts as that group company (Signet Industries Ltd. has the GSTIN of Mittal Appliances Limited). <b>Classes</b>: the vendors in the order of purchase value; A = those that make the first 80% of the business (a vendor belongs to A when the vendors before it make less than 80%), B = up to 95%, C = the rest. <b>Still to be delivered</b> = the value of the ordered quantity not yet received (net value × quantity still to deliver ÷ order quantity, the rule of the Pending Purchase Orders page). <b>To pay (Dena hai)</b> = the open items of the vendor in Payment Ageing (all its supplier numbers, both companies, every year, not only the POs chosen above); payments and debit items that are not cleared are set against the oldest invoices first; <b>past due</b> = the part after the due date. The city comes from Payment Ageing, the state from the first two digits of the GSTIN. <b>Returns and debit notes</b>: from the goods movements of the Store locations (the same ones as the Purchase page, since 1 Jan 2026, raw material not taken): <b>Material received</b> = the goods receipts of the vendor (movement 101) minus their reversals (102); <b>Returned (161)</b> = the material sent back to the vendor (movement 161) minus its reversals (162); <b>Debit note (122)</b> = the return deliveries with the debit note (movement 122) minus their reversals (123); <b>Returned %</b> = (returned + debit note) ÷ material received, in rupees. They do not follow the filters above (PO dates, material type, plant): all the supplier numbers of a vendor are added. A return of material received before 2026 or in a location that is not listed has no receipt in the data, so its % shows a dash. <b>Brand</b> = a brand named in the PO text. <b>Rate raised</b>: for every vendor and material (same unit) bought on two or more PO dates, the vendor's own first rate of the period against its latest rate, one rate per PO date (lines of the same date averaged by quantity; a near-free line is left out), as on the Price Variance page. <b>Extra paid</b> = (rate of a later PO date − first rate) × the quantity of that date, added up over the dates with a higher rate. <b>Net rate change</b> of a vendor = (extra paid − saved) ÷ the value of the later purchases at the first rate: the value-weighted change of the materials that could be compared; it says nothing about materials bought on one date only. Doubtful changes (more than +300% or below −75%, or another item under the same number) are left out of the totals and shown with a pill. Lines delivered to the storage locations PS01 to PS06, NPD1 and DROS and silver or gold bought by the gram are in the business figures but not in the rate comparison, as on the Price Variance page. Only POs created from 1 Jan 2026 are in the data. The data is read from SAP again every 30 seconds while this page is open.</p></details>
 </div>
 <footer class="footer">Mittal Group · Vendor Business · Source: SAP S/4HANA Cloud, YY1_PO_ITEM_SUPPLIER_CDS</footer>
 
@@ -251,6 +258,7 @@ function fmtINR(v){const a=Math.abs(v),s=v<-0.5?'-':'';if(a>=1e7)return s+'₹'+
 const rup=v=>'₹ '+Math.round(v).toLocaleString('en-IN');
 const fmtRate=v=>'₹'+v.toLocaleString('en-IN',{minimumFractionDigits:0,maximumFractionDigits:2});
 const q3=n=>n.toLocaleString('en-IN',{maximumFractionDigits:3});
+const pl=(n,w)=>fmtN(n)+' '+w+(n===1?'':'s');
 const pc=p=>p===null||p===undefined||!isFinite(p)?'–':p>0&&p<0.05?'<0.1%':p.toFixed(1)+'%';
 const sgnPct=p=>(p>0?'+':p<0?'-':'')+(Math.abs(p)>=1000?fmtN(Math.abs(p)):Math.abs(p).toFixed(1))+'%';
 const fmtDay=d=>d===null||d===undefined?'–':new Date(d*864e5).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric',timeZone:'UTC'}).replace('Sept','Sep');
@@ -276,6 +284,8 @@ const ageP=(d,what)=>d===null||d===undefined?'':AGE.pill(D.asofDay-d,what+' '+AG
 let D=null,L=[],GC=[],SK=[],C=null;
 // ---------------------------------------------------------------- payment position of a vendor: the open vendor items of Payment Ageing (/api/ageing), worked out the same way as on that page
 let AGE_D=null,AGP=new Map(),GIDS=new Map();
+// material the vendors sent and what was sent back (setReturns): supplier number -> vendor key, the group-company vendor keys, supplier names, the raw /api/returns and /api/purchase data, and the figures per vendor
+let ID2VK=new Map(),GCV=new Set(),SN=new Map(),RTD=null,RCD=null,RTV=new Map();
 const AEDGES=[0,30,60,90,180,365],AGL=['Not yet due','1–30 d','31–60 d','61–90 d','91–180 d','181–365 d','Over 1 yr'];
 const abkt=n=>{for(let i=0;i<AEDGES.length;i++)if(n<=AEDGES[i])return i;return AEDGES.length;};
 function ageOne(p,asof){
@@ -320,7 +330,7 @@ function applyAgeing(){
   C.give=give;C.pastDue=pd;
 }
 // scope: STORE = the Store material types (default), '' = every material type, '__none__' = lines without a material, or one material type. grp: group companies hidden / shown.
-const S={scope:'STORE',plant:'',grp:'hide',from:null,to:null,per:'all',q:'',cls:'',tile:null,open:new Set(),mopen:new Set(),popen:new Set(),poAll:new Set(),all:{v:false,m:false,r:false},reveal:null};
+const S={scope:'STORE',plant:'',grp:'hide',from:null,to:null,per:'all',q:'',cls:'',tile:null,open:new Set(),mopen:new Set(),popen:new Set(),ropen:new Set(),poAll:new Set(),all:{v:false,m:false,r:false,ret:false},reveal:null};
 
 // ---------------------------------------------------------------- the lines (every PO item once, with the vendor it belongs to)
 function prepare(d){
@@ -332,6 +342,9 @@ function prepare(d){
   const gv=new Set();d.suppliers.forEach((s,i)=>{if(GCRE.test((s[1]||'').trim()))gv.add(SK[i]);});
   GC=d.suppliers.map((s,i)=>gv.has(SK[i]));
   GIDS=new Map();d.suppliers.forEach((s,i)=>{let l=GIDS.get(SK[i]);if(!l)GIDS.set(SK[i],l=[]);l.push(s[0]);});
+  ID2VK=new Map();GIDS.forEach((ids,vk)=>ids.forEach(id=>ID2VK.set(id,vk)));
+  GCV=new Set();d.suppliers.forEach((s,i)=>{if(GC[i])GCV.add(SK[i]);});
+  SN=new Map(d.suppliers.map(s=>[s[0],s[1]||'']));
   L=d.rows.map(a=>{
     const code=d.mats[a[8]]||'',unit=d.units[a[13]],text=d.texts[a[9]]||'',cur=d.curs[a[14]];
     const val=a[17]*(cur==='INR'?1:(a[24]||0));
@@ -430,6 +443,73 @@ function hbars(items,wd,lw,rw){
   return `<svg class="pvc" viewBox="0 0 ${W} ${H}" role="img" aria-label="Chart">${g}</svg>`;
 }
 
+// ---------------------------------------------------------------- material the vendors sent and what was sent back
+// /api/purchase: 101 goods receipt, 102 its reversal; /api/returns: 161 return of material, 162 its reversal, 122 return delivery with the debit note, 123 its reversal (rows as in purchase_compact:
+// [day, movement, po, poItem, supplier, plant, location, material, group, unit, qty, value, cancelled, user, matDoc, kind]); qty and value are positive in every movement.
+const RTM={'161':['Return of material','ok'],'162':['Reversal of a return','none'],'122':['Debit note','pend'],'123':['Reversal of a debit note','none']};
+const vkOfId=id=>ID2VK.get(id)||('id:'+id);
+function setReturns(rt,rc){
+  if(rt)RTD=rt;if(rc)RCD=rc;
+  const m=new Map();
+  const get=(id,name)=>{const vk=vkOfId(id);let x=m.get(vk);if(!x)m.set(vk,x={vk,nm:new Map(),ids:new Set(),recV:0,recN:0,r161:0,r162:0,d122:0,d123:0,n161:0,n122:0,last:null,lines:[],hay:null});x.ids.add(id);if(name)x.nm.set(name,(x.nm.get(name)||0)+1);return x;};
+  if(RCD)for(const a of RCD.rows){const mv=RCD.mvts[a[1]];if(mv!=='101'&&mv!=='102')continue;const s=RCD.suppliers[a[4]],x=get(s[0],s[1]);x.recV+=mv==='101'?a[11]:-a[11];x.recN++;}
+  if(RTD)for(const a of RTD.rows){
+    const mv=RTD.mvts[a[1]],s=RTD.suppliers[a[4]],x=get(s[0],s[1]),val=a[11];
+    if(mv==='161'){x.r161+=val;x.n161++;}else if(mv==='162')x.r162+=val;else if(mv==='122'){x.d122+=val;x.n122++;}else if(mv==='123')x.d123+=val;
+    if(a[0]!==null&&(x.last===null||a[0]>x.last))x.last=a[0];
+    x.lines.push({day:a[0],mv,po:a[2],item:a[3],plant:RTD.plants[a[5]],sloc:RTD.slocs[a[6]][0],slocName:RTD.slocs[a[6]][1],mat:RTD.mats[a[7]][0],matName:RTD.mats[a[7]][1],unit:RTD.units[a[9]],qty:a[10],val,doc:a[14]});
+  }
+  for(const x of m.values()){x.ret=x.r161-x.r162;x.deb=x.d122-x.d123;x.tot=x.ret+x.deb;x.pct=x.recV>0.5?x.tot/x.recV*100:null;x.has=x.lines.length>0;}
+  RTV=m;
+}
+function retName(x){
+  const v=C&&C.vmap.get(x.vk);if(v)return v.name;
+  for(const id of x.ids){const n=SN.get(id);if(n)return n;}
+  let b='',bn=0;for(const [n,c] of x.nm)if(c>bn){b=n;bn=c;}
+  return b||('Supplier '+[...x.ids].join(', '));
+}
+const retRows=()=>[...RTV.values()].filter(x=>x.has&&!(S.grp==='hide'&&GCV.has(x.vk)));
+const retHay=x=>x.hay||(x.hay=(retName(x)+' '+[...x.ids].join(' ')+' '+x.lines.map(l=>l.matName+' '+l.mat+' '+l.po+' '+l.doc).join(' ')).toLowerCase());
+function retList(){const l=retRows().filter(x=>!S.q||retHay(x).includes(S.q));l.sort((a,b)=>b.tot-a.tot||retName(a).localeCompare(retName(b)));return l;}
+function retTotals(){let ret=0,deb=0,rec=0,nr=0,nd=0;const l=retRows();for(const x of l){ret+=x.ret;deb+=x.deb;rec+=x.recV;if(x.ret>0.5)nr++;if(x.deb>0.5)nd++;}return {ret,deb,rec,nr,nd,n:l.length};}
+const retLineRows=ls=>ls.map(l=>`<tr><td class="nw">${fmtDayS(l.day)} ${ageP(l.day,'Posted')}</td><td class="nw"><span class="pill ${RTM[l.mv][1]}">${l.mv} · ${esc(RTM[l.mv][0])}</span></td><td class="nw">${esc(l.doc)}</td><td class="nw">${esc(l.po||'–')}${l.item?' / '+l.item:''}</td><td>${esc(l.matName||l.mat||'–')}<div class="sm">${esc(l.mat||'–')}</div></td><td class="num nw">${q3(l.qty)} ${esc(l.unit)}</td><td class="num nw"><b>${fmtINR(l.val)}</b></td><td class="nw" title="${esc(l.slocName)}">${esc(l.plant)} · ${esc(l.sloc)}</td></tr>`).join('');
+const RET_HEAD='<thead><tr><th>Date</th><th>Movement</th><th>Material document</th><th>PO / item</th><th>Material</th><th class="num">Quantity</th><th class="num">Value</th><th>Plant · location</th></tr></thead>';
+function retPanel(x,ctx){
+  const ls=x.lines.slice().sort((a,b)=>(b.day||0)-(a.day||0)||b.val-a.val);
+  // material by material: what the vendor sent against what was returned / debited (quantity in the base unit of the material)
+  const bm=new Map(),slot=(mat,name,unit)=>{const k=mat+'|'+unit;let e=bm.get(k);if(!e)bm.set(k,e={mat,name,unit,rq:0,rv:0,tq:0,tv:0,dq:0,dv:0});return e;};
+  if(RCD)for(const a of RCD.rows){const mv=RCD.mvts[a[1]];if(mv!=='101'&&mv!=='102')continue;const s=RCD.suppliers[a[4]];if(vkOfId(s[0])!==x.vk)continue;const mt=RCD.mats[a[7]],e=slot(mt[0],mt[1],RCD.units[a[9]]),sg=mv==='101'?1:-1;e.rq+=sg*a[10];e.rv+=sg*a[11];}
+  for(const l of ls){const e=slot(l.mat,l.matName,l.unit),sg=(l.mv==='161'||l.mv==='122')?1:-1;if(l.mv==='161'||l.mv==='162'){e.tq+=sg*l.qty;e.tv+=sg*l.val;}else{e.dq+=sg*l.qty;e.dv+=sg*l.val;}}
+  const rows=[...bm.values()].filter(e=>Math.abs(e.tq)>0||Math.abs(e.dq)>0||Math.abs(e.tv)>0||Math.abs(e.dv)>0).sort((a,b)=>(b.tv+b.dv)-(a.tv+a.dv));
+  const st=[[x.recV>0.5?fmtINR(x.recV):'–','Material received (101 − 102)'],[`<span class="${x.ret>0.5?'up':''}">${fmtINR(x.ret)}</span>`,'Returned (161 − 162)'],[`<span class="${x.deb>0.5?'up':''}">${fmtINR(x.deb)}</span>`,'Debit note (122 − 123)'],[fmtINR(x.tot),'Returned + debit note'],[x.pct===null?'–':pc(x.pct),'% of what it sent'],[fmtN(x.lines.length),'Return / debit note lines'],[x.last===null?'–':fmtDayS(x.last),'Last return']];
+  const mrows=rows.map(e=>{const rp=e.rq>0.0005?(e.tq+e.dq)/e.rq*100:null;return `<tr><td>${esc(e.name||e.mat||'–')}<div class="sm">${esc(e.mat||'–')} · per ${esc(e.unit)}</div></td><td class="num nw">${e.rq>0.0005?q3(e.rq)+' '+esc(e.unit):'<span class="sm">–</span>'}</td><td class="num nw ${e.tq>0?'up':''}">${Math.abs(e.tq)>0.0005?q3(e.tq)+' '+esc(e.unit):'–'}</td><td class="num nw ${e.dq>0?'up':''}">${Math.abs(e.dq)>0.0005?q3(e.dq)+' '+esc(e.unit):'–'}</td><td class="num nw">${rp===null?'–':pc(rp)}</td><td class="num nw">${Math.abs(e.tv)>0.5?fmtINR(e.tv):'–'}</td><td class="num nw">${Math.abs(e.dv)>0.5?fmtINR(e.dv):'–'}</td></tr>`;}).join('');
+  const places=[...new Set(x.lines.map(l=>l.plant+' · '+l.sloc))].slice(0,4).join(', ');
+  return `<div class="mp" id="${panId(ctx)}"><div class="mph"><b>${esc(retName(x))}</b><span class="sm">${esc('Supplier '+[...x.ids].join(', ')+(places?' · '+places:''))}</span><button type="button" class="btn alt" data-closeret="${esc(ctx)}">Close</button></div>`+
+    `<div class="stats">${st.map(s=>`<div class="stat"><b>${s[0]}</b><span>${esc(s[1])}</span></div>`).join('')}</div>`+
+    `<div class="sumline">${x.recV>0.5?`The vendor sent material worth <b>${fmtINR(x.recV)}</b> (${pl(x.recN,'receipt line')}). `:'No receipt of this vendor is in the data (material received before 2026 or in a location that is not listed). '}We returned <b class="up">${fmtINR(x.ret)}</b> (movement 161, ${pl(x.n161,'line')}) and made debit notes of <b class="up">${fmtINR(x.deb)}</b> (movement 122, ${pl(x.n122,'line')}).${x.pct===null?'':' Together '+pc(x.pct)+' of what it sent.'}</div>`+
+    `<h3 class="subh">Material by material · sent against returned (quantity in the unit of the material)</h3><div class="tbox"><table class="pt"><thead><tr><th>Material</th><th class="num">Sent (101 − 102)</th><th class="num">Returned (161)</th><th class="num">Debit note (122)</th><th class="num">Returned + debit note %</th><th class="num">Returned value</th><th class="num">Debit note value</th></tr></thead><tbody>${mrows}</tbody></table></div>`+
+    `<h3 class="subh">Every return and debit note line (${fmtN(ls.length)}), the newest first</h3><div class="tbox"><table class="pt">${RET_HEAD}<tbody>${retLineRows(ls)}</tbody><tfoot><tr><td colspan="6">Total (${fmtN(ls.length)} lines, returns and debit notes less their reversals)</td><td class="num nw">${fmtINR(x.tot)}</td><td></td></tr></tfoot></table></div></div>`;
+}
+function retTable(list,place,full){
+  if(!RTD)return '<div class="empty">Loading the returns from SAP…</div>';
+  if(!list.length)return '<div class="empty">No return or debit note matches the filters.</div>';
+  full=full||list;
+  const T=full.reduce((t,x)=>{t.rec+=x.recV;t.ret+=x.ret;t.deb+=x.deb;return t;},{rec:0,ret:0,deb:0});
+  return `<table><thead><tr><th class="num">#</th><th>Vendor</th><th class="num" title="Goods receipts (101) minus their reversals (102) of the vendor since 1 Jan in the Store locations">Material received</th><th class="num" title="Material sent back to the vendor (movement 161) minus its reversals (162)">Returned (161)</th><th class="num" title="Return delivery with the debit note (movement 122) minus its reversals (123)">Debit note (122)</th><th class="num">Returned + debit note</th><th class="num" title="(Returned + debit note) divided by the material received, in rupees">% of received</th><th class="num">Last return</th></tr></thead><tbody>`+
+    list.map((x,i)=>{const ctx=place+'|r|'+x.vk,open=S.ropen.has(ctx);
+      return `<tr class="${open?'sel':''}"><td class="num">${i+1}</td><td class="mn"><button type="button" class="lnk" data-rctx="${esc(ctx)}" aria-expanded="${open}" title="Click to see what it sent, what was returned material by material and every line, right here">${open?'▾':'▸'} ${esc(retName(x))}</button>${GCV.has(x.vk)?'<span class="pill sup">group company</span>':''}<div class="mid">${esc([...x.ids].join(', '))}</div></td><td class="num nw" title="${esc(rup(x.recV))}">${x.recV>0.5?'<b>'+fmtINR(x.recV)+'</b>':'<span class="sm">–</span>'}<div class="sm">${pl(x.recN,'receipt line')}</div></td><td class="num nw ${x.ret>0.5?'up':''}" title="${esc(rup(x.ret))}">${x.ret>0.5?'<b>'+fmtINR(x.ret)+'</b>':'–'}<div class="sm">${pl(x.n161,'line')}</div></td><td class="num nw ${x.deb>0.5?'up':''}" title="${esc(rup(x.deb))}">${x.deb>0.5?'<b>'+fmtINR(x.deb)+'</b>':'–'}<div class="sm">${pl(x.n122,'line')}</div></td><td class="num nw"><b>${fmtINR(x.tot)}</b></td><td class="num nw">${x.pct===null?'–':pc(x.pct)}</td><td class="num nw">${x.last===null?'–':fmtDayS(x.last)+' '+ageP(x.last,'Last return or debit note')}</td></tr>`+(open?`<tr class="tlrow subrow"><td></td><td colspan="7">${retPanel(x,ctx)}</td></tr>`:'');}).join('')+
+    `</tbody><tfoot><tr><td></td><td>Total (${fmtN(full.length)} vendors)</td><td class="num nw">${fmtINR(T.rec)}</td><td class="num nw">${fmtINR(T.ret)}</td><td class="num nw">${fmtINR(T.deb)}</td><td class="num nw">${fmtINR(T.ret+T.deb)}</td><td class="num nw">${T.rec>0.5?pc((T.ret+T.deb)/T.rec*100):'–'}</td><td></td></tr></tfoot></table>`;
+}
+// the block inside the open panel of a vendor (the Vendors list): what it sent, what was returned, the newest lines
+function returnsHtml(v){
+  let h='<h3 class="subh">Material returned and debit notes (since 1 Jan, Store locations)</h3>';
+  if(!RTD&&!RCD)return h+'<p class="hint">The return data is still loading…</p>';
+  const x=RTV.get(v.vk);
+  if(!x||!x.has)return h+`<p class="hint">${x&&x.recV>0.5?`The vendor sent material worth <b>${fmtINR(x.recV)}</b> (${pl(x.recN,'receipt line')}); nothing was returned and no debit note was made.`:'No material received from this vendor, and no return or debit note, in the Store locations since 1 Jan.'}</p>`;
+  const ls=x.lines.slice().sort((a,b)=>(b.day||0)-(a.day||0)||b.val-a.val),shown=ls.slice(0,8);
+  return h+`<p class="hint">The vendor sent material worth <b>${x.recV>0.5?fmtINR(x.recV):'–'}</b> (${pl(x.recN,'receipt line')}). We returned <b class="up">${fmtINR(x.ret)}</b> (movement 161, ${pl(x.n161,'line')}) and made debit notes of <b class="up">${fmtINR(x.deb)}</b> (movement 122, ${pl(x.n122,'line')})${x.pct===null?'':': together '+pc(x.pct)+' of what it sent'}. The newest ${shown.length} of ${fmtN(ls.length)} lines; every line, material by material, is in the section Returns and debit notes.</p><div class="tbox"><table class="pt">${RET_HEAD}<tbody>${retLineRows(shown)}</tbody></table></div>`;
+}
+
 // ---------------------------------------------------------------- one vendor
 const rateCell=v=>v.rate.pct===null?'<span class="sm">–</span>':`<span class="${v.rate.pct>0.05?'up':v.rate.pct<-0.05?'dn':''}" title="${esc(fmtN(v.rate.n)+' materials compared: '+fmtN(v.rate.up)+' went up, '+fmtN(v.rate.down)+' went down')}">${sgnPct(v.rate.pct)}</span>`;
 const brandPill=t=>{const b=brandOf(t);return b?` · <span class="pill sup" title="Brand named in the PO text">${esc(b)}</span>`:'';};
@@ -494,7 +574,7 @@ function vendorPanel(v,ctx){
   return `<div class="mp" id="${panId(ctx)}"><div class="mph"><b>${esc(v.name)}</b><span class="sm">${esc('Supplier '+v.codes+(v.gstin?' · GSTIN '+v.gstin:'')+(place?' · '+place:'')+' · '+pgl)}</span><button type="button" class="btn alt" data-closectx="${esc(ctx)}">Close</button></div>`+
     `<div class="stats">${st.map(s=>`<div class="stat"><b>${s[0]}</b><span>${esc(s[1])}</span></div>`).join('')}</div>`+
     `<div class="sumline">${pc(v.share)} of the business: <b>${fmtINR(v.value)}</b> in ${fmtN(v.pos.size)} PO${v.pos.size===1?'':'s'}. ${ml.length?`The biggest material, <b>${esc((ml[0].text||ml[0].code||'').slice(0,60))}</b>, is ${pc(ml[0].value/v.value*100)} of this vendor's business.`:''} ${v.rate.pct===null?'No material was bought on two or more PO dates, so there is no rate to compare.':`Of ${fmtN(v.rate.n)} materials compared ${fmtN(v.rate.up)} went up and ${fmtN(v.rate.down)} went down: net <b>${sgnPct(v.rate.pct)}</b>, extra paid on the rises ${fmtINR(v.rate.loss)}.`}</div>`+
-    deliveryHtml(v)+payHtml(v)+
+    deliveryHtml(v)+payHtml(v)+returnsHtml(v)+
     `<h3 class="subh">Where it goes: plant, department, material type</h3><div class="split">${miniTable(v.plants,v.value,k=>k||'(no plant)','Plant')}${miniTable(v.pgs,v.value,pgName,'Department (purchasing group)')}${miniTable(v.types,v.value,k=>k||'(no PO type)','PO type')}${miniTable(v.mts,v.value,mtName,'Material type')}</div>`+
     `<h3 class="subh">What we buy from this vendor (rate = value ÷ quantity, per 1 unit)${ml.length>shown.length?' · the first 100 of '+fmtN(ml.length)+', the biggest first':''}</h3><div class="tbox"><table class="pt"><thead><tr><th>Material · brand</th><th class="num">Quantity</th><th class="num">Purchase value</th><th class="num">% of vendor</th><th class="num">Average rate</th><th>First rate → latest rate</th><th class="num">Rate change</th><th class="num">Extra paid</th></tr></thead><tbody>${mrows}</tbody><tfoot><tr><td>Total (${fmtN(ml.length)} materials)</td><td></td><td class="num nw">${fmtINR(v.value)}</td><td class="num">100%</td><td colspan="3"></td><td class="num nw">${fmtINR(v.rate.loss)}</td></tr></tfoot></table></div>`+
     `<h3 class="subh">Month by month</h3><div class="tbox"><table class="pt"><thead><tr><th>Month</th><th class="num">POs</th><th class="num">Purchase value</th><th class="num">% of vendor</th></tr></thead><tbody>${mon.map(([k,x])=>`<tr><td>${mName(k)}</td><td class="num">${fmtN(x.pos.size)}</td><td class="num nw">${fmtINR(x.value)}</td><td class="num">${pc(x.value/v.value*100)}</td></tr>`).join('')}</tbody></table></div>`+
@@ -559,6 +639,8 @@ const TILE_INFO={
   mats:['The 20 materials we buy the most','By purchase value. Click a material to see every vendor of it.'],
   pend:['Still to be delivered, by vendor','The vendors with goods ordered and not delivered yet, the biggest pending value first (the first 25). Click a vendor to see the items and how long they wait.'],
   pay:['To pay, by vendor (Dena hai)','What we have to pay these vendors: all the open items of the vendor in Payment Ageing (not only the POs of the filters), the biggest amount first (the first 25). Past due = after the due date of the invoice.'],
+  ret:['Material returned to the vendors (161), by vendor','The vendors we sent material back to (movement 161 less its reversals 162), the biggest returned value first (the first 25), with what each vendor sent. Click a vendor to see it material by material.'],
+  deb:['Debit notes made (122), by vendor','The vendors we made a debit note to (return delivery, movement 122 less its reversals 123), the biggest value first (the first 25). Click a vendor to see the lines.'],
   rate:['Rate rises · the biggest extra paid','Vendor and material where the rate was raised from the first PO of the period to the latest, by the extra amount paid (the first 25).']
 };
 function renderTile(){
@@ -575,6 +657,8 @@ function renderTile(){
   else if(k==='rate')h=riseTable(C.rises.slice(0,25),'tile',C.rises);
   else if(k==='pend'){const l=C.VL.filter(v=>v.pend>0.5).sort((a,b)=>b.pend-a.pend);h=vendorTable(l.slice(0,25),'tile',l);}
   else if(k==='pay'){const l=C.VL.filter(v=>v.pay&&v.pay.give>0.5).sort((a,b)=>b.pay.give-a.pay.give);h=vendorTable(l.slice(0,25),'tile',l);}
+  else if(k==='ret'){const l=retRows().filter(x=>x.ret>0.5).sort((a,b)=>b.ret-a.ret);h=retTable(l.slice(0,25),'tile',l);}
+  else if(k==='deb'){const l=retRows().filter(x=>x.deb>0.5).sort((a,b)=>b.deb-a.deb);h=retTable(l.slice(0,25),'tile',l);}
   $('tileBox').innerHTML=h;
 }
 const reveal=id=>{const el=$(id);if(el&&!el.hidden)el.scrollIntoView({behavior:'smooth',block:'start'});};
@@ -583,6 +667,7 @@ const reveal=id=>{const el=$(id);if(el&&!el.hidden)el.scrollIntoView({behavior:'
 function render(){
   if(!D||!C)return;
   const VL=C.VL,top=VL[0],t5=VL.slice(0,5).reduce((s,v)=>s+v.share,0),cA=C.classes[0];
+  const RT0=RTD?retTotals():null;
   const tiles=[
     ['total',fmtINR(C.total),'Total purchase value',`${fmtN(VL.length)} vendors · ${fmtN(C.POS.size)} POs · ${fmtN(C.sel.length)} PO items`],
     ['vendors',fmtN(VL.length),'Vendors we buy from',`${fmtN(C.classes[0].n)} A · ${fmtN(C.classes[1].n)} B · ${fmtN(C.classes[2].n)} C`],
@@ -592,6 +677,8 @@ function render(){
     ['mats',fmtN(C.ML.length),'Materials bought',C.ML[0]?'biggest: '+(C.ML[0].text||C.ML[0].code||'').slice(0,34)+' · '+pc(C.ML[0].share):''],
     ['pend',fmtINR(C.pend),'Still to be delivered by these vendors',`${fmtN(C.VL.filter(v=>v.pend>0.5).length)} vendors · ${fmtN(C.pendItems)} PO items not delivered yet`],
     ['pay',AGE_D?fmtINR(C.give):'…','To pay to these vendors (Dena hai)',AGE_D?`${fmtINR(C.pastDue)} past due · from Payment Ageing`:'loading Payment Ageing…'],
+    ['ret',RTD?fmtINR(RT0.ret):'…','Material returned to the vendors (161)',RTD?`${pl(RT0.nr,'vendor')} · ${fmtINR(RT0.rec)} sent by the vendors with a return`:'loading the returns…'],
+    ['deb',RTD?fmtINR(RT0.deb):'…','Debit notes made (122)',RTD?`${pl(RT0.nd,'vendor')} · Store locations since 1 Jan`:'loading the returns…'],
     ['rate',fmtINR(C.loss),'Extra paid when the rate rose',C.base>0?`net ${C.impact>=0?'+':'-'}${fmtINR(Math.abs(C.impact))} · ${sgnPct(C.impact/C.base*100)} on ${fmtINR(C.base)} compared`:'no material with two PO dates']];
   $('kpis').innerHTML=tiles.map(t=>`<button type="button" class="tile tilebtn" data-tile="${t[0]}" aria-expanded="${S.tile===t[0]}"><div class="tv">${esc(t[1])}</div><div class="tl">${esc(t[2])}</div><div class="tn">${esc(t[3])}</div>${S.tile===t[0]?'<div class="ts">click to hide</div>':''}</button>`).join('');
   const scopeTxt=S.scope==='STORE'?'Store material types (ZCON, ZHMI, ZSPR, ZSRM, ZVRP)':S.scope===''?'all material types':S.scope==='__none__'?'lines without a material (assets, services)':mtName(S.scope);
@@ -623,6 +710,12 @@ function render(){
     $(info).textContent=!list.length?'':(S.all[key]||list.length<=PAGE)?`All ${fmtN(list.length)} shown`:`Showing the first ${PAGE} of ${fmtN(list.length)} ${noun}`;
     $(btn).hidden=list.length<=PAGE;$(btn).textContent=S.all[key]?'Show first '+PAGE:'See all '+fmtN(list.length);
   }
+  // returns and debit notes (the vendors with a return or a debit note, the biggest first)
+  const RL=RTD?retList():[];
+  $('retBox').innerHTML=retTable(S.all.ret?RL:RL.slice(0,PAGE),'ret',RL);
+  $('retInfo').textContent=!RL.length?'':(S.all.ret||RL.length<=PAGE)?`All ${fmtN(RL.length)} shown`:`Showing the first ${PAGE} of ${fmtN(RL.length)} vendors`;
+  $('retAll').hidden=RL.length<=PAGE;$('retAll').textContent=S.all.ret?'Show first '+PAGE:'See all '+fmtN(RL.length);
+  $('retHint').textContent=!RT0?'Loading the returns and the receipts from SAP…':RT0.n?`${fmtN(RT0.n)} vendors had material returned or a debit note since 1 Jan (Store locations): returned ${fmtINR(RT0.ret)} (movement 161), debit notes ${fmtINR(RT0.deb)} (movement 122), together ${RT0.rec>0.5?pc((RT0.ret+RT0.deb)/RT0.rec*100):'–'} of the ${fmtINR(RT0.rec)} these vendors sent. The biggest first. These figures do not follow the PO filters above. Click a vendor to see what it sent, what was returned material by material, and every line.${S.q?' '+fmtN(RL.length)+' match the search.':''}`:'No return or debit note in the Store locations since 1 Jan.';
   // month by month (newest first; ui.js draws the columns from this table)
   const mo=[...C.MO.entries()].sort((a,b)=>b[0]-a[0]);
   $('byMonth').innerHTML=mo.length?`<table><thead><tr><th>Month</th><th class="num">Vendors</th><th class="num">POs</th><th class="num">Purchase value</th><th class="num">% of business</th></tr></thead><tbody>`+mo.map(([k,x])=>`<tr><td><button type="button" class="lnk" data-mon="${k}">${mName(k)}</button></td><td class="num">${fmtN(x.vend.size)}</td><td class="num">${fmtN(x.pos.size)}</td><td class="num nw">${fmtINR(x.value)}</td><td class="num">${pc(C.total>0?x.value/C.total*100:0)}</td></tr>`).join('')+`</tbody><tfoot><tr><td>Total</td><td class="num">${fmtN(VL.length)}</td><td class="num">${fmtN(C.POS.size)}</td><td class="num nw">${fmtINR(C.total)}</td><td class="num">${C.total>0?'100%':'–'}</td></tr></tfoot></table>`:'<div class="empty">No PO for the filters.</div>';
@@ -646,6 +739,10 @@ document.addEventListener('click',e=>{
   if(pt){toggle(S.popen,pt.dataset.pctx);render();return;}
   const mc=e.target.closest('[data-mctx]');
   if(mc){toggle(S.mopen,mc.dataset.mctx);render();return;}
+  const rc=e.target.closest('[data-rctx]');
+  if(rc){const c=rc.dataset.rctx;toggle(S.ropen,c);render();if(S.ropen.has(c)){const el=document.getElementById(panId(c));if(el)el.scrollIntoView({behavior:'smooth',block:'nearest'});}return;}
+  const cr=e.target.closest('[data-closeret]');
+  if(cr){S.ropen.delete(cr.dataset.closeret);render();return;}
   const t=e.target.closest('button');if(!t)return;
   if(t.id==='tileHide'){S.tile=null;render();const kp=$('kpis');if(kp)kp.scrollIntoView({behavior:'smooth',block:'nearest'});return;}
   if(t.dataset.tile!==undefined){const k=t.dataset.tile;S.tile=S.tile===k?null:k;render();if(S.tile)reveal('tileCard');return;}
@@ -675,7 +772,7 @@ $('plantSel').addEventListener('change',e=>{S.plant=e.target.value;calc();render
 $('grpSel').addEventListener('change',e=>{S.grp=e.target.value;calc();render();});
 $('dFrom').addEventListener('change',e=>{S.from=dayOf(e.target.value);S.per='';calc();render();});
 $('dTo').addEventListener('change',e=>{S.to=dayOf(e.target.value);S.per='';calc();render();});
-let qT;$('q').addEventListener('input',e=>{clearTimeout(qT);qT=setTimeout(()=>{S.q=e.target.value.trim().toLowerCase();S.all.v=S.all.m=S.all.r=false;render();},200);});
+let qT;$('q').addEventListener('input',e=>{clearTimeout(qT);qT=setTimeout(()=>{S.q=e.target.value.trim().toLowerCase();S.all.v=S.all.m=S.all.r=S.all.ret=false;render();},200);});
 
 const root=document.documentElement;
 function setTheme(t,save){root.dataset.theme=t;for(const b of document.querySelectorAll('#themeSeg button'))b.classList.toggle('on',b.dataset.th===t);if(save){try{localStorage.setItem('spr-theme',t);}catch(e){}}}
@@ -717,14 +814,18 @@ async function load(force,auto){
   // the payment position of the vendors (Payment Ageing) comes beside the PO data and fills in when it is there
   const agP=LIVE.get('/api/ageing',force).then(g=>g.same||!g.res.ok?null:g.j).catch(()=>null);
   const agDone=()=>agP.then(a=>{if(a&&D){setAgeing(a);applyAgeing();render();}});
+  // what the vendors sent (/api/purchase) and what was sent back (/api/returns) also come beside the PO data
+  const rtP=LIVE.get('/api/returns',force).then(g=>g.same||!g.res.ok?null:g.j).catch(()=>null);
+  const rcP=LIVE.get('/api/purchase',force).then(g=>g.same||!g.res.ok?null:g.j).catch(()=>null);
+  const rtDone=()=>Promise.all([rtP,rcP]).then(([a,b])=>{if((a||b)&&D){setReturns(a,b);render();}});
   try{
     const g=await LIVE.get('/api/po',force),res=g.res,j=g.j;
-    if(g.same){STAMP=g.stamp||STAMP;setLive('ok',liveTxt(STAMP));agDone();return;}
+    if(g.same){STAMP=g.stamp||STAMP;setLive('ok',liveTxt(STAMP));agDone();rtDone();return;}
     if(!res.ok)throw new Error(j.error||('HTTP '+res.status));
-    setData(j);applyLink();render();
+    setData(j);if(RTD||RCD)setReturns();applyLink();render();
     if(S.reveal){const id=S.reveal;S.reveal=null;setTimeout(()=>reveal(id),150);}
     STAMP=j.fetchedAt;setLive('ok',liveTxt(STAMP));
-    agDone();
+    agDone();rtDone();
   }catch(e){
     const msg=e.message==='Failed to fetch'?'The dashboard server is not running. Start it again with Start_Live_Dashboard.bat.':e.message;
     setLive('err',msg);

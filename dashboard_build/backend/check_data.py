@@ -56,7 +56,7 @@ for p in ('/', '/summary', '/issue', '/po', '/po-approval', '/purchase', '/invoi
         fails.append(p)
         print(f'page {p:14} FAILED: {e}')
 D = {}
-for k, p in (('pr', '/api/pr'), ('issue', '/api/issue'), ('po', '/api/po'), ('stock', '/api/stock'), ('purchase', '/api/purchase'), ('invoice', '/api/invoice'), ('ageing', '/api/ageing'), ('asset', '/api/asset'), ('ap', '/api/po-approval')):
+for k, p in (('pr', '/api/pr'), ('issue', '/api/issue'), ('po', '/api/po'), ('stock', '/api/stock'), ('purchase', '/api/purchase'), ('returns', '/api/returns'),('invoice', '/api/invoice'), ('ageing', '/api/ageing'), ('asset', '/api/asset'), ('ap', '/api/po-approval')):
     try:
         D[k], dt, h = get(p)
         print(f'api  {p:18} ok  ({dt:.1f} s)' + (f'  rows {len(D[k]["rows"]):,}' if 'rows' in D[k] else ''))

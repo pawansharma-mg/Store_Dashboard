@@ -135,6 +135,10 @@ PURCHASE_FIELDS = [
     'MaterialDocumentYear', 'MaterialDocument', 'MaterialDocumentItem',
 ]
 PURCHASE_FILTER = ISSUE_DATE_FILTER + ' and (' + ' or '.join(f"GoodsMovementType_1 eq '{m}'" for m in PURCHASE_MVTS) + ')'
+# Material sent back to the vendor (Vendor Business page): 161 = return of material, 122 = return delivery with the debit note (user's words); 162 / 123 reverse them.
+# Same view, same fields, same store locations and same date start as the purchases; read as its own API (/api/returns) so the Purchase page keeps its 101 / 102 logic.
+RETURN_MVTS = ('161', '162', '122', '123')
+RETURN_FILTER = ISSUE_DATE_FILTER + ' and (' + ' or '.join(f"GoodsMovementType_1 eq '{m}'" for m in RETURN_MVTS) + ')'
 
 # Pending invoice entry: the supplier's invoice is entered as an inbound delivery (SAP monitor VL06); it is pending while its goods receipt (MIGO) is not posted.
 # From YY1_STORE_INVOICE_VL06_CDS (one row per delivery item, since June 2024). Item status A = goods receipt not started, B = partly, C = done,
@@ -831,7 +835,7 @@ def po_compact(rows, asof_day, status_rows=()):
     return data
 
 
-def purchase_compact(rows, asof_day, allowed=None):
+def purchase_compact(rows, asof_day, allowed=None, mvts=PURCHASE_MVTS):
     """Purchase receipts (101) and their reversals (102) in the store locations of `allowed` ({(plant, location): (type, name)}, None = all).
     Rows: [day, mvt, po, poItem, supplier, plant, sloc, material, productGroup, unit, qty, value, cancelled, postedBy, matDoc, kind].
     qty and value are positive in both movement types (the page subtracts the 102 lines); cancelled is 1 on a 101 line that SAP says is reversed.
@@ -847,7 +851,7 @@ def purchase_compact(rows, asof_day, allowed=None):
     out = []
     for r in rows:
         mvt = r.get('GoodsMovementType_1')
-        if mvt not in PURCHASE_MVTS:
+        if mvt not in mvts:
             continue
         plant, sloc = r.get('Plant') or '', r.get('StorageLocation') or ''
         loc = allowed.get((plant, sloc)) if allowed else ('Store', '')
