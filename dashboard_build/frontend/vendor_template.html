@@ -207,6 +207,7 @@ const rup=v=>'₹ '+Math.round(v).toLocaleString('en-IN');
 const q3=n=>n.toLocaleString('en-IN',{maximumFractionDigits:3});
 const pl=(n,w)=>fmtN(n)+' '+w+(n===1?'':'s');
 const fmtDay=d=>d===null||d===undefined?'–':new Date(d*864e5).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric',timeZone:'UTC'}).replace('Sept','Sep');
+const fmtDayS=d=>d===null||d===undefined?'–':new Date(d*864e5).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit',timeZone:'UTC'}).replace('Sept','Sep');
 const dayOf=v=>v?Math.floor(Date.parse(v)/864e5):null;
 const iso=d=>new Date(d*864e5).toISOString().slice(0,10);
 const GCRE=/^mittal (coin|appliance)/i;
@@ -265,18 +266,20 @@ function setReturns(rt,rc){
 function buildMats(){
   const m=new Map();
   const slot=(mat,name,unit)=>{const k=mat+'|'+unit+(mat?'':'|'+name);let e=m.get(k);if(!e)m.set(k,e={key:k,mat,name,unit,rq:0,rv:0,tq:0,tv:0,vend:new Map(),hay:null});return e;};
-  const vs=(e,vk)=>{let v=e.vend.get(vk);if(!v)e.vend.set(vk,v={vk,rq:0,rv:0,tq:0,tv:0});return v;};
+  const vs=(e,vk)=>{let v=e.vend.get(vk);if(!v)e.vend.set(vk,v={vk,rq:0,rv:0,tq:0,tv:0,r0:null,r1:null,td:new Set()});return v;};
   if(RCD)for(const a of RCD.rows){
     const mv=RCD.mvts[a[1]];if((mv!=='101'&&mv!=='102')||!inR(a))continue;
     const vk=vkOfId(RCD.suppliers[a[4]][0]);if(GCV.has(vk))continue;
     const mt=RCD.mats[a[7]],e=slot(mt[0],mt[1],RCD.units[a[9]]),v=vs(e,vk),sg=mv==='101'?1:-1;
     e.rq+=sg*a[10];e.rv+=sg*a[11];v.rq+=sg*a[10];v.rv+=sg*a[11];
+    if(mv==='101'&&a[0]!==null){if(v.r0===null||a[0]<v.r0)v.r0=a[0];if(v.r1===null||a[0]>v.r1)v.r1=a[0];}
   }
   if(RTD)for(const a of RTD.rows){
     const mv=RTD.mvts[a[1]];if((mv!=='161'&&mv!=='162')||!inR(a))continue;
     const vk=vkOfId(RTD.suppliers[a[4]][0]);if(GCV.has(vk))continue;
     const mt=RTD.mats[a[7]],e=slot(mt[0],mt[1],RTD.units[a[9]]),v=vs(e,vk),sg=mv==='161'?1:-1;
     e.tq+=sg*a[10];e.tv+=sg*a[11];v.tq+=sg*a[10];v.tv+=sg*a[11];
+    if(mv==='161'&&a[0]!==null)v.td.add(a[0]);
   }
   for(const e of m.values())e.score=scoreOf(e.rq,e.tq);
   MQ=[...m.values()];
@@ -346,17 +349,20 @@ function mBars(items){   // material wise: received (101) and rejected (161) on 
 
 // ---------------------------------------------------------------- vendor wise
 const dash='<span class="sm">–</span>';
+// the dates: when it was received (the first and the last receipt) and when it was rejected (the days of the 161 lines, the newest three)
+const recOn=v=>v.r0===null?dash:(v.r0===v.r1?fmtDayS(v.r0):fmtDayS(v.r0)+' – '+fmtDayS(v.r1));
+const rejOn=v=>{if(!v.td||!v.td.size)return dash;const d=[...v.td].sort((a,b)=>b-a);return d.slice(0,3).map(fmtDayS).join(', ')+(d.length>3?' <span class="sm">+'+(d.length-3)+' more</span>':'');};
 function vPanel(x,ctx){
   const rows=MQ.filter(e=>e.vend.has(x.vk)).map(e=>({e,v:e.vend.get(x.vk)})).filter(r=>r.v.rq>0.0005||Math.abs(r.v.tq)>0.0005||Math.abs(r.v.tv)>0.5)
     .sort((a,b)=>b.v.tv-a.v.tv||b.v.rv-a.v.rv),shown=rows.slice(0,100);
   const st=[[x.po>0.5?fmtINR(x.po)+' · '+pl(x.npo,'PO'):'–','PO (POs created in these dates)'],[x.recV>0.5?fmtINR(x.recV):'–','Received (101 − 102)'],[`<span class="${x.ret>0.5?'up':''}">${fmtINR(x.ret)}</span>`,'Rejected (161 − 162)'],
     [x.score===null?'–':`<span class="${scCls(x.score)}">${x.score.toFixed(1)}%</span> <span class="sm">${scoreWord(x.score)}</span>`,'Score (accepted ÷ received)']];
   const mrows=shown.map(({e,v})=>{const s=scoreOf(v.rq,v.tq),un=esc(e.unit);
-    return `<tr><td>${esc(e.name||e.mat||'–')}<div class="sm">${esc(e.mat||'–')} · per ${un}</div></td><td class="num nw">${v.rq>0.0005?q3(v.rq)+' '+un:dash}<div class="sm">${Math.abs(v.rv)>0.5?fmtINR(v.rv):''}</div></td><td class="num nw ${v.tq>0.0005?'up':''}">${Math.abs(v.tq)>0.0005?q3(v.tq)+' '+un:'–'}<div class="sm">${Math.abs(v.tv)>0.5?fmtINR(v.tv):''}</div></td><td class="num nw">${scoreHtml(s)}</td></tr>`;}).join('');
+    return `<tr><td>${esc(e.name||e.mat||'–')}<div class="sm">${esc(e.mat||'–')} · per ${un}</div></td><td class="num nw">${v.rq>0.0005?q3(v.rq)+' '+un:dash}<div class="sm">${Math.abs(v.rv)>0.5?fmtINR(v.rv):''}</div></td><td class="nw">${recOn(v)}</td><td class="num nw ${v.tq>0.0005?'up':''}">${Math.abs(v.tq)>0.0005?q3(v.tq)+' '+un:'–'}<div class="sm">${Math.abs(v.tv)>0.5?fmtINR(v.tv):''}</div></td><td class="nw">${rejOn(v)}</td><td class="num nw">${scoreHtml(s)}</td></tr>`;}).join('');
   const place=[...x.ids].join(', ');
   return `<div class="mp" id="vp-${esc(ctx.replace(/[^A-Za-z0-9]/g,'_'))}"><div class="mph"><b>${esc(x.name)}</b><span class="sm">${esc('Supplier '+place)}</span><button type="button" class="btn alt" data-closectx="${esc(ctx)}">Close</button></div>`+
     `<div class="stats">${st.map(s=>`<div class="stat"><b>${s[0]}</b><span>${esc(s[1])}</span></div>`).join('')}</div>`+
-    `<h3 class="subh">Material by material · what this vendor sent (101) and what was rejected (161)${rows.length>shown.length?' · the first 100 of '+fmtN(rows.length):''}</h3><div class="tbox"><table class="pt"><thead><tr><th>Material</th><th class="num">Received (101 − 102)</th><th class="num">Rejected (161)</th><th class="num">Score</th></tr></thead><tbody>${mrows||'<tr><td colspan="4" class="sm">No receipt or rejection of this vendor in the Store locations in these dates.</td></tr>'}</tbody></table></div></div>`;
+    `<h3 class="subh">Material by material · what this vendor sent (101) and what was rejected (161)${rows.length>shown.length?' · the first 100 of '+fmtN(rows.length):''}</h3><div class="tbox"><table class="pt"><thead><tr><th>Material</th><th class="num">Received (101 − 102)</th><th>Received on</th><th class="num">Rejected (161)</th><th>Rejected on</th><th class="num">Score</th></tr></thead><tbody>${mrows||'<tr><td colspan="6" class="sm">No receipt or rejection of this vendor in the Store locations in these dates.</td></tr>'}</tbody></table></div></div>`;
 }
 function vTable(list,place,full){
   if(!list.length)return '<div class="empty">No vendor matches the dates and the search.</div>';
@@ -373,10 +379,10 @@ function mPanel(e,ctx){
   const un=esc(e.unit),vl=[...e.vend.values()].filter(v=>v.rq>0.0005||Math.abs(v.tq)>0.0005||Math.abs(v.tv)>0.5).sort((a,b)=>b.tv-a.tv||b.rv-a.rv);
   const st=[[e.rq>0.0005?q3(e.rq)+' '+un:'–','Received (101 − 102)'+(Math.abs(e.rv)>0.5?' · '+fmtINR(e.rv):'')],[`<span class="${e.tq>0.0005?'up':''}">${q3(e.tq)} ${un}</span>`,'Rejected (161 − 162) · '+fmtINR(e.tv)],
     [e.score===null?'–':`<span class="${scCls(e.score)}">${e.score.toFixed(1)}%</span> <span class="sm">${scoreWord(e.score)}</span>`,'Score (accepted ÷ received)'],[fmtN(vl.length),'Vendors']];
-  const rows=vl.map(v=>`<tr><td>${esc(vName(v.vk))}</td><td class="num nw">${v.rq>0.0005?q3(v.rq)+' '+un:dash}<div class="sm">${Math.abs(v.rv)>0.5?fmtINR(v.rv):''}</div></td><td class="num nw ${v.tq>0.0005?'up':''}">${Math.abs(v.tq)>0.0005?q3(v.tq)+' '+un:'–'}<div class="sm">${Math.abs(v.tv)>0.5?fmtINR(v.tv):''}</div></td><td class="num nw">${scoreHtml(scoreOf(v.rq,v.tq))}</td></tr>`).join('');
+  const rows=vl.map(v=>`<tr><td>${esc(vName(v.vk))}</td><td class="num nw">${v.rq>0.0005?q3(v.rq)+' '+un:dash}<div class="sm">${Math.abs(v.rv)>0.5?fmtINR(v.rv):''}</div></td><td class="nw">${recOn(v)}</td><td class="num nw ${v.tq>0.0005?'up':''}">${Math.abs(v.tq)>0.0005?q3(v.tq)+' '+un:'–'}<div class="sm">${Math.abs(v.tv)>0.5?fmtINR(v.tv):''}</div></td><td class="nw">${rejOn(v)}</td><td class="num nw">${scoreHtml(scoreOf(v.rq,v.tq))}</td></tr>`).join('');
   return `<div class="mp" id="vp-${esc(ctx.replace(/[^A-Za-z0-9]/g,'_'))}"><div class="mph"><b>${esc(e.name||e.mat||'–')}</b><span class="sm">${esc(e.mat||'–')} · per ${un}</span><button type="button" class="btn alt" data-closemq="${esc(ctx)}">Close</button></div>`+
     `<div class="stats">${st.map(s=>`<div class="stat"><b>${s[0]}</b><span>${s[1]}</span></div>`).join('')}</div>`+
-    `<h3 class="subh">Vendor by vendor · what each vendor sent of this material (101) and what was rejected (161)</h3><div class="tbox"><table class="pt"><thead><tr><th>Vendor</th><th class="num">Received (101 − 102)</th><th class="num">Rejected (161)</th><th class="num">Score</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+    `<h3 class="subh">Vendor by vendor · what each vendor sent of this material (101) and what was rejected (161)</h3><div class="tbox"><table class="pt"><thead><tr><th>Vendor</th><th class="num">Received (101 − 102)</th><th>Received on</th><th class="num">Rejected (161)</th><th>Rejected on</th><th class="num">Score</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
 }
 function mTable(list,place,full){
   if(!list.length)return '<div class="empty">No material was received or rejected in the dates, or none matches the search.</div>';
