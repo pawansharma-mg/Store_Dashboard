@@ -227,7 +227,7 @@
     '/asset': [{ id: 'byAge', col: /^amount$/i }, { id: 'byMonth', col: /^amount$/i, rev: true }, { id: 'byDay', col: /^amount$/i }],
     '/ageing': [{ id: 'byAgeG', col: /^amount$/i }, { id: 'byAgeT', col: /^amount$/i }],
     '/stock': [{ id: 'byIdle', col: /stock value/i }],
-    '/vendor': [{ id: 'byMonth', col: /^purchase value$/i, rev: true }]
+    '/vendor': []
   };
   function readTable(box, colTest, rev) {
     var t = box.querySelector('table');
