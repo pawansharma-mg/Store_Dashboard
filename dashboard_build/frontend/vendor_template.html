@@ -108,6 +108,11 @@ tr.sel td{background:rgba(28,173,228,.12)!important}
 .pvc [data-vctx]{cursor:pointer}
 .pvc [data-vctx]:hover .bb{opacity:.8}
 .pvc .vt{fill:var(--ink);font-weight:800;font-size:12.5px}
+.pvc .bgr{fill:var(--good)}.pvc .bcr{fill:var(--crit)}.pvc .bwn{fill:var(--warn)}
+.pvc [data-vctx]:hover .bgr,.pvc [data-vctx]:hover .bcr,.pvc [data-vctx]:hover .bwn{opacity:.8}
+.pvc .vt2{fill:var(--ink2);font-weight:700;font-size:11.5px}
+.lg{display:flex;flex-wrap:wrap;gap:6px 18px;margin:8px 2px 4px;font-size:12px;color:var(--ink2)}
+.lg i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-2px}
 .jump{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 0}
 .jump a{font-size:.78rem;font-weight:600;color:var(--brand-dark);text-decoration:none;border:1px solid var(--brand);border-radius:999px;padding:4px 12px;background:var(--surface)}
 .jump a:hover{background:rgba(28,173,228,.12)}
@@ -174,7 +179,8 @@ tr.tlrow>td{padding:4px 6px 14px!important;background:transparent!important}
 
   <section class="card" style="margin-top:12px" id="sec-top" data-foldable data-keep-open>
     <h2><span class="sec-badge">1</span>The 15 biggest vendors · how much we bought and what share of the business</h2>
-    <p class="hint" id="topHint">Click a bar to open the vendor: what we buy from it, the rate of every material and its purchase orders.</p>
+    <p class="hint" id="topHint">Click a bar to open the vendor: what we buy from it, the rate of every material and its purchase orders. Under the purchase value of each vendor: the material we received from it and what we sent back (returned, debit note), all in rupees on one scale; received and returned are since 1 Jan in the Store locations and do not follow the PO date filter.</p>
+    <div class="lg" id="topLg"></div>
     <div id="chartTop" data-chart></div>
     <div id="panTop" class="plist"></div>
   </section>
@@ -510,6 +516,36 @@ function returnsHtml(v){
   return h+`<p class="hint">The vendor sent material worth <b>${x.recV>0.5?fmtINR(x.recV):'–'}</b> (${pl(x.recN,'receipt line')}). We returned <b class="up">${fmtINR(x.ret)}</b> (movement 161, ${pl(x.n161,'line')}) and made debit notes of <b class="up">${fmtINR(x.deb)}</b> (movement 122, ${pl(x.n122,'line')})${x.pct===null?'':': together '+pc(x.pct)+' of what it sent'}. The newest ${shown.length} of ${fmtN(ls.length)} lines; every line, material by material, is in the section Returns and debit notes.</p><div class="tbox"><table class="pt">${RET_HEAD}<tbody>${retLineRows(shown)}</tbody></table></div>`;
 }
 
+// the biggest vendors with three bars each, on one scale: what we bought (PO value), the material received from it (101 - 102) and what we sent back (161 returned, 122 debit note)
+function vbars3(items,wd,lw,rw){
+  if(!items.length)return '<div class="empty">Nothing to draw for the filters.</div>';
+  const W=wd||1250,LW=lw||290,RW=rw||340,rowH=54,H=items.length*rowH+8,bw=W-LW-RW,mc=Math.floor((LW-12)/7.2),bh=12;
+  const mx=Math.max(1,...items.map(i=>Math.max(i.value,i.rec,i.ret+i.deb))),wf=v=>v>0?Math.max(2,v/mx*bw):0;
+  let g='';
+  items.forEach((it,i)=>{
+    const y=4+i*rowH,y1=y+5,y2=y1+bh+3,y3=y2+bh+3,w1=wf(it.value),w2=wf(it.rec),w3=wf(it.ret),w4=wf(it.deb);
+    g+=`<g ${it.ctx?`data-vctx="${esc(it.ctx)}"`:''}><title>${esc(it.tip)}</title>`+
+      `<text x="${LW-8}" y="${y+rowH/2+2}" text-anchor="end">${esc(it.label.length>mc?it.label.slice(0,mc-1)+'…':it.label)}</text>`+
+      `<rect class="bb" x="${LW}" y="${y1}" width="${w1}" height="${bh}" rx="3"/><text class="vt" x="${LW+w1+6}" y="${y1+10.5}">${esc(it.text)}</text>`+
+      `<rect class="bgr" x="${LW}" y="${y2}" width="${w2}" height="${bh}" rx="3"/><text class="vt2" x="${LW+w2+6}" y="${y2+10.5}">${esc(it.rtext)}</text>`+
+      (w3?`<rect class="bcr" x="${LW}" y="${y3}" width="${w3}" height="${bh}" rx="3"/>`:'')+(w4?`<rect class="bwn" x="${LW+w3}" y="${y3}" width="${w4}" height="${bh}" rx="3"/>`:'')+
+      `<text class="vt2" x="${LW+w3+w4+6}" y="${y3+10.5}">${esc(it.xtext)}</text></g>`;
+  });
+  return `<svg class="pvc" viewBox="0 0 ${W} ${H}" role="img" aria-label="Chart: what we bought, the material received and the material sent back, for the biggest vendors">${g}</svg>`;
+}
+function topChart(t15){
+  if(!(RTD||RCD)){$('topLg').innerHTML='';return hbars(t15.map(v=>({label:v.name,value:v.value,text:fmtINR(v.value)+' · '+pc(v.share),ctx:'top|'+v.vk,tip:`${v.name}: ${rup(v.value)} · ${pc(v.share)} of the business · ${fmtN(v.pos.size)} POs · class ${v.cls}`})),1150,300,190);}
+  $('topLg').innerHTML='<span><i style="background:var(--brand-dark)"></i>Bought (PO value, follows the filters)</span><span><i style="background:var(--good)"></i>Material received (101 − 102, since 1 Jan)</span><span><i style="background:var(--crit)"></i>Returned to the vendor (161)</span><span><i style="background:var(--warn)"></i>Debit note (122)</span>';
+  return vbars3(t15.map(v=>{
+    const x=RTV.get(v.vk),rec=x&&x.recV>0?x.recV:0,ret=x&&x.ret>0?x.ret:0,deb=x&&x.deb>0?x.deb:0;
+    return {label:v.name,value:v.value,rec,ret,deb,ctx:'top|'+v.vk,
+      text:'bought '+fmtINR(v.value)+' · '+pc(v.share),
+      rtext:rec>0?'received '+fmtINR(rec):'received –',
+      xtext:ret+deb>0.5?'returned '+fmtINR(ret)+(deb>0.5?' · debit note '+fmtINR(deb):'')+(rec>0&&x.pct!==null?' · '+pc(x.pct)+' of received':''):'nothing returned',
+      tip:`${v.name}: bought ${rup(v.value)} (${pc(v.share)} of the business, ${fmtN(v.pos.size)} POs, class ${v.cls}); material received ${rup(rec)}; returned ${rup(ret)}; debit note ${rup(deb)}`};
+  }));
+}
+
 // ---------------------------------------------------------------- one vendor
 const rateCell=v=>v.rate.pct===null?'<span class="sm">–</span>':`<span class="${v.rate.pct>0.05?'up':v.rate.pct<-0.05?'dn':''}" title="${esc(fmtN(v.rate.n)+' materials compared: '+fmtN(v.rate.up)+' went up, '+fmtN(v.rate.down)+' went down')}">${sgnPct(v.rate.pct)}</span>`;
 const brandPill=t=>{const b=brandOf(t);return b?` · <span class="pill sup" title="Brand named in the PO text">${esc(b)}</span>`:'';};
@@ -694,7 +730,7 @@ function render(){
   renderTile();
   // the biggest vendors (the search does not change them)
   const t15=VL.slice(0,15);
-  $('chartTop').innerHTML=hbars(t15.map(v=>({label:v.name,value:v.value,text:fmtINR(v.value)+' · '+pc(v.share),ctx:'top|'+v.vk,tip:`${v.name}: ${rup(v.value)} · ${pc(v.share)} of the business · ${fmtN(v.pos.size)} POs · class ${v.cls}`})),1150,300,190);
+  $('chartTop').innerHTML=topChart(t15);
   $('panTop').innerHTML=panelsFor('top',t15);
   $('chartMat').innerHTML=hbars(C.ML.slice(0,12).map(m=>({label:m.text||m.code||'–',value:m.value,text:fmtINR(m.value)+' · '+pc(m.share),tip:`${m.text||m.code} (${m.code}): ${rup(m.value)} · ${pc(m.share)} of the business · ${m.vl.length} vendor${m.vl.length===1?'':'s'}`})),600,200,150);
   $('byConc').innerHTML=concTable();$('byClass').innerHTML=classTable();
