@@ -173,7 +173,7 @@ tr.tlrow>td{padding:4px 6px 14px!important;background:transparent!important}
   <div class="chips" id="chips"></div>
   <section class="kpis" id="kpis"><div class="tile sk"></div><div class="tile sk"></div><div class="tile sk"></div><div class="tile sk"></div><div class="tile sk"></div><div class="tile sk"></div><div class="tile sk"></div></section>
 
-  <nav class="jump" aria-label="Go to a section"><a href="#sec-top">Biggest vendors</a><a href="#sec-share">Share of the business</a><a href="#sec-vendors">Vendor list</a><a href="#sec-returns">Vendor quality</a><a href="#sec-matq">Material quality</a><a href="#sec-mats">What we buy</a><a href="#sec-rise">Rate rises</a><a href="#sec-month">Month by month</a></nav>
+  <nav class="jump" aria-label="Go to a section"><a href="#sec-top">Biggest vendors</a><a href="#sec-share">Share of the business</a><a href="#sec-returns">Vendor quality</a><a href="#sec-matq">Material quality</a><a href="#sec-rise">Rate rises</a><a href="#sec-month">Month by month</a></nav>
 
   <section class="card topcard" id="tileCard" hidden>
     <h2><span id="tileTitle"></span><button type="button" class="btn alt opn" id="tileHide" title="Close this card">Hide</button></h2>
@@ -192,7 +192,7 @@ tr.tlrow>td{padding:4px 6px 14px!important;background:transparent!important}
   <section class="grid" id="sec-share">
     <article class="card" data-keep-open>
       <h2><span class="sec-badge">2</span>Share of the business · how concentrated it is</h2>
-      <p class="hint">How much of the business the biggest vendors make, and the classes: A = the vendors that make the first 80% of the business, B = the next 15%, C = the last 5%. Click a class to list only its vendors.</p>
+      <p class="hint">How much of the business the biggest vendors make, and the classes: A = the vendors that make the first 80% of the business, B = the next 15%, C = the last 5%.</p>
       <div class="tbox" id="byConc" style="max-height:none"></div>
       <div class="tbox" id="byClass" style="max-height:none;margin-top:14px"></div>
     </article>
@@ -203,15 +203,8 @@ tr.tlrow>td{padding:4px 6px 14px!important;background:transparent!important}
     </article>
   </section>
 
-  <section class="card" style="margin-top:12px" id="sec-vendors" data-foldable data-keep-open data-detail>
-    <h2><span class="sec-badge">4</span>Vendors · who we buy from, the biggest first</h2>
-    <p class="hint" id="vHint"></p>
-    <div class="tbox plist" id="vBox"></div>
-    <div class="pager"><span id="vInfo"></span><div><button class="btn" id="vAll" type="button" data-all="v" data-seeall="1">See all</button></div></div>
-  </section>
-
   <section class="card" style="margin-top:12px" id="sec-returns" data-foldable data-keep-open data-detail>
-    <h2><span class="sec-badge">5</span>Vendor quality · what we bought, what was received, what was rejected (161) and the score</h2>
+    <h2><span class="sec-badge">4</span>Vendor quality · what we bought, what was received, what was rejected (161) and the score</h2>
     <p class="hint" id="retHint"></p>
     <div class="lg" id="qvLg"></div>
     <div id="chartQv" data-chart></div>
@@ -221,7 +214,7 @@ tr.tlrow>td{padding:4px 6px 14px!important;background:transparent!important}
   </section>
 
   <section class="card" style="margin-top:12px" id="sec-matq" data-foldable data-keep-open data-detail>
-    <h2><span class="sec-badge">6</span>Material quality · material by material: received (101) against rejected (161)</h2>
+    <h2><span class="sec-badge">5</span>Material quality · material by material: received (101) against rejected (161)</h2>
     <p class="hint" id="mqHint"></p>
     <div class="lg" id="mqLg"></div>
     <div id="chartMq" data-chart></div>
@@ -230,15 +223,8 @@ tr.tlrow>td{padding:4px 6px 14px!important;background:transparent!important}
     <div class="pager"><span id="mqInfo"></span><div><button class="btn" id="mqAll" type="button" data-all="mq" data-seeall="1">See all</button></div></div>
   </section>
 
-  <section class="card" style="margin-top:12px" id="sec-mats" data-foldable data-keep-open data-detail>
-    <h2><span class="sec-badge">7</span>Materials · what we buy, and from whom</h2>
-    <p class="hint" id="mHint"></p>
-    <div class="tbox plist" id="mBox"></div>
-    <div class="pager"><span id="mInfo"></span><div><button class="btn" id="mAll" type="button" data-all="m" data-seeall="1">See all</button></div></div>
-  </section>
-
   <section class="card" style="margin-top:12px" id="sec-rise" data-foldable data-keep-open data-detail>
-    <h2><span class="sec-badge">8</span>Rate rises by vendor · how much the rate was raised</h2>
+    <h2><span class="sec-badge">6</span>Rate rises by vendor · how much the rate was raised</h2>
     <p class="hint" id="rHint"></p>
     <div class="tbox plist" id="rBox"></div>
     <div class="pager"><span id="rInfo"></span><div><button class="btn" id="rAll" type="button" data-all="r" data-seeall="1">See all</button></div></div>
@@ -246,18 +232,18 @@ tr.tlrow>td{padding:4px 6px 14px!important;background:transparent!important}
 
   <section class="grid" id="sec-month">
     <article class="card" data-keep-open>
-      <h2><span class="sec-badge">9</span>Month by month</h2>
+      <h2><span class="sec-badge">7</span>Month by month</h2>
       <p class="hint">Click a month to filter the whole page to the POs created in it.</p>
       <div class="tbox" id="byMonth" style="max-height:none"></div>
     </article>
     <article class="card" data-keep-open>
-      <h2><span class="sec-badge">10</span>By material type and by department</h2>
+      <h2><span class="sec-badge">8</span>By material type and by department</h2>
       <p class="hint">The department is the purchasing group of the PO. Click a material type to look at that type only.</p>
       <div class="tbox" id="byType" style="max-height:none"></div>
       <div class="tbox" id="byPg" style="max-height:none;margin-top:14px"></div>
     </article>
   </section>
-  <details class="notebox"><summary>Notes about these figures</summary><p class="note"><b>Business</b> = the net value of the purchase order items (value ordered, in rupees: a PO in another currency is converted at the exchange rate of the PO; an item without an exchange rate in SAP counts as 0), not what has been received or invoiced. <b>Share</b> = the value of the vendor divided by the value of everything shown (the material type, plant and dates chosen above). <b>Vendor</b>: supplier numbers with the same GSTIN are one vendor. <b>What is in</b>: by default only the Store material types (ZCON consumables, ZHMI PRD tools, ZSPR spare parts, ZSRM store raw materials, ZVRP packaging); choose All material types to include the others (semi-finished goods, trading goods such as silver coins, lines without a material: assets, services, building work). Raw material (RM) and every internal stock transfer (ZSTO, UB) are not in the dashboard data. The group companies (Mittal Coin, Mittal Appliances) are not taken unless you choose to show them; a supplier number that has the GSTIN of a group company counts as that group company (Signet Industries Ltd. has the GSTIN of Mittal Appliances Limited). <b>Classes</b>: the vendors in the order of purchase value; A = those that make the first 80% of the business (a vendor belongs to A when the vendors before it make less than 80%), B = up to 95%, C = the rest. <b>Still to be delivered</b> = the value of the ordered quantity not yet received (net value × quantity still to deliver ÷ order quantity, the rule of the Pending Purchase Orders page). <b>To pay (Dena hai)</b> = the open items of the vendor in Payment Ageing (all its supplier numbers, both companies, every year, not only the POs chosen above); payments and debit items that are not cleared are set against the oldest invoices first; <b>past due</b> = the part after the due date. The city comes from Payment Ageing, the state from the first two digits of the GSTIN. <b>Returns and debit notes</b>: from the goods movements of the Store locations (the same ones as the Purchase page, since 1 Jan 2026, raw material not taken): <b>Material received</b> = the goods receipts of the vendor (movement 101) minus their reversals (102); <b>Returned (161)</b> = the material sent back to the vendor (movement 161) minus its reversals (162); <b>Debit note (122)</b> = the return deliveries with the debit note (movement 122) minus their reversals (123); <b>Returned %</b> = (returned + debit note) ÷ material received, in rupees. They follow the dates chosen above (the posting date of the movement; the PO dates for the purchase value) but not the material type or plant filters: all the supplier numbers of a vendor are added. A return of material received before the dates chosen (or before 2026, or in a location that is not listed) has no receipt in the data, so its % shows a dash. The payment position (To pay) is the open balance of today and does not follow the dates. <b>Brand</b> = a brand named in the PO text. <b>Rate raised</b>: for every vendor and material (same unit) bought on two or more PO dates, the vendor's own first rate of the period against its latest rate, one rate per PO date (lines of the same date averaged by quantity; a near-free line is left out), as on the Price Variance page. <b>Extra paid</b> = (rate of a later PO date − first rate) × the quantity of that date, added up over the dates with a higher rate. <b>Net rate change</b> of a vendor = (extra paid − saved) ÷ the value of the later purchases at the first rate: the value-weighted change of the materials that could be compared; it says nothing about materials bought on one date only. Doubtful changes (more than +300% or below −75%, or another item under the same number) are left out of the totals and shown with a pill. Lines delivered to the storage locations PS01 to PS06, NPD1 and DROS and silver or gold bought by the gram are in the business figures but not in the rate comparison, as on the Price Variance page. Only POs created from 1 Jan 2026 are in the data. The data is read from SAP again every 30 seconds while this page is open.</p></details>
+  <details class="notebox"><summary>Notes about these figures</summary><p class="note"><b>Business</b> = the net value of the purchase order items (value ordered, in rupees: a PO in another currency is converted at the exchange rate of the PO; an item without an exchange rate in SAP counts as 0), not what has been received or invoiced. <b>Share</b> = the value of the vendor divided by the value of everything shown (the material type, plant and dates chosen above). <b>Vendor</b>: supplier numbers with the same GSTIN are one vendor. <b>What is in</b>: by default only the Store material types (ZCON consumables, ZHMI PRD tools, ZSPR spare parts, ZSRM store raw materials, ZVRP packaging); choose All material types to include the others (semi-finished goods, trading goods such as silver coins, lines without a material: assets, services, building work). Raw material (RM) and every internal stock transfer (ZSTO, UB) are not in the dashboard data. The group companies (Mittal Coin, Mittal Appliances) are not taken unless you choose to show them; a supplier number that has the GSTIN of a group company counts as that group company (Signet Industries Ltd. has the GSTIN of Mittal Appliances Limited). <b>Classes</b>: the vendors in the order of purchase value; A = those that make the first 80% of the business (a vendor belongs to A when the vendors before it make less than 80%), B = up to 95%, C = the rest. <b>Returns and debit notes</b>: from the goods movements of the Store locations (the same ones as the Purchase page, since 1 Jan 2026, raw material not taken): <b>Material received</b> = the goods receipts of the vendor (movement 101) minus their reversals (102); <b>Returned (161)</b> = the material sent back to the vendor (movement 161) minus its reversals (162); <b>Debit note (122)</b> = the return deliveries with the debit note (movement 122) minus their reversals (123); <b>Returned %</b> = (returned + debit note) ÷ material received, in rupees. They follow the dates chosen above (the posting date of the movement; the PO dates for the purchase value) but not the material type or plant filters: all the supplier numbers of a vendor are added. A return of material received before the dates chosen (or before 2026, or in a location that is not listed) has no receipt in the data, so its % shows a dash. The payment position (To pay) is the open balance of today and does not follow the dates. <b>Rate raised</b>: for every vendor and material (same unit) bought on two or more PO dates, the vendor's own first rate of the period against its latest rate, one rate per PO date (lines of the same date averaged by quantity; a near-free line is left out), as on the Price Variance page. <b>Extra paid</b> = (rate of a later PO date − first rate) × the quantity of that date, added up over the dates with a higher rate. <b>Net rate change</b> of a vendor = (extra paid − saved) ÷ the value of the later purchases at the first rate: the value-weighted change of the materials that could be compared; it says nothing about materials bought on one date only. Doubtful changes (more than +300% or below −75%, or another item under the same number) are left out of the totals and shown with a pill. Lines delivered to the storage locations PS01 to PS06, NPD1 and DROS and silver or gold bought by the gram are in the business figures but not in the rate comparison, as on the Price Variance page. Only POs created from 1 Jan 2026 are in the data. The data is read from SAP again every 30 seconds while this page is open.</p></details>
 </div>
 <footer class="footer">Mittal Group · Vendor Business · Source: SAP S/4HANA Cloud, YY1_PO_ITEM_SUPPLIER_CDS</footer>
 
@@ -742,7 +728,7 @@ function concTable(){
 }
 function classTable(){
   const t=C.total,nv=C.VL.length,TX={A:'Class A · the first 80% of the business',B:'Class B · the next 15%',C:'Class C · the last 5%'};
-  return `<table><thead><tr><th>Class</th><th class="num">Vendors</th><th class="num">% of vendors</th><th class="num">Purchase value</th><th class="num">% of business</th></tr></thead><tbody>`+C.classes.map(c=>`<tr class="${S.cls===c.k?'sel':''}"><td><button type="button" class="lnk" data-cls="${c.k}" title="Click to list only the vendors of this class">${TX[c.k]}</button></td><td class="num">${fmtN(c.n)}</td><td class="num">${pc(nv?c.n/nv*100:0)}</td><td class="num nw">${fmtINR(c.value)}</td><td class="num">${pc(t>0?c.value/t*100:0)}</td></tr>`).join('')+`</tbody><tfoot><tr><td>All vendors</td><td class="num">${fmtN(nv)}</td><td class="num">${nv?'100%':'–'}</td><td class="num nw">${fmtINR(t)}</td><td class="num">${t>0?'100%':'–'}</td></tr></tfoot></table>`;
+  return `<table><thead><tr><th>Class</th><th class="num">Vendors</th><th class="num">% of vendors</th><th class="num">Purchase value</th><th class="num">% of business</th></tr></thead><tbody>`+C.classes.map(c=>`<tr class="${S.cls===c.k?'sel':''}"><td>${TX[c.k]}</td><td class="num">${fmtN(c.n)}</td><td class="num">${pc(nv?c.n/nv*100:0)}</td><td class="num nw">${fmtINR(c.value)}</td><td class="num">${pc(t>0?c.value/t*100:0)}</td></tr>`).join('')+`</tbody><tfoot><tr><td>All vendors</td><td class="num">${fmtN(nv)}</td><td class="num">${nv?'100%':'–'}</td><td class="num nw">${fmtINR(t)}</td><td class="num">${t>0?'100%':'–'}</td></tr></tfoot></table>`;
 }
 function typeTable(){
   const t=C.total,rows=[...C.TY.entries()].sort((a,b)=>b[1].value-a[1].value);
@@ -818,12 +804,9 @@ function render(){
   $('chartMat').innerHTML=hbars(C.ML.slice(0,12).map(m=>({label:m.text||m.code||'–',value:m.value,text:fmtINR(m.value)+' · '+pc(m.share),tip:`${m.text||m.code} (${m.code}): ${rup(m.value)} · ${pc(m.share)} of the business · ${m.vl.length} vendor${m.vl.length===1?'':'s'}`})),600,200,150);
   $('byConc').innerHTML=concTable();$('byClass').innerHTML=classTable();
   // the lists
-  const vs=VL.filter(okV),ms=C.ML.filter(okM),rs=C.rises.filter(e=>okV(e.v)&&(!S.q||(e.r.text+' '+e.r.mat).toLowerCase().includes(S.q)||vHay(e.v).includes(S.q)));
-  const note=S.cls||S.q?` ${fmtN(vs.length)} of ${fmtN(VL.length)} vendors${S.cls?' of class '+S.cls:''}${S.q?' match the search':''}.`:'';
-  $('vHint').textContent=`${fmtN(VL.length)} vendors, the biggest purchase value first. Share = % of everything counted (${fmtINR(C.total)}).${note} Click a vendor to see what we buy from it, the rate of each material, what is still to be delivered, what we have to pay it and its purchase orders (with their items).`;
-  $('mHint').textContent=`${fmtN(C.ML.length)} materials, the biggest purchase value first. Click a material to see every vendor of it.${S.q?' '+fmtN(ms.length)+' match the search.':''}`;
+  const rs=C.rises.filter(e=>okV(e.v)&&(!S.q||(e.r.text+' '+e.r.mat).toLowerCase().includes(S.q)||vHay(e.v).includes(S.q)));
   $('rHint').textContent=`${fmtN(C.rises.length)} vendor and material pairs where the rate was raised (at least 1%) from the vendor's first PO of the period to its latest, the biggest extra amount first. Extra paid = what the later POs cost more than at the first rate. Together ${fmtINR(C.rises.reduce((s,e)=>s+e.r.loss,0))}. (The tile Extra paid counts every date with a higher rate, also for materials whose rate came down again later: ${fmtINR(C.loss)}.)`+(S.q?' '+fmtN(rs.length)+' match the search.':'');
-  for(const [key,box,info,btn,list,fn,place,noun] of [['v','vBox','vInfo','vAll',vs,vendorTable,'list','vendors'],['m','mBox','mInfo','mAll',ms,matTable,'mat','materials'],['r','rBox','rInfo','rAll',rs,riseTable,'rise','rises']]){
+  for(const [key,box,info,btn,list,fn,place,noun] of [['r','rBox','rInfo','rAll',rs,riseTable,'rise','rises']]){
     const shown=S.all[key]?list:list.slice(0,PAGE);
     $(box).innerHTML=fn(shown,place,list);
     $(info).textContent=!list.length?'':(S.all[key]||list.length<=PAGE)?`All ${fmtN(list.length)} shown`:`Showing the first ${PAGE} of ${fmtN(list.length)} ${noun}`;
