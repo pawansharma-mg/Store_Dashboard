@@ -257,20 +257,24 @@ function calc(){
 function setReturns(rt,rc){
   if(rt)RTD=rt;if(rc)RCD=rc;
   const m=new Map();
-  const get=(id,name)=>{const vk=vkOfId(id);let x=m.get(vk);if(!x)m.set(vk,x={vk,nm:new Map(),ids:new Set(),recV:0,recN:0,r161:0,r162:0,n161:0,last:null});x.ids.add(id);if(name)x.nm.set(name,(x.nm.get(name)||0)+1);return x;};
-  if(RCD)for(const a of RCD.rows){const mv=RCD.mvts[a[1]];if((mv!=='101'&&mv!=='102')||!inR(a))continue;const s=RCD.suppliers[a[4]],x=get(s[0],s[1]);x.recV+=mv==='101'?a[11]:-a[11];x.recN++;}
-  if(RTD)for(const a of RTD.rows){const mv=RTD.mvts[a[1]];if((mv!=='161'&&mv!=='162')||!inR(a))continue;const s=RTD.suppliers[a[4]],x=get(s[0],s[1]);if(mv==='161'){x.r161+=a[11];x.n161++;}else x.r162+=a[11];if(a[0]!==null&&(x.last===null||a[0]>x.last))x.last=a[0];}
+  const get=(id,name)=>{const vk=vkOfId(id);let x=m.get(vk);if(!x)m.set(vk,x={vk,nm:new Map(),ids:new Set(),recV:0,recN:0,r161:0,r162:0,n161:0,last:null,r0:null,r1:null,td:new Set()});x.ids.add(id);if(name)x.nm.set(name,(x.nm.get(name)||0)+1);return x;};
+  if(RCD)for(const a of RCD.rows){const mv=RCD.mvts[a[1]];if((mv!=='101'&&mv!=='102')||!inR(a))continue;const s=RCD.suppliers[a[4]],x=get(s[0],s[1]);x.recV+=mv==='101'?a[11]:-a[11];x.recN++;if(mv==='101'&&a[0]!==null){if(x.r0===null||a[0]<x.r0)x.r0=a[0];if(x.r1===null||a[0]>x.r1)x.r1=a[0];}}
+  if(RTD)for(const a of RTD.rows){const mv=RTD.mvts[a[1]];if((mv!=='161'&&mv!=='162')||!inR(a))continue;const s=RTD.suppliers[a[4]],x=get(s[0],s[1]);if(mv==='161'){x.r161+=a[11];x.n161++;if(a[0]!==null)x.td.add(a[0]);}else x.r162+=a[11];if(a[0]!==null&&(x.last===null||a[0]>x.last))x.last=a[0];}
   for(const x of m.values())x.ret=x.r161-x.r162;
   RTV=m;buildMats();
 }
 function buildMats(){
   const m=new Map();
   const slot=(mat,name,unit)=>{const k=mat+'|'+unit+(mat?'':'|'+name);let e=m.get(k);if(!e)m.set(k,e={key:k,mat,name,unit,rq:0,rv:0,tq:0,tv:0,vend:new Map(),hay:null});return e;};
-  const vs=(e,vk)=>{let v=e.vend.get(vk);if(!v)e.vend.set(vk,v={vk,rq:0,rv:0,tq:0,tv:0,r0:null,r1:null,td:new Set()});return v;};
+  const vs=(e,vk)=>{let v=e.vend.get(vk);if(!v)e.vend.set(vk,v={vk,rq:0,rv:0,tq:0,tv:0,r0:null,r1:null,ar0:null,ar1:null,aq:0,td:new Set()});return v;};
   if(RCD)for(const a of RCD.rows){
-    const mv=RCD.mvts[a[1]];if((mv!=='101'&&mv!=='102')||!inR(a))continue;
+    const mv=RCD.mvts[a[1]];if(mv!=='101'&&mv!=='102')continue;
     const vk=vkOfId(RCD.suppliers[a[4]][0]);if(GCV.has(vk))continue;
     const mt=RCD.mats[a[7]],e=slot(mt[0],mt[1],RCD.units[a[9]]),v=vs(e,vk),sg=mv==='101'?1:-1;
+    // every receipt since 1 Jan (also outside the dates chosen): when did the material come
+    if(mv==='101'&&a[0]!==null){if(v.ar0===null||a[0]<v.ar0)v.ar0=a[0];if(v.ar1===null||a[0]>v.ar1)v.ar1=a[0];}
+    v.aq+=sg*a[10];
+    if(!inR(a))continue;
     e.rq+=sg*a[10];e.rv+=sg*a[11];v.rq+=sg*a[10];v.rv+=sg*a[11];
     if(mv==='101'&&a[0]!==null){if(v.r0===null||a[0]<v.r0)v.r0=a[0];if(v.r1===null||a[0]>v.r1)v.r1=a[0];}
   }
@@ -295,11 +299,11 @@ function vName(vk){
 // every Store vendor: the vendors with POs in the dates, and the vendors with receipts / rejections in the Store locations in the dates
 function vendList(){
   const m=new Map();
-  const add=vk=>{let x=m.get(vk);if(!x)m.set(vk,x={vk,ids:new Set(),po:0,npo:0,recV:0,recN:0,ret:0,n161:0,last:null});return x;};
+  const add=vk=>{let x=m.get(vk);if(!x)m.set(vk,x={vk,ids:new Set(),po:0,npo:0,recV:0,recN:0,ret:0,n161:0,last:null,r0:null,r1:null,td:new Set()});return x;};
   if(C)for(const v of C.V.values()){const x=add(v.vk);v.ids.forEach(i=>x.ids.add(i));x.po=v.po;x.npo=v.pos.size;}
   for(const r of RTV.values()){
     if(GCV.has(r.vk)||!(r.recV>0.5||Math.abs(r.ret)>0.5))continue;
-    const x=add(r.vk);r.ids.forEach(i=>x.ids.add(i));x.recV=r.recV;x.recN=r.recN;x.ret=r.ret;x.n161=r.n161;x.last=r.last;
+    const x=add(r.vk);r.ids.forEach(i=>x.ids.add(i));x.recV=r.recV;x.recN=r.recN;x.ret=r.ret;x.n161=r.n161;x.last=r.last;x.r0=r.r0;x.r1=r.r1;x.td=r.td;
   }
   const l=[...m.values()];
   for(const x of l){x.name=vName(x.vk);x.score=scoreOf(x.recV,x.ret);x.acc=x.score===null?null:x.recV-x.ret;}
@@ -350,15 +354,20 @@ function mBars(items){   // material wise: received (101) and rejected (161) on 
 // ---------------------------------------------------------------- vendor wise
 const dash='<span class="sm">–</span>';
 // the dates: when it was received (the first and the last receipt) and when it was rejected (the days of the 161 lines, the newest three)
-const recOn=v=>v.r0===null?dash:(v.r0===v.r1?fmtDayS(v.r0):fmtDayS(v.r0)+' – '+fmtDayS(v.r1));
-const rejOn=v=>{if(!v.td||!v.td.size)return dash;const d=[...v.td].sort((a,b)=>b-a);return d.slice(0,3).map(fmtDayS).join(', ')+(d.length>3?' <span class="sm">+'+(d.length-3)+' more</span>':'');};
+const rng=(a,b)=>a===b?fmtDayS(a):fmtDayS(a)+' – '+fmtDayS(b);
+const recOn=(v,un)=>v.r0!==null?rng(v.r0,v.r1):(v.ar0!==null&&v.ar0!==undefined?`<span class="sm" title="Received outside the dates chosen">${rng(v.ar0,v.ar1)}${v.aq>0.0005?' · '+q3(v.aq)+' '+esc(un||''):''}<br>outside the dates</span>`:dash);
+const recTxt=v=>v.r0!==null?rng(v.r0,v.r1):(v.ar0!==null&&v.ar0!==undefined?rng(v.ar0,v.ar1)+', outside the dates':'');
+const rejTxt=v=>{if(!v.td||!v.td.size)return '';const d=[...v.td].sort((a,b)=>b-a);return d.slice(0,3).map(fmtDayS).join(', ')+(d.length>3?' +'+(d.length-3):'');};
+const rejOn=v=>{const t=rejTxt(v);return t?esc(t).replace(/ \+(\d+)$/,' <span class="sm">+$1 more</span>'):dash;};
+function agg(vl){const o={r0:null,r1:null,ar0:null,ar1:null,aq:0,td:new Set()};for(const v of vl){if(v.r0!==null){if(o.r0===null||v.r0<o.r0)o.r0=v.r0;if(o.r1===null||v.r1>o.r1)o.r1=v.r1;}if(v.ar0!==null){if(o.ar0===null||v.ar0<o.ar0)o.ar0=v.ar0;if(o.ar1===null||v.ar1>o.ar1)o.ar1=v.ar1;}o.aq+=v.aq;v.td.forEach(d=>o.td.add(d));}return o;}
+// the dates: when it was received (the first and the last receipt) and when it was rejected (the days of the 161 lines, the newest three)
 function vPanel(x,ctx){
   const rows=MQ.filter(e=>e.vend.has(x.vk)).map(e=>({e,v:e.vend.get(x.vk)})).filter(r=>r.v.rq>0.0005||Math.abs(r.v.tq)>0.0005||Math.abs(r.v.tv)>0.5)
     .sort((a,b)=>b.v.tv-a.v.tv||b.v.rv-a.v.rv),shown=rows.slice(0,100);
   const st=[[x.po>0.5?fmtINR(x.po)+' · '+pl(x.npo,'PO'):'–','PO (POs created in these dates)'],[x.recV>0.5?fmtINR(x.recV):'–','Received (101 − 102)'],[`<span class="${x.ret>0.5?'up':''}">${fmtINR(x.ret)}</span>`,'Rejected (161 − 162)'],
     [x.score===null?'–':`<span class="${scCls(x.score)}">${x.score.toFixed(1)}%</span> <span class="sm">${scoreWord(x.score)}</span>`,'Score (accepted ÷ received)']];
   const mrows=shown.map(({e,v})=>{const s=scoreOf(v.rq,v.tq),un=esc(e.unit);
-    return `<tr><td>${esc(e.name||e.mat||'–')}<div class="sm">${esc(e.mat||'–')} · per ${un}</div></td><td class="num nw">${v.rq>0.0005?q3(v.rq)+' '+un:dash}<div class="sm">${Math.abs(v.rv)>0.5?fmtINR(v.rv):''}</div></td><td class="nw">${recOn(v)}</td><td class="num nw ${v.tq>0.0005?'up':''}">${Math.abs(v.tq)>0.0005?q3(v.tq)+' '+un:'–'}<div class="sm">${Math.abs(v.tv)>0.5?fmtINR(v.tv):''}</div></td><td class="nw">${rejOn(v)}</td><td class="num nw">${scoreHtml(s)}</td></tr>`;}).join('');
+    return `<tr><td>${esc(e.name||e.mat||'–')}<div class="sm">${esc(e.mat||'–')} · per ${un}</div></td><td class="num nw">${v.rq>0.0005?q3(v.rq)+' '+un:dash}<div class="sm">${Math.abs(v.rv)>0.5?fmtINR(v.rv):''}</div></td><td class="nw">${recOn(v,e.unit)}</td><td class="num nw ${v.tq>0.0005?'up':''}">${Math.abs(v.tq)>0.0005?q3(v.tq)+' '+un:'–'}<div class="sm">${Math.abs(v.tv)>0.5?fmtINR(v.tv):''}</div></td><td class="nw">${rejOn(v)}</td><td class="num nw">${scoreHtml(s)}</td></tr>`;}).join('');
   const place=[...x.ids].join(', ');
   return `<div class="mp" id="vp-${esc(ctx.replace(/[^A-Za-z0-9]/g,'_'))}"><div class="mph"><b>${esc(x.name)}</b><span class="sm">${esc('Supplier '+place)}</span><button type="button" class="btn alt" data-closectx="${esc(ctx)}">Close</button></div>`+
     `<div class="stats">${st.map(s=>`<div class="stat"><b>${s[0]}</b><span>${esc(s[1])}</span></div>`).join('')}</div>`+
@@ -368,10 +377,10 @@ function vTable(list,place,full){
   if(!list.length)return '<div class="empty">No vendor matches the dates and the search.</div>';
   full=full||list;
   const T=full.reduce((t,x)=>{t.po+=x.po;t.rec+=x.recV;t.ret+=x.ret;if(x.score!==null){t.ar+=x.recV;t.aa+=x.acc;}return t;},{po:0,rec:0,ret:0,ar:0,aa:0});
-  return `<table><thead><tr><th class="num">#</th><th>Vendor</th><th class="num" title="The net value of the PO items of the vendor created in the dates chosen (Store material types)">PO</th><th class="num" title="Goods receipts (101) minus their reversals (102), posted in the dates chosen, Store locations">Received (101)</th><th class="num" title="Material sent back to the vendor (161) minus its reversals (162)">Rejected (161)</th><th class="num" title="Accepted divided by received, in rupees: 98% and more is good, 90 to 98 watch, below 90 poor. A dash when the rejected material was received before the dates">Score</th></tr></thead><tbody>`+
+  return `<table><thead><tr><th class="num">#</th><th>Vendor</th><th class="num" title="The net value of the PO items of the vendor created in the dates chosen (Store material types)">PO</th><th class="num" title="Goods receipts (101) minus their reversals (102), posted in the dates chosen, Store locations">Received (101)</th><th>Received on</th><th class="num" title="Material sent back to the vendor (161) minus its reversals (162)">Rejected (161)</th><th>Rejected on</th><th class="num" title="Accepted divided by received, in rupees: 98% and more is good, 90 to 98 watch, below 90 poor. A dash when the rejected material was received before the dates">Score</th></tr></thead><tbody>`+
     list.map((x,i)=>{const ctx=place+'|'+x.vk,open=S.open.has(ctx);
-      return `<tr class="${open?'sel':''}"><td class="num">${i+1}</td><td class="mn"><button type="button" class="lnk" data-vctx="${esc(ctx)}" aria-expanded="${open}" title="Click to see this vendor material by material">${open?'▾':'▸'} ${esc(x.name)}</button><div class="mid">${esc([...x.ids].join(', '))}</div></td><td class="num nw" title="${esc(rup(x.po))}">${x.po>0.5?'<b>'+fmtINR(x.po)+'</b>':dash}<div class="sm">${x.npo?pl(x.npo,'PO'):''}</div></td><td class="num nw" title="${esc(rup(x.recV))}">${x.recV>0.5?'<b>'+fmtINR(x.recV)+'</b>':dash}<div class="sm">${x.recN?pl(x.recN,'line'):''}</div></td><td class="num nw ${x.ret>0.5?'up':''}" title="${esc(rup(x.ret))}">${Math.abs(x.ret)>0.5?'<b>'+fmtINR(x.ret)+'</b>':'–'}<div class="sm">${x.n161?pl(x.n161,'line'):''}</div></td><td class="num nw">${scoreHtml(x.score)}${x.score!==null?`<div class="sm">${scoreWord(x.score)}</div>`:''}</td></tr>`+(open?`<tr class="tlrow subrow"><td></td><td colspan="5">${vPanel(x,ctx)}</td></tr>`:'');}).join('')+
-    `</tbody><tfoot><tr><td></td><td>Total (${pl(full.length,'vendor')})</td><td class="num nw">${fmtINR(T.po)}</td><td class="num nw">${fmtINR(T.rec)}</td><td class="num nw">${fmtINR(T.ret)}</td><td class="num nw">${T.ar>0.5?scoreHtml(T.aa/T.ar*100):'–'}</td></tr></tfoot></table>`;
+      return `<tr class="${open?'sel':''}"><td class="num">${i+1}</td><td class="mn"><button type="button" class="lnk" data-vctx="${esc(ctx)}" aria-expanded="${open}" title="Click to see this vendor material by material">${open?'▾':'▸'} ${esc(x.name)}</button><div class="mid">${esc([...x.ids].join(', '))}</div></td><td class="num nw" title="${esc(rup(x.po))}">${x.po>0.5?'<b>'+fmtINR(x.po)+'</b>':dash}<div class="sm">${x.npo?pl(x.npo,'PO'):''}</div></td><td class="num nw" title="${esc(rup(x.recV))}">${x.recV>0.5?'<b>'+fmtINR(x.recV)+'</b>':dash}<div class="sm">${x.recN?pl(x.recN,'line'):''}</div></td><td class="nw">${x.r0===null?dash:rng(x.r0,x.r1)}</td><td class="num nw ${x.ret>0.5?'up':''}" title="${esc(rup(x.ret))}">${Math.abs(x.ret)>0.5?'<b>'+fmtINR(x.ret)+'</b>':'–'}<div class="sm">${x.n161?pl(x.n161,'line'):''}</div></td><td class="nw">${rejOn(x)}</td><td class="num nw">${scoreHtml(x.score)}${x.score!==null?`<div class="sm">${scoreWord(x.score)}</div>`:''}</td></tr>`+(open?`<tr class="tlrow subrow"><td></td><td colspan="7">${vPanel(x,ctx)}</td></tr>`:'');}).join('')+
+    `</tbody><tfoot><tr><td></td><td>Total (${pl(full.length,'vendor')})</td><td class="num nw">${fmtINR(T.po)}</td><td class="num nw">${fmtINR(T.rec)}</td><td></td><td class="num nw">${fmtINR(T.ret)}</td><td></td><td class="num nw">${T.ar>0.5?scoreHtml(T.aa/T.ar*100):'–'}</td></tr></tfoot></table>`;
 }
 
 // ---------------------------------------------------------------- material wise
@@ -379,7 +388,7 @@ function mPanel(e,ctx){
   const un=esc(e.unit),vl=[...e.vend.values()].filter(v=>v.rq>0.0005||Math.abs(v.tq)>0.0005||Math.abs(v.tv)>0.5).sort((a,b)=>b.tv-a.tv||b.rv-a.rv);
   const st=[[e.rq>0.0005?q3(e.rq)+' '+un:'–','Received (101 − 102)'+(Math.abs(e.rv)>0.5?' · '+fmtINR(e.rv):'')],[`<span class="${e.tq>0.0005?'up':''}">${q3(e.tq)} ${un}</span>`,'Rejected (161 − 162) · '+fmtINR(e.tv)],
     [e.score===null?'–':`<span class="${scCls(e.score)}">${e.score.toFixed(1)}%</span> <span class="sm">${scoreWord(e.score)}</span>`,'Score (accepted ÷ received)'],[fmtN(vl.length),'Vendors']];
-  const rows=vl.map(v=>`<tr><td>${esc(vName(v.vk))}</td><td class="num nw">${v.rq>0.0005?q3(v.rq)+' '+un:dash}<div class="sm">${Math.abs(v.rv)>0.5?fmtINR(v.rv):''}</div></td><td class="nw">${recOn(v)}</td><td class="num nw ${v.tq>0.0005?'up':''}">${Math.abs(v.tq)>0.0005?q3(v.tq)+' '+un:'–'}<div class="sm">${Math.abs(v.tv)>0.5?fmtINR(v.tv):''}</div></td><td class="nw">${rejOn(v)}</td><td class="num nw">${scoreHtml(scoreOf(v.rq,v.tq))}</td></tr>`).join('');
+  const rows=vl.map(v=>`<tr><td>${esc(vName(v.vk))}</td><td class="num nw">${v.rq>0.0005?q3(v.rq)+' '+un:dash}<div class="sm">${Math.abs(v.rv)>0.5?fmtINR(v.rv):''}</div></td><td class="nw">${recOn(v,e.unit)}</td><td class="num nw ${v.tq>0.0005?'up':''}">${Math.abs(v.tq)>0.0005?q3(v.tq)+' '+un:'–'}<div class="sm">${Math.abs(v.tv)>0.5?fmtINR(v.tv):''}</div></td><td class="nw">${rejOn(v)}</td><td class="num nw">${scoreHtml(scoreOf(v.rq,v.tq))}</td></tr>`).join('');
   return `<div class="mp" id="vp-${esc(ctx.replace(/[^A-Za-z0-9]/g,'_'))}"><div class="mph"><b>${esc(e.name||e.mat||'–')}</b><span class="sm">${esc(e.mat||'–')} · per ${un}</span><button type="button" class="btn alt" data-closemq="${esc(ctx)}">Close</button></div>`+
     `<div class="stats">${st.map(s=>`<div class="stat"><b>${s[0]}</b><span>${s[1]}</span></div>`).join('')}</div>`+
     `<h3 class="subh">Vendor by vendor · what each vendor sent of this material (101) and what was rejected (161)</h3><div class="tbox"><table class="pt"><thead><tr><th>Vendor</th><th class="num">Received (101 − 102)</th><th>Received on</th><th class="num">Rejected (161)</th><th>Rejected on</th><th class="num">Score</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
@@ -388,12 +397,13 @@ function mTable(list,place,full){
   if(!list.length)return '<div class="empty">No material was received or rejected in the dates, or none matches the search.</div>';
   full=full||list;
   const rv=full.reduce((s,e)=>s+Math.max(0,e.rv),0),tv=full.reduce((s,e)=>s+Math.max(0,e.tv),0);
-  return `<table><thead><tr><th class="num">#</th><th>Material</th><th>Vendors</th><th class="num" title="Goods receipts (101) minus their reversals (102) of the material, from all the vendors, posted in the dates chosen">Received (101)</th><th class="num" title="Material sent back to the vendors (161) minus its reversals (162)">Rejected (161)</th><th class="num" title="Accepted divided by received, in the quantity of the material: 98% and more is good, 90 to 98 watch, below 90 poor">Score</th></tr></thead><tbody>`+
+  return `<table><thead><tr><th class="num">#</th><th>Material</th><th>Vendors</th><th class="num" title="Goods receipts (101) minus their reversals (102) of the material, from all the vendors, posted in the dates chosen">Received (101)</th><th>Received on</th><th class="num" title="Material sent back to the vendors (161) minus its reversals (162)">Rejected (161)</th><th>Rejected on</th><th class="num" title="Accepted divided by received, in the quantity of the material: 98% and more is good, 90 to 98 watch, below 90 poor">Score</th></tr></thead><tbody>`+
     list.map((e,i)=>{const ctx=place+'|x|'+e.key,open=S.xopen.has(ctx),un=esc(e.unit);
       const vl=[...e.vend.values()].filter(v=>v.rq>0.0005||Math.abs(v.tq)>0.0005).sort((a,b)=>b.tv-a.tv||b.rv-a.rv);
-      const inl=vl.slice(0,3).map(v=>`<div class="sm">${esc(vName(v.vk))} · received ${q3(v.rq)} ${un}${Math.abs(v.tq)>0.0005?' · <span class="up">rejected '+q3(v.tq)+' '+un+'</span>':''}</div>`).join('')+(vl.length>3?`<div class="sm">+ ${vl.length-3} more</div>`:'');
-      return `<tr class="${open?'sel':''}"><td class="num">${i+1}</td><td class="mn"><button type="button" class="lnk" data-xctx="${esc(ctx)}" aria-expanded="${open}" title="Click to see every vendor of this material">${open?'▾':'▸'} ${esc(e.name||e.mat||'–')}</button><div class="mid">${esc(e.mat||'–')} · per ${un}</div></td><td>${inl||dash}</td><td class="num nw">${e.rq>0.0005?'<b>'+q3(e.rq)+' '+un+'</b>':dash}<div class="sm">${Math.abs(e.rv)>0.5?fmtINR(e.rv):''}</div></td><td class="num nw ${e.tq>0.0005?'up':''}">${Math.abs(e.tq)>0.0005?'<b>'+q3(e.tq)+' '+un+'</b>':'–'}<div class="sm">${Math.abs(e.tv)>0.5?fmtINR(e.tv):''}</div></td><td class="num nw">${scoreHtml(e.score)}${e.score!==null?`<div class="sm">${scoreWord(e.score)}</div>`:''}</td></tr>`+(open?`<tr class="tlrow subrow"><td></td><td colspan="5">${mPanel(e,ctx)}</td></tr>`:'');}).join('')+
-    `</tbody><tfoot><tr><td></td><td>Total (${pl(full.length,'material')})</td><td></td><td class="num nw">${fmtINR(rv)}</td><td class="num nw">${fmtINR(tv)}</td><td></td></tr></tfoot></table>`;
+      const ag=agg(vl);
+      const inl=vl.slice(0,3).map(v=>`<div class="sm">${esc(vName(v.vk))} · received ${q3(v.rq)} ${un}${recTxt(v)?' ('+esc(recTxt(v))+')':''}${Math.abs(v.tq)>0.0005?' · <span class="up">rejected '+q3(v.tq)+' '+un+(rejTxt(v)?' ('+esc(rejTxt(v))+')':'')+'</span>':''}</div>`).join('')+(vl.length>3?`<div class="sm">+ ${vl.length-3} more</div>`:'');
+      return `<tr class="${open?'sel':''}"><td class="num">${i+1}</td><td class="mn"><button type="button" class="lnk" data-xctx="${esc(ctx)}" aria-expanded="${open}" title="Click to see every vendor of this material">${open?'▾':'▸'} ${esc(e.name||e.mat||'–')}</button><div class="mid">${esc(e.mat||'–')} · per ${un}</div></td><td>${inl||dash}</td><td class="num nw">${e.rq>0.0005?'<b>'+q3(e.rq)+' '+un+'</b>':dash}<div class="sm">${Math.abs(e.rv)>0.5?fmtINR(e.rv):''}</div></td><td class="nw">${recOn(ag,e.unit)}</td><td class="num nw ${e.tq>0.0005?'up':''}">${Math.abs(e.tq)>0.0005?'<b>'+q3(e.tq)+' '+un+'</b>':'–'}<div class="sm">${Math.abs(e.tv)>0.5?fmtINR(e.tv):''}</div></td><td class="nw">${rejOn(ag)}</td><td class="num nw">${scoreHtml(e.score)}${e.score!==null?`<div class="sm">${scoreWord(e.score)}</div>`:''}</td></tr>`+(open?`<tr class="tlrow subrow"><td></td><td colspan="7">${mPanel(e,ctx)}</td></tr>`:'');}).join('')+
+    `</tbody><tfoot><tr><td></td><td>Total (${pl(full.length,'material')})</td><td></td><td class="num nw">${fmtINR(rv)}</td><td></td><td class="num nw">${fmtINR(tv)}</td><td></td><td></td></tr></tfoot></table>`;
 }
 
 // ---------------------------------------------------------------- the page
